@@ -1,0 +1,7 @@
+# dev related (pycharm specific gitignore)
+.idea
+*.pyc
+
+# data storage directories
+/root_files/*
+/datasets/*
