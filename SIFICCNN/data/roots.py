@@ -3,7 +3,8 @@ import tqdm
 import sys
 import os
 
-from SIFICCNN.data import Detector, EventSimulation
+from .events import EventSimulation, RecoCluster, SiPMHit, FibreHit
+from .detector import Detector
 
 
 class RootSimulation:
@@ -20,73 +21,46 @@ class RootSimulation:
         self.events_keys = self.events.keys()
 
         # create SIFICC-Module objects for scatterer and absorber
-        self.scatterer = Detector(self.setup["ScattererPosition"].array()[0],
-                                  self.setup["ScattererThickness_x"].array()[0],
-                                  self.setup["ScattererThickness_y"].array()[0],
-                                  self.setup["ScattererThickness_z"].array()[0])
-        self.absorber = Detector(self.setup["AbsorberPosition"].array()[0],
-                                 self.setup["AbsorberThickness_x"].array()[0],
-                                 self.setup["AbsorberThickness_y"].array()[0],
-                                 self.setup["AbsorberThickness_z"].array()[0])
+        self.scatterer = Detector.from_root(self.setup["ScattererPosition"].array()[0],
+                                            self.setup["ScattererThickness_x"].array()[0],
+                                            self.setup["ScattererThickness_y"].array()[0],
+                                            self.setup["ScattererThickness_z"].array()[0])
+        self.absorber = Detector.from_root(self.setup["AbsorberPosition"].array()[0],
+                                           self.setup["AbsorberThickness_x"].array()[0],
+                                           self.setup["AbsorberThickness_y"].array()[0],
+                                           self.setup["AbsorberThickness_z"].array()[0])
 
-    @property
-    def dict_leaves(self):
-        """
-        This dictionary contains all possible names of tree leaves from SiFi-CC Simulation root
-        files and the corresponding name of the parameter of the EventSimulation class. The main
-        purpose of this dictionary is to easily determine which leaves are available inside a
-        given root file and generating the EventSimulation object.
+        # create a list of all leaves contained in the root file
+        # used to determine the amount of information stored inside the root file
+        self.leavesTree = []
+        self.set_leaves()
 
-        :return:
-            dict
-        """
-        dictLeaves = {"EventNumber": "EventNumber",
-                      "MCSimulatedEventType": "MCSimulatedEventType",
-                      "MCEnergy_Primary": "MCEnergy_Primary",
-                      "MCEnergy_e": "MCEnergy_e",
-                      "MCEnergy_p": "MCEnergy_p",
-                      "MCPosition_source": "MCPosition_source",
-                      "MCDirection_source": "MCDirection_source",
-                      "MCComptonPosition": "MCComptonPosition",
-                      "MCDirection_scatter": "MCDirection_scatter",
-                      "MCPosition_e": "MCPosition_e",
-                      "MCInteractions_e": "MCInteractions_e",
-                      "MCPosition_p": "MCPosition_p",
-                      "MCInteractions_p": "MCInteractions_p",
-                      "MCEnergyDeps_e": "MCEnergyDeps_e",
-                      "MCEnergyDeps_p": "MCEnergyDeps_p",
-                      "identified": "Identified",
-                      "RecoClusterPositions.position": "RecoClusterPosition",
-                      "RecoClusterPositions.uncertainty": "RecoClusterPosition_uncertainty",
-                      "RecoClusterEnergies.value": "RecoClusterEnergies_values",
-                      "RecoClusterEnergies.uncertainty": "RecoClusterEnergies_uncertainty",
-                      "RecoClusterEntries": "RecoClusterEntries",
-                      "RecoClusterTimestamps": "RecoClusterTimestamps",
-                      "SiPMData.fSiPMTimeStamp": "SiPMTimeStamp",
-                      "SiPMData.fSiPMPhotonCount": "SiPMPhotonCount",
-                      "SiPMData.fSiPMPosition": "SiPMPosition",
-                      "SiPMData.fSiPMId": "SiPMId",
-                      "FibreData.fFibreTime": "FibreTime",
-                      "FibreData.fFibreEnergy": "FibreEnergy",
-                      "FibreData.fFibrePosition": "FibrePosition",
-                      "FibreData.fFibreId": "FibreId",
-                      "MCEnergyPrimary": "MCEnergy_Primary",
-                      "SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
-                      "SiPMData.fSiPMQDC": "SiPMPhotonCount"}
-        return dictLeaves
+        # information content of the root file
+        self.hasRecoCluster = False
+        self.hasSiPMHit = False
+        self.hasFibreHit = False
+        self._set_file_content()
 
-    @property
-    def tree_leaves(self):
+    def _set_file_content(self):
+        # initialize a key list to scan
+        # This list should also contain all sub-entries of custom objects inside a branch
+        list_keys = self.events_keys
+        if "RecoClusterPositions" in self.events_keys:
+            self.hasRecoCluster = True
+        if "SiPMData" in self.events_keys:
+            self.hasSiPMHit = True
+        if "FibreData" in self.events_keys:
+            self.hasFibreHit = True
+
+    def set_leaves(self):
         """
-        Generates a list of all leaves to be read out from the ROOT-file tree. The dictLeave
-        property of the container gives a look-up dictionary for all possible leaves.
+        Generates a list of all leaves to be read out from the ROOT-file tree. Additionally, sets
+        sub-lists for RecoCluster, SiPMHit and FibreHit response if available from the given
+        root file.
 
         The reason this is implemented as a property instead of using the keys() argument from
         root files is that leaves containing objects won't display their attributes, see SiPM /
         Fibre and RecoCluster entries.
-
-        :return:
-            list_leaves (list): list containing all leave names
         """
         # initialize a key list to scan
         # This list should also contain all sub-entries of custom objects inside a branch
@@ -100,13 +74,79 @@ class RootSimulation:
         if "FibreData" in self.events_keys:
             list_keys += self.events["FibreData"].keys()
 
-        # initialize
-        list_leaves = []
-        for leave in self.events_keys:
-            if set([leave]).issubset(self.dict_leaves.keys()):
-                list_leaves.append(leave)
+        list_dicts = [self.dictSimulation,
+                      self.dictRecoCluster,
+                      self.dictSiPMHit,
+                      self.dictFibreHit]
+        list_leavesTree = []
+        for tdict in list_dicts:
+            tlist = []
+            for tleave in list_keys:
+                if {tleave}.issubset(tdict.keys()):
+                    tlist.append(tleave)
+            list_leavesTree.append(tlist)
+        self.leavesTree = list_leavesTree
 
-        return list_leaves
+    @property
+    def dictSimulation(self):
+        """
+        This dictionary contains all possible names of tree leaves from SiFi-CC Simulation root
+        files and the corresponding name of the parameter of the EventSimulation class. The main
+        purpose of this dictionary is to easily determine which leaves are available inside a
+        given root file and generating the EventSimulation object.
+
+        :return:
+            dict
+        """
+        dictSimulation = {"EventNumber": "EventNumber",
+                          "MCSimulatedEventType": "MCSimulatedEventType",
+                          "MCEnergy_Primary": "MCEnergy_Primary",
+                          "MCEnergy_e": "MCEnergy_e",
+                          "MCEnergy_p": "MCEnergy_p",
+                          "MCPosition_source": "MCPosition_source",
+                          "MCDirection_source": "MCDirection_source",
+                          "MCComptonPosition": "MCComptonPosition",
+                          "MCDirection_scatter": "MCDirection_scatter",
+                          "MCPosition_e": "MCPosition_e",
+                          "MCInteractions_e": "MCInteractions_e",
+                          "MCPosition_p": "MCPosition_p",
+                          "MCInteractions_p": "MCInteractions_p",
+                          "MCEnergyDeps_e": "MCEnergyDeps_e",
+                          "MCEnergyDeps_p": "MCEnergyDeps_p",
+                          "MCEnergyPrimary": "MCEnergy_Primary"}
+        return dictSimulation
+
+    @property
+    def dictRecoCluster(self):
+
+        dictRecoCluster = {"Identified": "Identified",
+                           "RecoClusterPositions.position": "RecoClusterPosition",
+                           "RecoClusterPositions.uncertainty": "RecoClusterPosition_uncertainty",
+                           "RecoClusterEnergies.value": "RecoClusterEnergies_values",
+                           "RecoClusterEnergies.uncertainty": "RecoClusterEnergies_uncertainty",
+                           "RecoClusterEntries": "RecoClusterEntries",
+                           "RecoClusterTimestamps": "RecoClusterTimestamps"}
+        return dictRecoCluster
+
+    @property
+    def dictSiPMHit(self):
+
+        dictSiPMHit = {"SiPMData.fSiPMTimeStamp": "SiPMTimeStamp",
+                       "SiPMData.fSiPMPhotonCount": "SiPMPhotonCount",
+                       "SiPMData.fSiPMPosition": "SiPMPosition",
+                       "SiPMData.fSiPMId": "SiPMId",
+                       "SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
+                       "SiPMData.fSiPMQDC": "SiPMPhotonCount"}
+        return dictSiPMHit
+
+    @property
+    def dictFibreHit(self):
+
+        dictFibreHit = {"FibreData.fFibreTime": "FibreTime",
+                        "FibreData.fFibreEnergy": "FibreEnergy",
+                        "FibreData.fFibrePosition": "FibrePosition",
+                        "FibreData.fFibreId": "FibreId"}
+        return dictFibreHit
 
     def iterate_events(self, n=None):
         """
@@ -133,15 +173,57 @@ class RootSimulation:
 
     def __event_at_basket(self, basket, idx):
 
-        dictBasket = {"module_scatterer": self.scatterer,
-                      "module_absorber": self.absorber}
-        for leave in self.tree_leaves:
-            try:
-                dictBasket[self.dict_leaves[leave]] = basket[leave][idx].array()
-            except:
-                dictBasket[self.dict_leaves[leave]] = basket[leave][idx]
+        dictBasketSimulation = {"scatterer": self.scatterer,
+                                "absorber": self.absorber}
+        dictBasketRecoCluster = {"scatterer": self.scatterer,
+                                 "absorber": self.absorber}
+        dictBasketSiPMHit = {"scatterer": self.scatterer,
+                             "absorber": self.absorber}
+        dictBasketFibreHit = {"scatterer": self.scatterer,
+                              "absorber": self.absorber}
 
-        event_simulation = EventSimulation(**dictBasket)
+        # initialize subclasses for the EventSimulation object if needed
+        recocluster = None
+        if self.hasRecoCluster:
+            for tleave in self.leavesTree[1]:
+                try:
+                    dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][
+                        idx].array()
+                except:
+                    dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][idx]
+            recocluster = RecoCluster(**dictBasketRecoCluster)
+
+        sipmhit = None
+        if self.hasSiPMHit:
+            for tleave in self.leavesTree[2]:
+                try:
+                    dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx].array()
+                except:
+                    dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
+            sipmhit = SiPMHit(**dictBasketSiPMHit)
+
+        fibrehit = None
+        if self.hasFibreHit:
+            for tleave in self.leavesTree:
+                try:
+                    dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx].array()
+                except:
+                    dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
+            fibrehit = FibreHit(**dictBasketFibreHit)
+
+        # simulation event serves as container for any additional information
+        for tleave in self.leavesTree[0]:
+            try:
+                dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx].array()
+            except:
+                dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx]
+
+        # build final event object
+        event_simulation = EventSimulation(**dictBasketSimulation,
+                                           RecoCluster=recocluster,
+                                           SiPMHit=sipmhit,
+                                           FibreHit=fibrehit)
+
         return event_simulation
 
     def get_event(self, position):
