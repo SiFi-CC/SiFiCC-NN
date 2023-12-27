@@ -50,8 +50,3 @@ def compton_scattering_angle(e1, e2):
     else:
         theta = np.arccos(costheta)  # rad
         return theta
-
-
-def tbranch_vector(akw_ary):
-    ary = np.array([akw_ary["fX"], akw_ary["fY"], akw_ary["fZ"]])
-    return
