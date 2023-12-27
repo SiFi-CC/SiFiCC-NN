@@ -1,3 +1,3 @@
 from .detector import Detector
-from .events import EventSimulation
 from .roots import RootSimulation
+from .events import EventSimulation, RecoCluster, SiPMHit, FibreHit
