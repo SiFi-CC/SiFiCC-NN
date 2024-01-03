@@ -48,8 +48,8 @@ class EventSimulation:
                  MCInteractions_e,
                  MCPosition_p,
                  MCInteractions_p,
-                 scatterer,
-                 absorber,
+                 Scatterer,
+                 Absorber,
                  MCEnergyDeps_e=None,
                  MCEnergyDeps_p=None,
                  RecoCluster=None,
@@ -71,12 +71,16 @@ class EventSimulation:
         self.MCInteractions_p = np.array(MCInteractions_p)
 
         # Detector modules
-        self.scatterer = scatterer
-        self.absorber = absorber
+        self.scatterer = Scatterer
+        self.absorber = Absorber
 
         # additional attributes. May not be present in every file, if so filled with None
-        self.MCEnergyDeps_e = np.array(MCEnergyDeps_e)
-        self.MCEnergyDeps_p = np.array(MCEnergyDeps_p)
+        if MCEnergyDeps_e is not None:
+            self.MCEnergyDeps_e = np.array(MCEnergyDeps_e)
+            self.MCEnergyDeps_p = np.array(MCEnergyDeps_p)
+        else:
+            self.MCEnergyDeps_e = None
+            self.MCEnergyDeps_p = None
 
         # Container objects for additional information
         self.RecoCluster = RecoCluster
@@ -227,6 +231,7 @@ class EventSimulation:
                             target_position_p = self.MCPosition_p[i + 1]
                             self.ph_tag = True
                             return target_position_e, target_position_p
+                    return target_position_e, target_position_p
                 # Phantom hits are scanned by secondary interaction proximity
                 if self.ph_method == 2:
                     for i in range(1, len(self.MCInteractions_p_full)):
@@ -246,6 +251,7 @@ class EventSimulation:
                                 self.ph_tag = True
                                 target_position_p = self.MCPosition_p[i]
                                 return target_position_e, target_position_p
+                    return target_position_e, target_position_p
 
         # Global exception for every interaction list where the first interaction is not Compton
         # scattering
@@ -290,7 +296,8 @@ class EventSimulation:
 
         # check for valid target energies
         if target_energy_e == 0. or target_energy_p == 0.:
-            return
+            return False
+
         # check if interaction positions are in the correct module
         if (self.scatterer.is_vec_in_module(target_position_e)
                 and self.absorber.is_vec_in_module(target_position_p)):
@@ -489,12 +496,13 @@ class EventSimulation:
             r = tmp_vec.mag
             tmp_angle = vector_angle(tmp_vec, self.MCDirection_scatter)
 
-            list_params = [self.MCPosition_p.x[i],
-                           self.MCPosition_p.y[i],
-                           self.MCPosition_p.z[i],
-                           int(str(self.MCInteractions_p[i])[4]),
-                           int(str(self.MCInteractions_p[i])[1:3]),
-                           int(str(self.MCInteractions_p[i])[3]),
+            list_params = [self.MCPosition_p[i].x,
+                           self.MCPosition_p[i].y,
+                           self.MCPosition_p[i].z,
+                           self.MCInteractions_p_full[i, 3],
+                           self.MCInteractions_p_full[i, 0] * 10 +
+                           self.MCInteractions_p_full[i, 1],
+                           self.MCInteractions_p_full[i, 2],
                            tmp_angle,
                            np.sin(tmp_angle) * r]
 
@@ -507,6 +515,14 @@ class EventSimulation:
                 print(
                     "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}, {:3}) | {:.5f} [rad] ({:7.5f} [mm])".format(
                         *list_params))
+
+        # print added information for container classes
+        if self.RecoCluster is not None:
+            self.RecoCluster.summary()
+        if self.FibreHit is not None:
+            self.FibreHit.summary()
+        if self.SiPMHit is not None:
+            self.SiPMHit.summary()
 
 
 class RecoCluster:
