@@ -164,60 +164,58 @@ class RootSimulation:
         if n is None:
             n = self.events_entries
 
-        for batch in self.events.iterate(step_size="1000 kB",
+        # define progress bar
+        progbar = tqdm.tqdm(total=n, ncols=100, file=sys.stdout,
+                            desc="iterating root tree")
+        progbar_step = 0
+        progbar_update_size = 1000
+
+        for batch in self.events.iterate(step_size="1000000 kB",
                                          entry_start=0,
                                          entry_stop=n):
             length = len(batch)
             for idx in range(length):
                 yield self.__event_at_basket(batch, idx)
 
-    def __event_at_basket(self, basket, idx):
+                progbar_step += 1
+                if progbar_step % progbar_update_size == 0:
+                    progbar.update(progbar_update_size)
 
-        dictBasketSimulation = {"scatterer": self.scatterer,
-                                "absorber": self.absorber}
-        dictBasketRecoCluster = {"scatterer": self.scatterer,
-                                 "absorber": self.absorber}
-        dictBasketSiPMHit = {"scatterer": self.scatterer,
-                             "absorber": self.absorber}
-        dictBasketFibreHit = {"scatterer": self.scatterer,
-                              "absorber": self.absorber}
+        progbar.update(self.events_entries % progbar_update_size)
+        progbar.close()
+
+    def __event_at_basket(self, basket, idx):
+        dictBasketSimulation = {"Scatterer": self.scatterer,
+                                "Absorber": self.absorber}
+        dictBasketRecoCluster = {"Scatterer": self.scatterer,
+                                 "Absorber": self.absorber}
+        dictBasketSiPMHit = {"Scatterer": self.scatterer,
+                             "Absorber": self.absorber}
+        dictBasketFibreHit = {"Scatterer": self.scatterer,
+                              "Absorber": self.absorber}
 
         # initialize subclasses for the EventSimulation object if needed
         recocluster = None
         if self.hasRecoCluster:
             for tleave in self.leavesTree[1]:
-                try:
-                    dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][
-                        idx].array()
-                except:
-                    dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][idx]
+                dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][idx]
             recocluster = RecoCluster(**dictBasketRecoCluster)
 
         sipmhit = None
         if self.hasSiPMHit:
             for tleave in self.leavesTree[2]:
-                try:
-                    dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx].array()
-                except:
-                    dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
+                dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
             sipmhit = SiPMHit(**dictBasketSiPMHit)
 
         fibrehit = None
         if self.hasFibreHit:
-            for tleave in self.leavesTree:
-                try:
-                    dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx].array()
-                except:
-                    dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
+            for tleave in self.leavesTree[3]:
+                dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
             fibrehit = FibreHit(**dictBasketFibreHit)
 
         # simulation event serves as container for any additional information
         for tleave in self.leavesTree[0]:
-            try:
-                dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx].array()
-            except:
-                dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx]
-
+            dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx]
         # build final event object
         event_simulation = EventSimulation(**dictBasketSimulation,
                                            RecoCluster=recocluster,
