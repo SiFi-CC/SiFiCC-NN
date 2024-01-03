@@ -1,4 +1,5 @@
 import numpy as np
+from SIFICCNN.utils import TVector3
 
 
 def vector_angle(vec1, vec2):
@@ -8,17 +9,24 @@ def vector_angle(vec1, vec2):
     -1 to 1.
 
     Args:
-         vec1: ndarray (3,); 3-dim origin vector
-         vec2: ndarray (3,); 3-dim origin vector
+         vec1: ndarray (3,) or TVector3; 3-dim origin vector
+         vec2: ndarray (3,) or TVector3; 3-dim origin vector
 
     Returns:
          float; Angle between vectors in radians
     """
+    if isinstance(vec1, TVector3) and isinstance(vec2, TVector3):
+        vec1 /= vec1.mag
+        vec2 /= vec2.mag
 
-    vec1 /= np.sqrt(np.dot(vec1, vec1))
-    vec2 /= np.sqrt(np.dot(vec2, vec2))
+        return np.arccos(np.clip(vec1 * vec2, -1.0, 1.0))
 
-    return np.arccos(np.clip(np.dot(vec1, vec2), -1.0, 1.0))
+    # TODO: AD ADDITIONAL TESTS FOR ARRAY TYPE
+    else:
+        vec1 /= np.sqrt(np.dot(vec1, vec1))
+        vec2 /= np.sqrt(np.dot(vec2, vec2))
+
+        return np.arccos(np.clip(np.dot(vec1, vec2), -1.0, 1.0))
 
 
 def compton_scattering_angle(e1, e2):
