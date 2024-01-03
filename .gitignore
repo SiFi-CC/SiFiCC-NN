@@ -5,3 +5,10 @@
 # data storage directories
 /root_files/*
 /datasets/*
+
+# ignore .png, .root, .npz and .npy in results subdirectory
+# files are too large and too many to properly comit
+results/**/*.png
+results/**/*.root
+results/**/*.npz
+results/**/*.npy
