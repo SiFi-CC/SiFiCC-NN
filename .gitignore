@@ -12,3 +12,4 @@ results/**/*.png
 results/**/*.root
 results/**/*.npz
 results/**/*.npy
+results/**/*.txt
