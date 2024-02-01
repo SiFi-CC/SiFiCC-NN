@@ -41,6 +41,7 @@ def main(run_name="ECRNCluster_unnamed",
          activation_out="sigmoid",
          do_training=False,
          do_evaluation=False):
+
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -85,7 +86,7 @@ def main(run_name="ECRNCluster_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM]:
+        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -276,18 +277,31 @@ if __name__ == "__main__":
     parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
     args = parser.parse_args()
 
+    # base settings if no parameters are given
+    # can also be used to execute this script without console parameter
+    base_run_name = "ECRNCluster_PostTraining"
+    base_epochs = 50
+    base_batch_size = 64
+    base_dropout = 0.0
+    base_nfilter = 32
+    base_nOut = 1
+    base_activation = "relu"
+    base_activation_out = "sigmoid"
+    base_do_training = False
+    base_do_evaluation = True
+
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
-    run_name = args.name if args.name is not None else "ECRNCluster_unnamed"
-    epochs = args.epochs if args.epochs is not None else 50
-    batch_size = args.batch_size if args.batch_size is not None else 64
-    dropout = args.dropout if args.dropout is not None else 0.1
-    nFilter = args.nFilter if args.nFilter is not None else 32
-    nOut = args.nOut if args.nOut is not None else 1
-    activation = args.activation if args.activation is not None else "relu"
-    activation_out = args.activation_out if args.activation_out is not None else "sigmoid"
-    do_training = args.training if args.training is not None else False
-    do_evaluation = args.evaluation if args.evaluation is not None else True
+    run_name = args.name if args.name is not None else base_run_name
+    epochs = args.epochs if args.epochs is not None else base_epochs
+    batch_size = args.batch_size if args.batch_size is not None else base_batch_size
+    dropout = args.dropout if args.dropout is not None else base_dropout
+    nFilter = args.nFilter if args.nFilter is not None else base_nfilter
+    nOut = args.nOut if args.nOut is not None else base_nOut
+    activation = args.activation if args.activation is not None else base_activation
+    activation_out = args.activation_out if args.activation_out is not None else base_activation_out
+    do_training = args.training if args.training is not None else base_do_training
+    do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
 
     main(run_name=run_name,
          epochs=epochs,
