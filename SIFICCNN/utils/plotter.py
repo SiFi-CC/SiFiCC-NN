@@ -631,6 +631,107 @@ def plot_theta_error(y_pred, y_true, figure_name):
     plt.close()
 
 
+def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
+    plt.rcParams.update({'font.size': 16})
+
+    width = 0.1
+    bins_err_x = np.arange(-5.5, 5.5, width)
+    bins_err_y = np.arange(-60.5, 60.5, width)
+    bins_err_z = np.arange(-5.5, 5.5, width)
+    bins_energy = np.arange(0.0, 10.0, width)
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{x}$ - $r^{True}_{x}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 0] - pos_true[:, 0],
+               bins=[bins_energy, bins_err_x], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_electron_x_error_vs_energy.png")
+    plt.close()
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{y}$ - $r^{True}_{y}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 1] - pos_true[:, 1],
+               bins=[bins_energy, bins_err_y], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_electron_y_error_vs_energy.png")
+    plt.close()
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{z}$ - $r^{True}_{z}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 2] - pos_true[:, 2],
+               bins=[bins_energy, bins_err_z], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_electron_z_error_vs_energy.png")
+    plt.close()
+
+    ##################################
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{x}$ - $r^{True}_{x}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 3] - pos_true[:, 3],
+               bins=[bins_energy, bins_err_x], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_photon_x_error_vs_energy.png")
+    plt.close()
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{y}$ - $r^{True}_{y}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 4] - pos_true[:, 4],
+               bins=[bins_energy, bins_err_y], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_photon_y_error_vs_energy.png")
+    plt.close()
+
+    plt.figure()
+    plt.xlabel("$E_{True}$ [MeV]")
+    plt.ylabel(r"$r^{Pred}_{z}$ - $r^{True}_{z}$ [mm]")
+    plt.hist2d(x=e_total, y=pos_pred[:, 5] - pos_true[:, 5],
+               bins=[bins_energy, bins_err_z], norm=LogNorm())
+    plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
+               linestyles="--")
+    plt.colorbar()
+    plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
+    plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.savefig(figure_name + "_photon_z_error_vs_energy.png")
+    plt.close()
+
 ################################################################################
 # Training history
 ################################################################################
