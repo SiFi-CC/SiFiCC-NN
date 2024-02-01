@@ -15,7 +15,7 @@ def tmath_acos(x):
     return np.arccos(x)
 
 
-def check_valid_prediction(e, p, p_ex, p_ey, p_ez, p_px, p_py, p_pz, theta):
+def check_valid_prediction(e, p, p_ex, p_ey, p_ez, p_px, p_py, p_pz):
     """
     Check if regressed event topology of a compton event makes physical sense.
     -> Energies are positive and non-zero
