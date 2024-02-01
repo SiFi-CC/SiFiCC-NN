@@ -5,141 +5,146 @@ import uproot
 from .veto import check_DAC, check_compton_arc, check_compton_kinematics, check_valid_prediction
 
 
-def exportCC6(ary_e,
-              ary_p,
-              ary_ex,
-              ary_ey,
-              ary_ez,
-              ary_px,
-              ary_py,
-              ary_pz,
-              ary_theta=None,
-              filename="CC6_export",
-              use_theta="DOTVEC",
+def correct_input_length(entry, l):
+    if isinstance(entry, float) or isinstance(entry, int):
+        entry = np.ones(shape=(l,)) * entry
+    return entry
+
+
+def exportCC6(filename,
+              ee,
+              ep,
+              ex,
+              ey,
+              ez,
+              px,
+              py,
+              pz,
+              ee_err=None,
+              ep_err=None,
+              ex_err=None,
+              ey_err=None,
+              ez_err=None,
+              px_err=None,
+              py_err=None,
+              pz_err=None,
               veto=True,
               verbose=0):
-    # TODO: handle theta angle
+    # test each input of statistical errors on their type
+    # If int/float, they are extended to the needed array length
+    # If they are not given, each error entry is filled with zero
+    l = len(ee)
+    ee_err = np.zeros(shape=(l,)) if ee_err is None else correct_input_length(ee_err, l)
+    ep_err = np.zeros(shape=(l,)) if ep_err is None else correct_input_length(ep_err, l)
+    ex_err = np.zeros(shape=(l,)) if ex_err is None else correct_input_length(ex_err, l)
+    ey_err = np.zeros(shape=(l,)) if ey_err is None else correct_input_length(ey_err, l)
+    ez_err = np.zeros(shape=(l,)) if ez_err is None else correct_input_length(ez_err, l)
+    px_err = np.zeros(shape=(l,)) if px_err is None else correct_input_length(px_err, l)
+    py_err = np.zeros(shape=(l,)) if py_err is None else correct_input_length(py_err, l)
+    pz_err = np.zeros(shape=(l,)) if pz_err is None else correct_input_length(pz_err, l)
 
     # Define verbose statistic on event rejection
-    ary_identified = np.ones(shape=(len(ary_e),))
+    identified = np.ones(shape=(l,))
     reject_valid = 0
     reject_arc = 0
     reject_kinematics = 0
     reject_DAC = 0
 
     if veto:
-        for i in range(len(ary_e)):
-            # define event quantities:
-            identified = 1
-
-            e = ary_e[i]
-            p = ary_p[i]
-            p_ex = ary_ex[i]
-            p_ey = ary_ey[i]
-            p_ez = ary_ez[i]
-            p_px = ary_px[i]
-            p_py = ary_py[i]
-            p_pz = ary_pz[i]
-
-            if ary_theta is None:
-                theta = None
-            else:
-                theta = ary_theta[i]
-
-            if not check_valid_prediction(e, p, p_ex, p_ey, p_ez, p_px, p_py, p_pz, theta):
-                ary_identified[i] = 0
+        for i in range(l):
+            if not check_valid_prediction(ee[i], ep[i],
+                                          ex[i], ey[i], ez[i],
+                                          px[i], py[i], pz[i]):
+                identified[i] = 0
                 reject_valid += 1
                 continue
 
-            if not check_compton_arc(e, p):
-                ary_identified[i] = 0
+            if not check_compton_arc(ee[i], ep[i]):
+                identified[i] = 0
                 reject_arc += 1
                 continue
 
-            if not check_compton_kinematics(e, p, ee=0, ep=0, compton=True):
-                # print("failed compton kinematics")
-                ary_identified[i] = 0
+            if not check_compton_kinematics(ee[i], ep[i], ee=ee_err[i], ep=ep_err[i], compton=True):
+                identified[i] = 0
                 reject_kinematics += 1
                 continue
 
-            if not check_DAC(e, p, p_ex, p_ey, p_ez, p_px, p_py, p_pz, 20, inverse=False):
-                # print("failed DAAC")
-                ary_identified[i] = 0
+            if not check_DAC(ee[i], ep[i],
+                             ex[i], ey[i], ez[i],
+                             px[i], py[i], pz[i],
+                             20, inverse=False):
+                identified[i] = 0
                 reject_DAC += 1
                 continue
 
     # print MLEM export statistics
     if verbose == 1:
         print("\n# CC6 export statistics: ")
-        print("Number of total events: ", len(ary_e))
-        print("Number of events after cuts: ", np.sum(ary_identified))
-        print("Number of cut events: ", len(ary_e) - np.sum(ary_identified))
+        print("Number of total events: ", l)
+        print("Number of events after cuts: ", np.sum(identified))
+        print("Number of cut events: ", l - np.sum(identified))
         print("    - Valid prediction: ", reject_valid)
         print("    - Compton arc: ", reject_arc)
         print("    - Compton kinematics: ", reject_kinematics)
         print("    - Beam Origin: ", reject_DAC)
 
     # required fields for the root file
-    entries = np.sum(ary_identified)
-    print(entries)
+    entries = np.sum(identified)
     zeros = np.zeros(shape=(int(entries),))
-    event_number = zeros
-    event_type = zeros
 
-    ary_identified = ary_identified == 1
-    e_energy = ary_e[ary_identified]
-    p_energy = ary_p[ary_identified]
-    total_energy = e_energy + p_energy
+    # apply selection of post filter events
+    identified = identified == 1
 
-    e_pos_x = ary_ey[ary_identified]
-    e_pos_y = -ary_ez[ary_identified]
-    e_pos_z = -ary_ex[ary_identified]
-    p_pos_x = ary_py[ary_identified]
-    p_pos_y = -ary_pz[ary_identified]
-    p_pos_z = -ary_px[ary_identified]
+    # process additional quantities
+    e0 = ee + ep
+    arc = np.arccos(1 - 0.511 * (1 / ep - 1 / e0))
 
-    arc = np.arccos(1 - 0.511 * (1 / p_energy - 1 / total_energy))
+    e0_unc = np.array([np.sqrt(ee_err[i] ** 2 + ep_err[i] ** 2) for i in range(len(ee_err))])
+    p_unc_x = np.array([np.sqrt(py_err[i] ** 2 + ey_err[i] ** 2) for i in range(len(py_err))])
+    p_unc_y = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2) for i in range(len(pz_err))])
+    p_unc_z = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
 
     # create root file
     file_name = filename + ".root"
     file = uproot.recreate(file_name, compression=None)
 
-    print(len(arc), "events exported")
+    print(np.sum(identified), "events exported")
     print("file created at: ", os.getcwd() + file_name)
 
     # filling the branch
-    file['ConeList'] = {'GlobalEventNumber': event_number,
-                        'v_x': e_pos_x,
-                        'v_y': e_pos_y,
-                        'v_z': e_pos_z,
-                        'v_unc_x': zeros,
-                        'v_unc_y': zeros,
-                        'v_unc_z': zeros,
-                        'p_x': p_pos_x - e_pos_x,
-                        'p_y': p_pos_y - e_pos_y,
-                        'p_z': p_pos_z - e_pos_z,
-                        'p_unc_x': zeros,
-                        'p_unc_y': zeros,
-                        'p_unc_z': zeros,
-                        'E0Calc': total_energy,
-                        'E0Calc_unc': zeros,
-                        'arc': arc,
+    # ROOT FILES ARE FILLED NI LUEBECK COORDINATE SYSTEM
+    file['ConeList'] = {'GlobalEventNumber': zeros,
+                        'v_x': ey[identified],
+                        'v_y': -ez[identified],
+                        'v_z': -ex[identified],
+                        'v_unc_x': ey_err[identified],
+                        'v_unc_y': -ez_err[identified],
+                        'v_unc_z': -ex_err[identified],
+                        'p_x': py[identified] - ey[identified],
+                        'p_y': -pz[identified] + ez[identified],
+                        'p_z': -px[identified] + ex[identified],
+                        'p_unc_x': p_unc_x[identified],
+                        'p_unc_y': p_unc_y[identified],
+                        'p_unc_z': p_unc_z[identified],
+                        'E0Calc': e0[identified],
+                        'E0Calc_unc': e0_unc[identified],
+                        'arc': arc[identified],
                         'arc_unc': zeros,
-                        'E1': e_energy,
-                        'E1_unc': zeros,
-                        'E2': p_energy,
-                        'E2_unc': zeros,
+                        'E1': ee[identified],
+                        'E1_unc': ee_err[identified],
+                        'E2': ep[identified],
+                        'E2_unc': ep_err[identified],
                         'E3': zeros,
                         'E3_unc': zeros,
                         'ClassID': zeros,
-                        'EventType': event_type,
+                        'EventType': zeros,
                         'EnergyBinID': zeros,
-                        'x_1': e_pos_x,
-                        'y_1': e_pos_y,
-                        'z_1': e_pos_z,
-                        'x_2': p_pos_x,
-                        'y_2': p_pos_y,
-                        'z_2': p_pos_z,
+                        'x_1': ey[identified],
+                        'y_1': -ez[identified],
+                        'z_1': -ex[identified],
+                        'x_2': py[identified],
+                        'y_2': -pz[identified],
+                        'z_2': -px[identified],
                         'x_3': zeros,
                         'y_3': zeros,
                         'z_3': zeros}
@@ -147,7 +152,7 @@ def exportCC6(ary_e,
     # filling the branch
     file['TreeStat'] = {'StartEvent': [0],
                         'StopEvent': [entries],
-                        'TotalSimNev': [0 - entries]}
+                        'TotalSimNev': [0]}
 
     # closing the root file
     file.close()
