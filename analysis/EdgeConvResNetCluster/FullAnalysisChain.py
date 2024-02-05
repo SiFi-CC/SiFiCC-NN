@@ -63,7 +63,7 @@ def main(run_name,
         ep_err = sigma_ep(y_regE_pred[idx_pos, 1], 0.05636, -0.1248, 0.4622)
         ey_err = sigma_ey(y_regE_pred[idx_pos, 0], 3.089e0, 5.959e0, -7.568e-2)
         py_err = sigma_py(y_regE_pred[idx_pos, 1], -3.181e-1, 1.519e1, -3.651e0)
-        ex_err = sigma_ex(y_regE_pred[idx_pos, 0], 0.3620, -0.0663, 0.1115, -0.0178, 0.0083)
+        ex_err = sigma_ex(y_regE_pred[idx_pos, 0], 0.3620, -0.0663, 0.1115, -0.0178, 0.00083)
         ez_err = sigma_ez(y_regE_pred[idx_pos, 0], 0.3637, 0.00376, 0.0693, -0.0139, 0.000803)
         px_err = sigma_px(y_regE_pred[idx_pos, 1], 0.4312, -0.1020, 0.0588, -0.00675, 0.000267)
         pz_err = sigma_pz(y_regE_pred[idx_pos, 1], 0.4352, -0.05364, 0.0420, -0.004795, 0.00194)
