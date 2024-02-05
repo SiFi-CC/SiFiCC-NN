@@ -66,7 +66,7 @@ def main(run_name,
         ex_err = sigma_ex(y_regE_pred[idx_pos, 0], 0.3620, -0.0663, 0.1115, -0.0178, 0.00083)
         ez_err = sigma_ez(y_regE_pred[idx_pos, 0], 0.3637, 0.00376, 0.0693, -0.0139, 0.000803)
         px_err = sigma_px(y_regE_pred[idx_pos, 1], 0.4312, -0.1020, 0.0588, -0.00675, 0.000267)
-        pz_err = sigma_pz(y_regE_pred[idx_pos, 1], 0.4352, -0.05364, 0.0420, -0.004795, 0.00194)
+        pz_err = sigma_pz(y_regE_pred[idx_pos, 1], 0.4352, -0.05364, 0.0420, -0.004795, 0.000194)
 
         # export to root file compatible with CC6 image reconstruction
         exportCC6(ee=y_regE_pred[idx_pos, 0],
