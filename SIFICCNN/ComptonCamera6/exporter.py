@@ -112,14 +112,14 @@ def exportCC6(filename,
     print("file created at: ", os.getcwd() + file_name)
 
     # filling the branch
-    # ROOT FILES ARE FILLED NI LUEBECK COORDINATE SYSTEM
+    # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
     file['ConeList'] = {'GlobalEventNumber': zeros,
                         'v_x': ey[identified],
                         'v_y': -ez[identified],
                         'v_z': -ex[identified],
                         'v_unc_x': ey_err[identified],
-                        'v_unc_y': -ez_err[identified],
-                        'v_unc_z': -ex_err[identified],
+                        'v_unc_y': ez_err[identified],
+                        'v_unc_z': ex_err[identified],
                         'p_x': py[identified] - ey[identified],
                         'p_y': -pz[identified] + ez[identified],
                         'p_z': -px[identified] + ex[identified],
