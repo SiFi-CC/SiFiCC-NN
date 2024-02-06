@@ -10,6 +10,8 @@ from SIFICCNN.utils.plotter import plot_position_error_vs_energy
 
 from SIFICCNN.analysis import sigma_ee, \
     sigma_ep, sigma_ex, sigma_ey, sigma_ez, sigma_px, sigma_py, sigma_pz
+from SIFICCNN.analysis import read_resolution_file
+
 
 
 def main(run_name,
@@ -58,7 +60,20 @@ def main(run_name,
                                       "error_regression")
 
         # calculate uncertainties of all quantities
-        # TODO: THIS IS RIGHT NOW HARDCODED FOR BP0MM; CHANGES COMMING SOONISH
+
+        # open parameter file
+        params = read_resolution_file(path_results + "allResolutions.root")
+        ee_err = sigma_ee(y_regE_pred[idx_pos, 0], *params["ee"])
+        ep_err = sigma_ep(y_regE_pred[idx_pos, 1], *params["ep"])
+        ey_err = sigma_ey(y_regE_pred[idx_pos, 0], *params["ey"])
+        py_err = sigma_py(y_regE_pred[idx_pos, 1], *params["py"])
+        ex_err = sigma_ex(y_regE_pred[idx_pos, 0], *params["ex"])
+        ez_err = sigma_ez(y_regE_pred[idx_pos, 0], *params["ez"])
+        px_err = sigma_px(y_regE_pred[idx_pos, 1], *params["px"])
+        pz_err = sigma_pz(y_regE_pred[idx_pos, 1], *params["pz"])
+
+        """
+        # Hardcoded parameter  
         ee_err = sigma_ee(y_regE_pred[idx_pos, 0], 9.087e-2, -6.904e-2, 6.41e-2)
         ep_err = sigma_ep(y_regE_pred[idx_pos, 1], 0.05636, -0.1248, 0.4622)
         ey_err = sigma_ey(y_regE_pred[idx_pos, 0], 3.089e0, 5.959e0, -7.568e-2)
@@ -67,6 +82,7 @@ def main(run_name,
         ez_err = sigma_ez(y_regE_pred[idx_pos, 0], 0.3637, 0.00376, 0.0693, -0.0139, 0.000803)
         px_err = sigma_px(y_regE_pred[idx_pos, 1], 0.4312, -0.1020, 0.0588, -0.00675, 0.000267)
         pz_err = sigma_pz(y_regE_pred[idx_pos, 1], 0.4352, -0.05364, 0.0420, -0.004795, 0.000194)
+        """
 
         # export to root file compatible with CC6 image reconstruction
         exportCC6(ee=y_regE_pred[idx_pos, 0],
