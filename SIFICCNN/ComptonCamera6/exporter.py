@@ -29,6 +29,7 @@ def exportCC6(filename,
               py_err=None,
               pz_err=None,
               veto=True,
+              path="",
               verbose=0):
     # test each input of statistical errors on their type
     # If int/float, they are extended to the needed array length
@@ -105,11 +106,13 @@ def exportCC6(filename,
     p_unc_z = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
 
     # create root file
-    file_name = filename + ".root"
+    if path == "":
+        path=os.getcwd() + "/"
+    file_name = path + filename + ".root"
     file = uproot.recreate(file_name, compression=None)
 
     print(np.sum(identified), "events exported")
-    print("file created at: ", os.getcwd() + file_name)
+    print("file created at: ", file_name)
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
