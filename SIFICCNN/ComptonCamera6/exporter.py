@@ -104,6 +104,7 @@ def exportCC6(filename,
     p_unc_x = np.array([np.sqrt(py_err[i] ** 2 + ey_err[i] ** 2) for i in range(len(py_err))])
     p_unc_y = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2) for i in range(len(pz_err))])
     p_unc_z = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
+    arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt((ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0**2))**2)) for i in range(len(ep))])
 
     # create root file
     if path == "":
@@ -116,6 +117,14 @@ def exportCC6(filename,
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
+        # E1              : reconstructed electron energy in scatterer in MeV
+        # E2              : reconstructed photon energy in absorber in MeV
+        # (x_1,y_1,z_1)   : reconstructed electron position in scatterer in mm
+        # (x_2,y_2,z_2)   : reconstructed photon position in absorber in mm
+        # E0Calc          : sum of E1 and E2
+        # (v_x,v_y,v_z)   : cone apex (same as (x_1,y_1,z_1))
+        # (p_x,p_y,p_z)   : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
+        # arc             : cone angle in rad (calulated from E1 and E2)
     file['ConeList'] = {'GlobalEventNumber': zeros,
                         'v_x': ey[identified],
                         'v_y': -ez[identified],
@@ -132,7 +141,7 @@ def exportCC6(filename,
                         'E0Calc': e0[identified],
                         'E0Calc_unc': e0_unc[identified],
                         'arc': arc[identified],
-                        'arc_unc': zeros,
+                        'arc_unc': arc_unc[identified],
                         'E1': ee[identified],
                         'E1_unc': ee_err[identified],
                         'E2': ep[identified],
