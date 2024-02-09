@@ -94,7 +94,6 @@ def exportCC6(filename,
     # required fields for the root file
     entries = np.sum(identified)
     zeros = np.zeros(shape=(int(entries),))
-    eventnumbers = np.arange(entries)
 
     # apply selection of post filter events
     identified = identified == 1
@@ -111,15 +110,17 @@ def exportCC6(filename,
 
     # open root file from simulation and read additional values
     if sim_filename == "":
-        source_x = zeros
-        source_y = zeros
-        source_z = zeros
+        source_x = np.zeros(shape=(int(l),))
+        source_y = np.zeros(shape=(int(l),))
+        source_z = np.zeros(shape=(int(l),))
+        eventnumbers = np.zeros(shape=(int(l),))
     else:
         sim_file = uproot.open(sim_filename)
         source_pos = sim_file["Events"]["MCPosition_source"].array()
         source_x = source_pos["fX"]
         source_y = source_pos["fY"]
         source_z = source_pos["fZ"]
+        eventnumbers = sim_file["Events"]["EventNumber"].array()
 
     # create output root file
     if path == "":
@@ -132,7 +133,7 @@ def exportCC6(filename,
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
-        # EventType                     : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
+        # ClassID                       : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
         # (x_1,y_1,z_1)                 : reconstructed electron position in scatterer in mm
         # (x_2,y_2,z_2)                 : reconstructed photon position in absorber in mm
         # E1                            : reconstructed electron energy in scatterer in MeV
@@ -143,9 +144,9 @@ def exportCC6(filename,
         # arc                           : cone angle in rad (calulated from E1 and E2)
         # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect, 
         #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
-    file['ConeList'] = {'GlobalEventNumber': eventnumbers,
-                        'ClassID': zeros,
-                        'EventType': clas[identified],
+    file['ConeList'] = {'GlobalEventNumber': eventnumbers[identified],
+                        'ClassID': clas[identified],
+                        'EventType': zeros,
                         'EnergyBinID': zeros,
                         'x_1': ey[identified],
                         'y_1': -ez[identified],
@@ -187,9 +188,9 @@ def exportCC6(filename,
                         'p_unc_z': p_unc_z[identified],
                         'arc': arc[identified],
                         'arc_unc': arc_unc[identified],
-                        'vertex_x': source_x[identified],
-                        'vertex_y': source_y[identified],
-                        'vertex_z': source_z[identified] }
+                        'vertex_x': source_y[identified],
+                        'vertex_y': -source_z[identified],
+                        'vertex_z': -source_x[identified] }
 
     # filling the branch
     file['TreeStat'] = {'StartEvent': [0],
