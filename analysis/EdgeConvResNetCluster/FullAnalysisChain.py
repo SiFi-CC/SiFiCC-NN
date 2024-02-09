@@ -85,7 +85,8 @@ def main(run_name,
         """
 
         # export to root file compatible with CC6 image reconstruction
-        exportCC6(ee=y_regE_pred[idx_pos, 0],
+        exportCC6(clas=y_score_true[idx_pos],
+                  ee=y_regE_pred[idx_pos, 0],
                   ep=y_regE_pred[idx_pos, 1],
                   ex=y_regP_pred[idx_pos, 0],
                   ey=y_regP_pred[idx_pos, 1],
@@ -101,6 +102,7 @@ def main(run_name,
                   px_err=px_err,
                   py_err=py_err,
                   pz_err=pz_err,
+                  #path=path_main + "/root_files/",
                   filename="CC6_{}_{}".format(exp_name, file),
                   verbose=1,
                   veto=True)
@@ -121,7 +123,8 @@ def main(run_name,
         idx_pos = idx_pos == 1
 
         # export to root file compatible with CC6 image reconstruction
-        exportCC6(ee=y_regE_pred[idx_pos, 0],
+        exportCC6(clas=y_score_true[idx_pos],
+                  ee=y_regE_pred[idx_pos, 0],
                   ep=y_regE_pred[idx_pos, 1],
                   ex=y_regP_pred[idx_pos, 0],
                   ey=y_regP_pred[idx_pos, 1],
@@ -129,6 +132,7 @@ def main(run_name,
                   px=y_regP_pred[idx_pos, 3],
                   py=y_regP_pred[idx_pos, 4],
                   pz=y_regP_pred[idx_pos, 5],
+                  #path=path_main + "/root_files/",
                   filename="CC6_FPONLY_{}_{}".format(exp_name, file),
                   verbose=1,
                   veto=True)

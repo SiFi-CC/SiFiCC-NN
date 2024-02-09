@@ -12,6 +12,7 @@ def correct_input_length(entry, l):
 
 
 def exportCC6(filename,
+              clas,
               ee,
               ep,
               ex,
@@ -118,6 +119,7 @@ def exportCC6(filename,
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
+        # EventType       : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
         # (x_1,y_1,z_1)   : reconstructed electron position in scatterer in mm
         # (x_2,y_2,z_2)   : reconstructed photon position in absorber in mm
         # E1              : reconstructed electron energy in scatterer in MeV
@@ -128,7 +130,7 @@ def exportCC6(filename,
         # arc             : cone angle in rad (calulated from E1 and E2)
     file['ConeList'] = {'GlobalEventNumber': eventnumbers,
                         'ClassID': zeros,
-                        'EventType': zeros,
+                        'EventType': clas[identified],
                         'EnergyBinID': zeros,
                         'x_1': ey[identified],
                         'y_1': -ez[identified],
