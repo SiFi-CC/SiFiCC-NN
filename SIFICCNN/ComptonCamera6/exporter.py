@@ -31,6 +31,7 @@ def exportCC6(filename,
               pz_err=None,
               veto=True,
               path="",
+              sim_filename="",
               verbose=0):
     # test each input of statistical errors on their type
     # If int/float, they are extended to the needed array length
@@ -108,7 +109,19 @@ def exportCC6(filename,
     p_unc_z = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
     arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt((ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0[i]**2))**2)) for i in range(len(ep))])
 
-    # create root file
+    # open root file from simulation and read additional values
+    if sim_filename == "":
+        source_x = zeros
+        source_y = zeros
+        source_z = zeros
+    else:
+        sim_file = uproot.open(sim_filename)
+        source_pos = sim_file["Events"]["MCPosition_source"].array()
+        source_x = source_pos["fX"]
+        source_y = source_pos["fY"]
+        source_z = source_pos["fZ"]
+
+    # create output root file
     if path == "":
         path=os.getcwd() + "/"
     file_name = path + filename + ".root"
@@ -119,15 +132,17 @@ def exportCC6(filename,
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
-        # EventType       : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
-        # (x_1,y_1,z_1)   : reconstructed electron position in scatterer in mm
-        # (x_2,y_2,z_2)   : reconstructed photon position in absorber in mm
-        # E1              : reconstructed electron energy in scatterer in MeV
-        # E2              : reconstructed photon energy in absorber in MeV
-        # E0Calc          : sum of E1 and E2
-        # (v_x,v_y,v_z)   : cone apex (same as (x_1,y_1,z_1))
-        # (p_x,p_y,p_z)   : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
-        # arc             : cone angle in rad (calulated from E1 and E2)
+        # EventType                     : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
+        # (x_1,y_1,z_1)                 : reconstructed electron position in scatterer in mm
+        # (x_2,y_2,z_2)                 : reconstructed photon position in absorber in mm
+        # E1                            : reconstructed electron energy in scatterer in MeV
+        # E2                            : reconstructed photon energy in absorber in MeV
+        # E0Calc                        : sum of E1 and E2
+        # (v_x,v_y,v_z)                 : cone apex (same as (x_1,y_1,z_1))
+        # (p_x,p_y,p_z)                 : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
+        # arc                           : cone angle in rad (calulated from E1 and E2)
+        # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect, 
+        #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
     file['ConeList'] = {'GlobalEventNumber': eventnumbers,
                         'ClassID': zeros,
                         'EventType': clas[identified],
@@ -171,7 +186,10 @@ def exportCC6(filename,
                         'p_unc_y': p_unc_y[identified],
                         'p_unc_z': p_unc_z[identified],
                         'arc': arc[identified],
-                        'arc_unc': arc_unc[identified]}
+                        'arc_unc': arc_unc[identified],
+                        'vertex_x': source_x[identified],
+                        'vertex_y': source_y[identified],
+                        'vertex_z': source_z[identified] }
 
     # filling the branch
     file['TreeStat'] = {'StartEvent': [0],
