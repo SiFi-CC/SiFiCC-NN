@@ -32,6 +32,7 @@ def exportCC6(filename,
               veto=True,
               path="",
               sim_filename="",
+              sel=None,
               verbose=0):
     # test each input of statistical errors on their type
     # If int/float, they are extended to the needed array length
@@ -109,18 +110,20 @@ def exportCC6(filename,
     arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt((ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0[i]**2))**2)) for i in range(len(ep))])
 
     # open root file from simulation and read additional values
-    if sim_filename == "":
+    if sim_filename == "" or sel is None:
         source_x = np.zeros(shape=(int(l),))
         source_y = np.zeros(shape=(int(l),))
         source_z = np.zeros(shape=(int(l),))
         eventnumbers = np.zeros(shape=(int(l),))
     else:
         sim_file = uproot.open(sim_filename)
-        source_pos = sim_file["Events"]["MCPosition_source"].array()
+        source_pos_all = sim_file["Events"]["MCPosition_source"].array()
+        source_pos = source_pos_all[sel]
         source_x = source_pos["fX"]
         source_y = source_pos["fY"]
         source_z = source_pos["fZ"]
-        eventnumbers = sim_file["Events"]["EventNumber"].array()
+        eventnumbers_all = sim_file["Events"]["EventNumber"].array()
+        eventnumbers = eventnumbers_all[sel]
 
     # create output root file
     if path == "":
@@ -141,7 +144,7 @@ def exportCC6(filename,
         # E0Calc                        : sum of E1 and E2
         # (v_x,v_y,v_z)                 : cone apex (same as (x_1,y_1,z_1))
         # (p_x,p_y,p_z)                 : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
-        # arc                           : cone angle in rad (calulated from E1 and E2)
+        # arc                           : cone angle in rad (calculated from E1 and E2)
         # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect, 
         #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
     file['ConeList'] = {'GlobalEventNumber': eventnumbers[identified],
