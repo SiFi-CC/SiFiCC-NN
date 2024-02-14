@@ -53,7 +53,7 @@ def check_compton_kinematics(e, p, ee=0.0, ep=0.0, compton=True):
                                 ELECTRON_MASS / 2 + event_energy) / (
                                 ELECTRON_MASS / 2 + event_energy) * event_energy_uncertainty)
 
-        if e + ee > compton_edge[0] + compton_edge[1]:
+        if e - ee > compton_edge[0] + compton_edge[1]:
             return False
     return True
 
