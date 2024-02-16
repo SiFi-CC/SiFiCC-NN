@@ -105,8 +105,8 @@ def exportCC6(filename,
 
     e0_unc = np.array([np.sqrt(ee_err[i] ** 2 + ep_err[i] ** 2) for i in range(len(ee_err))])
     p_unc_x = np.array([np.sqrt(py_err[i] ** 2 + ey_err[i] ** 2) for i in range(len(py_err))])
-    p_unc_y = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2) for i in range(len(pz_err))])
-    p_unc_z = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
+    p_unc_y = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
+    p_unc_z = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2) for i in range(len(pz_err))])
     arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt((ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0[i]**2))**2)) for i in range(len(ep))])
 
     # open root file from simulation and read additional values
@@ -116,6 +116,7 @@ def exportCC6(filename,
         source_z = np.zeros(shape=(int(l),))
         eventnumbers = np.zeros(shape=(int(l),))
     else:
+        # ATTENTION: positions in old simulation files (1-to-1) are in Cracow coordinate system while new simulation files (4-to-1) and NN used the Aachen coordinate system
         sim_file = uproot.open(sim_filename)
         source_pos_all = sim_file["Events"]["MCPosition_source"].array()
         source_pos = source_pos_all[sel]
@@ -147,22 +148,23 @@ def exportCC6(filename,
         # arc                           : cone angle in rad (calculated from E1 and E2)
         # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect, 
         #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
+    # positions are transformed from Aachen coordinate system to Luebeck coordinate system
     file['ConeList'] = {'GlobalEventNumber': eventnumbers[identified],
                         'ClassID': clas[identified],
                         'EventType': zeros,
                         'EnergyBinID': zeros,
-                        'x_1': ey[identified],
-                        'y_1': -ez[identified],
-                        'z_1': -ex[identified],
+                        'x_1': -ey[identified],
+                        'y_1': -ex[identified],
+                        'z_1': -ez[identified],
                         'x_1_unc': ey_err[identified],
-                        'y_1_unc': ez_err[identified],
-                        'z_1_unc': ex_err[identified],
-                        'x_2': py[identified],
-                        'y_2': -pz[identified],
-                        'z_2': -px[identified],
+                        'y_1_unc': ex_err[identified],
+                        'z_1_unc': ez_err[identified],
+                        'x_2': -py[identified],
+                        'y_2': -px[identified],
+                        'z_2': -pz[identified],
                         'x_2_unc': py_err[identified],
-                        'y_2_unc': pz_err[identified],
-                        'z_2_unc': px_err[identified],
+                        'y_2_unc': px_err[identified],
+                        'z_2_unc': pz_err[identified],
                         'x_3': zeros,
                         'y_3': zeros,
                         'z_3': zeros,
@@ -177,21 +179,21 @@ def exportCC6(filename,
                         'E3_unc': zeros,
                         'E0Calc': e0[identified],
                         'E0Calc_unc': e0_unc[identified],
-                        'v_x': ey[identified],
-                        'v_y': -ez[identified],
-                        'v_z': -ex[identified],
+                        'v_x': -ey[identified],
+                        'v_y': -ex[identified],
+                        'v_z': -ez[identified],
                         'v_unc_x': ey_err[identified],
-                        'v_unc_y': ez_err[identified],
-                        'v_unc_z': ex_err[identified],
-                        'p_x': py[identified] - ey[identified],
-                        'p_y': -pz[identified] + ez[identified],
-                        'p_z': -px[identified] + ex[identified],
+                        'v_unc_y': ex_err[identified],
+                        'v_unc_z': ez_err[identified],
+                        'p_x': -py[identified] + ey[identified],
+                        'p_y': -px[identified] + ex[identified],
+                        'p_z': -pz[identified] + ez[identified],
                         'p_unc_x': p_unc_x[identified],
                         'p_unc_y': p_unc_y[identified],
                         'p_unc_z': p_unc_z[identified],
                         'arc': arc[identified],
                         'arc_unc': arc_unc[identified],
-                        'vertex_x': source_y[identified],
+                        'vertex_x': source_y[identified],      # transform from Cracow coordinate system to Luebeck coordinate system for 1-to-1 simulation file - needs to be changed for 4-to-1 coupling files
                         'vertex_y': -source_z[identified],
                         'vertex_z': -source_x[identified] }
 
