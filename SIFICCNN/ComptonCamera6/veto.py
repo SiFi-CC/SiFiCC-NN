@@ -23,7 +23,43 @@ def check_valid_prediction(e, p, p_ex, p_ey, p_ez, p_px, p_py, p_pz):
     """
     if e == 0.0 or p == 0.0:
         return False
-    # TODO: check if position prediction inside detector dimension
+
+    # check if position prediction inside detector dimension
+    # check is done assuming CRACOW coordinate system
+    # TODO: choose the correct set-up automatically
+
+    pos_sca = 150.
+    pos_abs = 270.
+    # 1-to-1 coupling
+    # dimensions are given as half the dimension of the detector
+    # fibers: 1x1x100, 1.3mm pitch
+    # scatterer 16 x 76 fibers
+    # absorber 36 x 76 fibers
+    x_sca = 98.5/2.
+    y_sca = 100./2.
+    z_sca = 20.5/2.
+    x_abs = 98.5/2.
+    y_abs = 100./2.
+    z_abs = 46.5/2.
+
+    # 4-to-1 coupling
+    # fibers: 1.94x1.94x100, 2mm pitch + 100um gap between every 8th fiber
+    # scatterer 7 x 55 fibers
+    # absorber 15 x 63 fibers
+    # TODO: dimensions
+
+    if p_ex < -x_sca or p_ex > x_sca:
+        return False
+    if p_ey < -y_sca or p_ey > y_sca:
+        return False
+    if p_ez < pos_sca-z_sca or p_ez > pos_sca+z_sca:
+        return False
+    if p_px < -x_abs or p_px > x_abs:
+        return False
+    if p_py < -y_abs or p_py > y_abs:
+        return False
+    if p_pz < pos_abs-z_abs or p_pz > pos_abs+z_abs:
+        return False
 
     return True
 
