@@ -20,7 +20,8 @@ from SIFICCNN.datasets import DSGraphCluster
 from SIFICCNN.models import SiFiECRNShort
 from SIFICCNN.utils import parent_directory
 
-from SIFICCNN.utils import fastROCAUC, write_metrics_classifier
+from SIFICCNN.analysis import fastROCAUC, print_classifier_summary, write_classifier_summary
+
 from SIFICCNN.utils.plotter import plot_history_classifier, \
     plot_score_distribution, \
     plot_roc_curve, \
@@ -229,16 +230,18 @@ def evaluate(dataset_name,
                newline="\n")
 
     # evaluate model:
-    #   - ROC analysis
-    #   - Score distribution#
-    #   - Binary classifier metrics
+    # write metrics to file
+    print_classifier_summary(y_scores, y_true, run_name=RUN_NAME)
+    write_classifier_summary(y_scores, y_true, run_name=RUN_NAME)
 
+    # ROC analysis
     _, theta_opt, (list_fpr, list_tpr) = fastROCAUC(y_scores,
                                                     y_true,
                                                     return_score=True)
     plot_roc_curve(list_fpr, list_tpr, "rocauc_curve")
+
+    # score distribution
     plot_score_distribution(y_scores, y_true, "score_dist")
-    write_metrics_classifier(y_scores, y_true)
 
     plot_efficiencymap(y_pred=y_scores,
                        y_true=y_true,
