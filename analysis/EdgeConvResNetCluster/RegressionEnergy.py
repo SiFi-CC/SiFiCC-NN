@@ -20,8 +20,10 @@ from SIFICCNN.datasets import DSGraphCluster
 from SIFICCNN.models import SiFiECRNShort
 from SIFICCNN.utils import parent_directory
 
-from SIFICCNN.utils.plotter import plot_history_regression, plot_energy_error, \
-    plot_energy_resolution
+from SIFICCNN.plot import plot_1dhist_energy_residual, \
+    plot_1dhist_energy_residual_relative, \
+    plot_2dhist_energy_residual_vs_true, \
+    plot_2dhist_energy_residual_relative_vs_true
 
 
 def main(run_name="ECRNCluster_unnamed",
@@ -141,9 +143,6 @@ def training(dataset_name,
     with open(run_name + "_regressionEnergy_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
 
-    # plot training history
-    plot_history_regression(history.history, run_name + "_history_regressionEnergy")
-
 
 def evaluate(dataset_name,
              RUN_NAME,
@@ -176,14 +175,13 @@ def evaluate(dataset_name,
     # load model history and plot
     with open(RUN_NAME + "_regressionEnergy_history" + ".hst", 'rb') as f_hist:
         history = pkl.load(f_hist)
-    plot_history_regression(history, RUN_NAME + "_history_regressionEnergy")
 
     # predict test datasets
     os.chdir(path + dataset_name + "/")
 
     # load datasets
     # Here all events are loaded and evaluated,
-    # the true compton events are filtered later for plotting
+    # the true compton events are filtered later for plot
     data = DSGraphCluster(name=dataset_name,
                           norm_x=norm_x,
                           positives=False,
@@ -222,8 +220,41 @@ def evaluate(dataset_name,
     labels = data.labels
 
     # evaluate model:
-    plot_energy_error(y_pred[labels, :], y_true[labels, :], "error_regression_energy")
-    # plot_energy_resolution(y_pred, y_true, "resolution_regression_energy")
+    plot_1dhist_energy_residual(y_pred=y_pred[labels, 0],
+                                y_true=y_true[labels, 0],
+                                particle="e",
+                                file_name="1dhist_energy_electron_residual.png")
+    plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 0],
+                                         y_true=y_true[labels, 0],
+                                         particle="e",
+                                         file_name="1dhist_energy_electron_residual_relative.png")
+    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 0],
+                                        y_true=y_true[labels, 0],
+                                        particle="e",
+                                        file_name="2dhist_energy_electron_residual_vs_true.png")
+    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[labels, 0],
+                                                 y_true=y_true[labels, 0],
+                                                 particle="e",
+                                                 file_name="2dhist_energy_electron_residual_relative_vs_true.png")
+
+    plot_1dhist_energy_residual(y_pred=y_pred[labels, 1],
+                                y_true=y_true[labels, 1],
+                                particle="\gamma",
+                                f="gaussian_gaussian",
+                                file_name="1dhist_energy_gamma_residual.png")
+    plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
+                                         y_true=y_true[labels, 1],
+                                         particle="\gamma",
+                                         f="gaussian_gaussian",
+                                         file_name="1dhist_energy_gamma_residual_relative.png")
+    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 1],
+                                        y_true=y_true[labels, 1],
+                                        particle="\gamma",
+                                        file_name="2dhist_energy_gamma_residual_vs_true.png")
+    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[labels, 1],
+                                                 y_true=y_true[labels, 1],
+                                                 particle="\gamma",
+                                                 file_name="2dhist_energy_gamma_residual_relative_vs_true.png")
 
 
 if __name__ == "__main__":

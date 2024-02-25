@@ -52,7 +52,7 @@ def main(run_name,
         y_regE_true = np.loadtxt(file + "_regE_true.txt", delimiter=",")
         y_regP_true = np.loadtxt(file + "_regP_true.txt", delimiter=",")
 
-        # plotting of more convoluted histograms
+        # plot of more convoluted histograms
         # TODO: THIS NEEDS TO BE PLACED SOMEWHERE DIFFERENT
         plot_position_error_vs_energy(y_regP_pred[y_score_true == 1],
                                       y_regP_true[y_score_true == 1],

@@ -20,7 +20,12 @@ from SIFICCNN.datasets import DSGraphCluster
 from SIFICCNN.models import SiFiECRNShort
 from SIFICCNN.utils import parent_directory
 
-from SIFICCNN.utils.plotter import plot_history_regression, plot_position_error
+from SIFICCNN.plot import plot_1dhist_energy_residual, \
+    plot_1dhist_energy_residual_relative, \
+    plot_1dhist_position_residual, \
+    plot_2dhist_energy_residual_vs_true, \
+    plot_2dhist_energy_residual_relative_vs_true, \
+    plot_2dhist_position_residual_vs_true
 
 
 def main(run_name="ECRNCluster_unnamed",
@@ -140,9 +145,6 @@ def training(dataset_name,
     with open(run_name + "_regressionPosition_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
 
-    # plot training history
-    plot_history_regression(history.history, run_name + "_history_regressionPosition")
-
 
 def evaluate(dataset_name,
              RUN_NAME,
@@ -174,14 +176,13 @@ def evaluate(dataset_name,
     # load model history and plot
     with open(RUN_NAME + "_regressionPosition_history" + ".hst", 'rb') as f_hist:
         history = pkl.load(f_hist)
-    plot_history_regression(history, RUN_NAME + "_history_regressionPosition")
 
     # predict test datasets
     os.chdir(path + dataset_name + "/")
 
     # load datasets
     # Here all events are loaded and evaluated,
-    # the true compton events are filtered later for plotting
+    # the true compton events are filtered later for plot
     data = DSGraphCluster(name=dataset_name,
                           norm_x=norm_x,
                           positives=False,
@@ -218,8 +219,54 @@ def evaluate(dataset_name,
                newline="\n")
     labels = data.labels
 
-    # evaluate model:
-    plot_position_error(y_pred[labels, :], y_true[labels, :], "error_regression_position")
+
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
+                                  y_true=y_true[labels, 0],
+                                  particle="e",
+                                  coordinate="x",
+                                  file_name="1dhist_electron_position_{}_residual.png".format("x"))
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
+                                  y_true=y_true[labels, 3],
+                                  particle="\gamma",
+                                  coordinate="x",
+                                  file_name="1dhist_gamma_position_{}_residual.png".format("x"))
+
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
+                                  y_true=y_true[labels, 1],
+                                  particle="e",
+                                  coordinate="y",
+                                  f="lorentzian",
+                                  file_name="1dhist_electron_position_{}_residual.png".format("y"))
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
+                                  y_true=y_true[labels, 4],
+                                  particle="\gamma",
+                                  coordinate="y",
+                                  f="lorentzian",
+                                  file_name="1dhist_gamma_position_{}_residual.png".format("y"))
+
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
+                                  y_true=y_true[labels, 2],
+                                  particle="e",
+                                  coordinate="z",
+                                  file_name="1dhist_electron_position_{}_residual.png".format("z"))
+    plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
+                                  y_true=y_true[labels, 5],
+                                  particle="\gamma",
+                                  coordinate="z",
+                                  file_name="1dhist_gamma_position_{}_residual.png".format("z"))
+
+    for i, r in enumerate(["x", "y", "z"]):
+        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
+                                              y_true=y_true[labels, i],
+                                              particle="e",
+                                              coordinate=r,
+                                              file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
+                                                  r))
+        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i + 3],
+                                              y_true=y_true[labels, i + 3],
+                                              particle="\gamma",
+                                              coordinate=r,
+                                              file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(r))
 
 
 if __name__ == "__main__":

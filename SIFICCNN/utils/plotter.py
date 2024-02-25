@@ -1,6 +1,6 @@
 ####################################################################################################
 #
-# This file contains all plotting methods used to evaluate neural network results. Some specialized
+# This file contains all plot methods used to evaluate neural network results. Some specialized
 # plots are not included here and used in their corresponding analysis scripts. These methods are
 # used to generate automated results plots and specialized plots for theses and papers should be
 # created in their own stand-alone scripts. Most methods are tuned to be presentable in 4:3
