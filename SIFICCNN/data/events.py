@@ -951,6 +951,35 @@ class SiPMHit:
                 continue
         return idx_scatterer, idx_absorber
 
+    def get_edge_features(self, idx1, idx2, cartesian=True):
+        """
+        Calculates the euclidean distance, azimuthal angle, polar angle between two vectors.
+
+        Args:
+            idx1: Vector 1 given by index of RecoClusterPosition list
+            idx2: Vector 2 given by index of RecoClusterPosition list
+            cartesian:  bool, if true vector difference is given in cartesian coordinates
+                        otherwise in polar coordinates
+
+        Returns:
+            euclidean distance, azimuthal angle, polar angle
+        """
+        vec = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
+
+        if not cartesian:
+            r = vec.mag
+            phi = vec.phi
+            theta = vec.theta
+
+            return r, phi, theta
+
+        else:
+            dx = vec.x
+            dy = vec.y
+            dz = vec.z
+
+            return dx, dy, dz
+
 
 class FibreHit:
     """
