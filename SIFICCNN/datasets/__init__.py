@@ -1,1 +1,2 @@
 from .dsSimulationGraphCluster import DSGraphCluster
+from .dsSimulationGraphSiPM import DSGraphSiPM
