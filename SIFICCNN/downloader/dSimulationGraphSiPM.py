@@ -42,7 +42,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
     # generate directory and finalize path
     if path == "":
-        path = parent_directory() + "/datasets_0/"
+        path = parent_directory() + "/datasets/"
         path = os.path.join(path, "SimGraphSiPM", dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)

@@ -18,7 +18,7 @@ from SIFICCNN.downloader import dSimulation_to_GraphSiPM
 path = parent_directory()
 
 path_root = "~/Master/root_files/"
-path_datasets = "/net/scratch_g4rt1/clement/datasets_small/"
+path_datasets = "/net/scratch_g4rt1/clement/datasets_aachen"
 
 ####################################################################################################
 # Simulation GraphCluster
@@ -36,5 +36,5 @@ for file in files:
                                 dataset_name=root_simulation.file_name,
                                 path="",
                                 n=n,
-                                coordinate_system="CRACOW",
+                                coordinate_system="AACHEN",
                                 energy_cut=None)

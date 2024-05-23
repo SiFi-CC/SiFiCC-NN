@@ -358,13 +358,19 @@ def plot_energy_error(y_pred, y_true, figure_name):
 
 def plot_position_error(y_pred, y_true, figure_name):
     plt.rcParams.update({'font.size': 16})
+    """
+    Do bins_x cover y_true range: -49.4 <= 143.0400848388672 <= 156.94625854492188 <= 49.30000000000141
+Do bins_err_x cover error range: -5.5 <= -28.392242431640625 <= 185.6326446533203 <= 5.399999999999961
+Traceback (most recent call last):
+
+    """
 
     width = 0.1
-    bins_err_x = np.arange(-5.5, 5.5, width)
+    bins_err_x = np.arange(-30, 190, width) #np.arange(-5.5, 5.5, width)
     bins_err_y = np.arange(-60.5, 60.5, width)
     bins_err_z = np.arange(-5.5, 5.5, width)
 
-    bins_x = np.arange(-98.8 / 2.0, 98.8 / 2.0, width)
+    bins_x = np.arange(140, 160) #np.arange(-98.8 / 2.0, 98.8 / 2.0, width)
     bins_y = np.arange(-100.0 / 2.0, 100.0 / 2.0, width)
     bins_z = np.arange(150.0 - 20.8 / 2.0, 270.0 + 46.8 / 2.0, width)
 
@@ -413,11 +419,27 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.figure()
     plt.xlabel("$r^{True}_{x}$ [mm]")
     plt.ylabel(r"$r^{Pred}_{x}$ - $r^{True}_{x}$ [mm]")
-    plt.hist2d(x=y_true[:, 0], y=y_pred[:, 0] - y_true[:, 0],
+    h, _, _, _ = plt.hist2d(x=y_true[:, 0], y=y_pred[:, 0] - y_true[:, 0],
                bins=[bins_x, bins_err_x], norm=LogNorm())
+    print(h)
+    print(np.max(h))
+    print(y_pred[:,0])
+    print(np.max(y_pred[:,0]))
+    # Print ranges and shapes
+    print(f"y_true min: {y_true[:, 0].min()}, max: {y_true[:, 0].max()}")
+    print(f"y_pred - y_true min: {(y_pred[:, 0] - y_true[:, 0]).min()}, max: {(y_pred[:, 0] - y_true[:, 0]).max()}")
+    print(f"bins_x: {bins_x}")
+    print(f"bins_err_x: {bins_err_x}")
+    print(f"y_true shape: {y_true.shape}")
+    print(f"y_pred shape: {y_pred.shape}")
+
+    # Check if the bins cover the data range
+    print(f"Do bins_x cover y_true range: {bins_x[0]} <= {y_true[:, 0].min()} <= {y_true[:, 0].max()} <= {bins_x[-1]}")
+    print(f"Do bins_err_x cover error range: {bins_err_x[0]} <= {(y_pred[:, 0] - y_true[:, 0]).min()} <= {(y_pred[:, 0] - y_true[:, 0]).max()} <= {bins_err_x[-1]}")
+
     plt.hlines(xmin=min(bins_x), xmax=max(bins_x), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -449,7 +471,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_y, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_y), xmax=max(bins_y), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -482,7 +504,7 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.xlim(150.0 - 20.8 / 2.0, 150.0 + 20.8 / 2.0)
     plt.hlines(xmin=150.0 - 20.8 / 2.0, xmax=150.0 + 20.8 / 2.0, y=0,
                color="red", linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -516,7 +538,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_x, bins_err_x], norm=LogNorm())
     plt.hlines(xmin=min(bins_x), xmax=max(bins_x), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -548,7 +570,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_y, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_y), xmax=max(bins_y), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -581,7 +603,7 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.xlim(270.0 - 46.8 / 2.0, 270.0 + 46.8 / 2.0)
     plt.hlines(xmin=270.0 - 46.8 / 2.0, xmax=270.0 + 46.8 / 2.0, y=0,
                color="red", linestyles="--")
-    plt.colorbar()
+    ##plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -625,7 +647,7 @@ def plot_theta_error(y_pred, y_true, figure_name):
     plt.ylabel(r"$\theta_{Pred}$ - $\theta_{True}$")
     plt.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_theta, bins_err],
                norm=LogNorm(vmin=1.0, vmax=800))
-    #plt.colorbar()
+    ###plt.colorbar()
     plt.tight_layout()
     plt.savefig(figure_name + "_relative.png")
     plt.close()
