@@ -61,6 +61,7 @@ def main(run_name="ECRNSiPM_unnamed",
     DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
     DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
     DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
+    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -225,9 +226,9 @@ def evaluate(dataset_name,
                newline="\n")
     labels = data.labels
 
-    plot_position_error(y_pred=y_pred[labels],
-                        y_true=y_true[labels],
-                        figure_name="position_error_new_function")
+    #plot_position_error(y_pred=y_pred[labels],
+    #                    y_true=y_true[labels],
+    #                    figure_name="position_error_new_function")
 
     plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
                                   y_true=y_true[labels, 0],
