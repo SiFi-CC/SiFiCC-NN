@@ -27,6 +27,9 @@ from SIFICCNN.plot import plot_1dhist_energy_residual, \
     plot_2dhist_energy_residual_relative_vs_true, \
     plot_2dhist_position_residual_vs_true
 
+from SIFICCNN.utils.plotter import plot_history_regression, \
+    plot_position_error
+
 
 def main(run_name="ECRNSiPM_unnamed",
          epochs=50,
@@ -52,11 +55,12 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "4to1_SiPM_CONT_2e10protons_simV3"
-    DATASET_0MM = "4to1_SiPM_BP0mm_4e9protons_simV3"
-    DATASET_5MM = "4to1_SiPM_BP5mm_4e9protons_simV3"
-    DATASET_10MM = "4to1_SiPM_BP10mm_4e9protons_simV3"
-    DATASET_m5MM = "4to1_SiPM_BPm5mm_4e9protons_simV3"
+    DATASET_CONT = "GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
+    DATASET_0MM = "GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4"
+    DATASET_5MM = "GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4"
+    DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
+    DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
+    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -66,7 +70,7 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_NEUTRONS]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
@@ -83,7 +87,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in [DATASET_NEUTRONS]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -177,6 +181,7 @@ def evaluate(dataset_name,
     # load model history and plot
     with open(RUN_NAME + "_regressionPosition_history" + ".hst", 'rb') as f_hist:
         history = pkl.load(f_hist)
+    plot_history_regression(history, RUN_NAME + "_history_regression_position")
 
     # predict test datasets
     os.chdir(path + dataset_name + "/")
@@ -220,6 +225,10 @@ def evaluate(dataset_name,
                newline="\n")
     labels = data.labels
 
+    plot_position_error(y_pred=y_pred[labels],
+                        y_true=y_true[labels],
+                        figure_name="position_error_new_function")
+
     plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
                                   y_true=y_true[labels, 0],
                                   particle="e",
@@ -255,6 +264,7 @@ def evaluate(dataset_name,
                                   coordinate="z",
                                   file_name="1dhist_gamma_position_{}_residual.png".format("z"))
 
+
     for i, r in enumerate(["x", "y", "z"]):
         plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
                                               y_true=y_true[labels, i],
@@ -287,8 +297,8 @@ if __name__ == "__main__":
 
     # base settings if no parameters are given
     # can also be used to execute this script without console parameter
-    base_run_name = "ECRNSiPM_PostTraining"
-    base_epochs = 50
+    base_run_name = "SimGraphSiPM"
+    base_epochs = 100
     base_batch_size = 64
     base_dropout = 0.0
     base_nfilter = 32

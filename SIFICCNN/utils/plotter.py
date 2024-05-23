@@ -332,8 +332,8 @@ def plot_energy_error(y_pred, y_true, figure_name):
     plt.ylabel(r"$\frac{E_{Pred} - E_{True}}{E_{True}}$")
     plt.hist2d(x=y_true[:, 0], y=(y_pred[:, 0] - y_true[:, 0]) / y_true[:, 0],
                bins=[bins_energy, bins_err],
-               norm=LogNorm())
-    plt.colorbar()
+               norm=LogNorm(vmin=1, vmax=1000))
+    plt.colorbar(norm=LogNorm())
     plt.tight_layout()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
@@ -346,8 +346,8 @@ def plot_energy_error(y_pred, y_true, figure_name):
     plt.ylabel(r"$\frac{E_{Pred} - E_{True}}{E_{True}}$")
     plt.hist2d(x=y_true[:, 1], y=(y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1],
                bins=[bins_energy, bins_err],
-               norm=LogNorm())
-    plt.colorbar()
+               norm=LogNorm(vmin=1, vmax=1000))
+    plt.colorbar(norm=LogNorm())
     plt.tight_layout()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
@@ -625,7 +625,7 @@ def plot_theta_error(y_pred, y_true, figure_name):
     plt.ylabel(r"$\theta_{Pred}$ - $\theta_{True}$")
     plt.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_theta, bins_err],
                norm=LogNorm(vmin=1.0, vmax=800))
-    plt.colorbar()
+    #plt.colorbar()
     plt.tight_layout()
     plt.savefig(figure_name + "_relative.png")
     plt.close()
@@ -647,7 +647,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_x], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -662,7 +662,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -677,7 +677,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_z], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -694,7 +694,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_x], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -709,7 +709,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -724,7 +724,7 @@ def plot_position_error_vs_energy(pos_pred, pos_true, e_total, figure_name):
                bins=[bins_energy, bins_err_z], norm=LogNorm())
     plt.hlines(xmin=min(bins_energy), xmax=max(bins_energy), y=0, color="red",
                linestyles="--")
-    plt.colorbar()
+    plt.colorbar(norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -887,7 +887,7 @@ def plot_2dhist_sp_score(sp, y_score, y_true, figure_name):
     plt.xlabel("True source position z-axis [mm]")
     plt.ylabel("Signal score")
     h0 = plt.hist2d(sp[y_true == 1], y_score[y_true == 1], bins=[bin_sp, bin_score])
-    plt.colorbar(h0[3])
+    plt.colorbar(h0[3], norm=LogNorm())
     plt.tight_layout()
     plt.grid(which='major', color='#CCCCCC', linewidth=0.5, alpha=0.5)
     plt.grid(which='minor', color='#DDDDDD', linestyle=":", linewidth=0.5, alpha=0.5)
@@ -904,7 +904,7 @@ def plot_2dhist_ep_score(pe, y_score, y_true, figure_name):
     plt.xlabel("MC Primary Energy [MeV]")
     plt.ylabel("Score")
     h0 = plt.hist2d(pe[y_true == 1], y_score[y_true == 1], bins=[bin_pe, bin_score], norm=LogNorm())
-    plt.colorbar(h0[3])
+    plt.colorbar(h0[3], norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.5, alpha=0.5)
     plt.grid(which='minor', color='#EEEEEE', linestyle=":", linewidth=0.5, alpha=0.5)
     plt.minorticks_on()

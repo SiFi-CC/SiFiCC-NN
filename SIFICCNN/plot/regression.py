@@ -17,7 +17,8 @@ def plot_1dhist_energy_residual(y_pred,
                                 y_true,
                                 file_name,
                                 f="gaussian",
-                                particle="e"):
+                                particle="e",
+                                title=""):
     xlabel = r"$E^{{pred}}_{{{0}}} - E^{{true}}_{{{0}}}$ [MeV]".format(particle)
 
     # plot settings
@@ -48,6 +49,7 @@ def plot_1dhist_energy_residual(y_pred,
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.8)
     ax.legend(loc="upper left", prop={'size': 12})
+    ax.set_title(title)
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
@@ -57,7 +59,8 @@ def plot_1dhist_energy_residual_relative(y_pred,
                                          y_true,
                                          file_name,
                                          f="gaussian",
-                                         particle="electron"):
+                                         particle="electron",
+                                         title=""):
     # set superscript for particle type:
     xlabel = r"$(E^{{pred}}_{{{0}}} - E^{{true}}_{{{0}}})/E^{{true}}_{{{0}}}$".format(particle)
 
@@ -90,6 +93,7 @@ def plot_1dhist_energy_residual_relative(y_pred,
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.8)
     ax.legend(loc="upper left", prop={'size': 12})
+    ax.set_title(title)
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
@@ -98,7 +102,8 @@ def plot_1dhist_energy_residual_relative(y_pred,
 def plot_2dhist_energy_residual_vs_true(y_pred,
                                         y_true,
                                         file_name,
-                                        particle="e"):
+                                        particle="e",
+                                        title=""):
     xlabel = r"$E^{{true}}_{{{0}}}$ [MeV]".format(particle)
     ylabel = r"$E^{{pred}}_{{{0}}} - E^{{true}}_{{{0}}}$ [MeV]".format(particle)
 
@@ -120,6 +125,7 @@ def plot_2dhist_energy_residual_vs_true(y_pred,
     h2d = ax.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_x, bins_y], norm=LogNorm())
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.5)
+    ax.set_title(title)
     plt.minorticks_on()
     plt.colorbar(h2d[3])
     plt.tight_layout()
@@ -130,7 +136,8 @@ def plot_2dhist_energy_residual_vs_true(y_pred,
 def plot_2dhist_energy_residual_relative_vs_true(y_pred,
                                                  y_true,
                                                  file_name,
-                                                 particle="e"):
+                                                 particle="e",
+                                                 title=""):
     xlabel = r"$E^{{true}}_{{{0}}}$ [MeV]".format(particle)
     ylabel = r"$(E^{{pred}}_{{{0}}} - E^{{true}}_{{{0}}})/E^{{true}}_{{{0}}}$".format(particle)
 
@@ -152,6 +159,7 @@ def plot_2dhist_energy_residual_relative_vs_true(y_pred,
     h2d = ax.hist2d(x=y_true, y=(y_pred - y_true) / y_true, bins=[bins_x, bins_y], norm=LogNorm())
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.5)
+    ax.set_title(title)
     plt.minorticks_on()
     plt.colorbar(h2d[3])
     plt.tight_layout()
@@ -168,7 +176,8 @@ def plot_1dhist_position_residual(y_pred,
                                   file_name,
                                   f="gaussian",
                                   coordinate="x",
-                                  particle="electron"):
+                                  particle="electron",
+                                  title=""):
     # set superscript for particle type and coordinate:
     xlabel = r"${{{0}}}^{{pred}}_{{{1}}} - {{{0}}}^{{true}}_{{{1}}}$ [mm]".format(particle,
                                                                                   coordinate)
@@ -214,6 +223,7 @@ def plot_1dhist_position_residual(y_pred,
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.8)
     ax.legend(loc="upper left", prop={'size': 12})
+    ax.set_title(title)
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
@@ -223,7 +233,8 @@ def plot_2dhist_position_residual_vs_true(y_pred,
                                           y_true,
                                           file_name,
                                           coordinate="x",
-                                          particle="electron"):
+                                          particle="electron",
+                                          title=""):
     xlabel = r"${{{0}}}^{{true}}_{{{1}}}$ [mm]".format(particle, coordinate)
     ylabel = r"${{{0}}}^{{pred}}_{{{1}}} - {{{0}}}^{{true}}_{{{1}}}$ [mm]".format(particle,
                                                                                   coordinate)
@@ -255,11 +266,12 @@ def plot_2dhist_position_residual_vs_true(y_pred,
     ax.set_ylabel(ylabel, loc="top")
     ax.set_xlim(min(bins_x), max(bins_x))
     ax.set_ylim(min(bins_y), max(bins_y))
-    h2d = ax.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_x, bins_y], norm=LogNorm())
+    h2d = ax.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_x, bins_y], norm=LogNorm(vmin=1, vmax=1000))
     ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
     ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.5)
+    ax.set_title(title)
     plt.minorticks_on()
-    plt.colorbar(h2d[3])
+    #plt.colorbar(h2d[3])
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
