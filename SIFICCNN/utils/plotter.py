@@ -190,7 +190,7 @@ def plot_sp_distribution(ary_sp,
 
     # generate plots
     # MC Total / MC Ideal Compton
-    plt.figure()
+    plt.figure(figsize=(12,8))
     plt.title("MC Source Position z")
     plt.xlabel("z-position [mm]")
     plt.ylabel("counts")
@@ -233,7 +233,7 @@ def plot_pe_distribution(ary_pe,
 
     # generate plots
     # MC Total / MC Ideal Compton
-    plt.figure()
+    plt.figure(figsize=(12,8))
     plt.title("MC Energy Primary")
     plt.xlabel("Energy [MeV]")
     plt.ylabel("counts (normalized)")
