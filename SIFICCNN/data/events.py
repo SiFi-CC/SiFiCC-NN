@@ -871,6 +871,8 @@ class SiPMHit:
                  SiPMId,
                  Scatterer,
                  Absorber):
+        print("----------------NEXT--------------------------------")
+        print(SiPMId)
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
