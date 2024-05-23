@@ -208,7 +208,6 @@ class RootSimulation:
             if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
                 return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
-            print(sipmhit.summary())
 
         fibrehit = None
         if self.hasFibreHit:

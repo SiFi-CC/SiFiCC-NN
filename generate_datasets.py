@@ -18,13 +18,13 @@ from SIFICCNN.downloader import dSimulation_to_GraphSiPM
 path = parent_directory()
 
 path_root = "~/Master/root_files/"
-path_datasets = "/net/scratch_g4rt1/clement/datasets_0/"
+path_datasets = "/net/scratch_g4rt1/clement/datasets_small/"
 
 ####################################################################################################
 # Simulation GraphCluster
 ####################################################################################################
 
-n = 685891
+n = 10000 #685891
 # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
 #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
 # NEW FILE 4to1_SiPM
