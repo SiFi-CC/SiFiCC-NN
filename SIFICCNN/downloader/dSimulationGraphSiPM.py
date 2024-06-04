@@ -60,6 +60,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
     n_nodes = 0
     m_edges = 0
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
+        if event == None:
+            continue
         idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
         if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
             continue
@@ -80,9 +82,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
     # creating final arrays
     # datatypes are chosen for minimal size possible (duh)
-    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int)
-    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int)
-    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool)
+    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
+    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
+    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
     ary_edge_attributes = np.zeros(shape=(m_edges, 3), dtype=np.float32)
@@ -99,6 +101,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
     edge_id = 0
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         # get number of cluster
+        if event == None:
+            continue
         n_sipm = int(len(event.SiPMHit.SiPMId))
 
         # coincidence check

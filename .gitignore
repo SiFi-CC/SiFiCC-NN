@@ -13,3 +13,4 @@ results/**/*.root
 results/**/*.npz
 results/**/*.npy
 results/**/*.txt
+condor
