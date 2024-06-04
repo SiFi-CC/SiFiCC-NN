@@ -18,7 +18,7 @@ from SIFICCNN.downloader import dSimulation_to_GraphSiPM
 path = parent_directory()
 
 path_root = "~/Master/root_files/"
-path_datasets = "/net/scratch_g4rt1/clement/datasets_aachen"
+path_datasets = "/net/scratch_g4rt1/clement/datasets_0"
 
 ####################################################################################################
 # Simulation GraphCluster
@@ -28,7 +28,7 @@ n = 10000 #685891
 # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
 #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
 # NEW FILE 4to1_SiPM
-files = ["OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons.root"]
+files = ["OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv6.root"]
 
 for file in files:
     root_simulation = RootSimulation(path_root + file)
@@ -36,5 +36,5 @@ for file in files:
                                 dataset_name=root_simulation.file_name,
                                 path="",
                                 n=n,
-                                coordinate_system="AACHEN",
+                                coordinate_system="CRACOW",
                                 energy_cut=None)
