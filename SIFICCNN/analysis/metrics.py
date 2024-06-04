@@ -53,6 +53,30 @@ def accuracy(tp, fp, tn, fn, weighted=False):
     else:
         return (tp + tn) / N
 
+def accuracy_unc(tp, fp, tn, fn):
+    N = tp + fp + tn + fn
+    if N == 0:
+        return 0.0
+    
+    accuracy = (tp + tn) / N
+    
+    tp_err = np.sqrt(tp)
+    fp_err = np.sqrt(fp)
+    tn_err = np.sqrt(tn)
+    fn_err = np.sqrt(fn)
+    
+    d_acc_tp = (1 / N) - (tp + tn) / (N ** 2)
+    d_acc_fp = -(tp + tn) / (N ** 2)
+    d_acc_tn = (1 / N) - (tp + tn) / (N ** 2)
+    d_acc_fn = -(tp + tn) / (N ** 2)
+    
+    uncertainty = np.sqrt((d_acc_tp * tp_err) ** 2 + 
+                          (d_acc_fp * fp_err) ** 2 + 
+                          (d_acc_tn * tn_err) ** 2 + 
+                          (d_acc_fn * fn_err) ** 2)
+    
+    return uncertainty
+
 
 def get_confusion_matrix_entries(y_scores, y_true, theta=0.5):
     # convert entries to arrays if given as list
@@ -93,7 +117,7 @@ def print_classifier_summary(y_scores, y_true, run_name=""):
     # grab base binary classifier evaluation
     tp, fp, tn, fn = get_confusion_matrix_entries(y_scores, y_true)
     acc = accuracy(tp, fp, tn, fn)
-    acc_unc = 0
+    acc_unc = accuracy_unc(tp, fp, tn, fn)
     acc_w = accuracy(tp, fp, tn, fn, weighted=True)
     acc_w_unc = 0
     eff = efficiency(tp, fn)

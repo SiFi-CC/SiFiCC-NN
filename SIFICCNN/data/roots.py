@@ -134,9 +134,9 @@ class RootSimulation:
         dictSiPMHit = {"SiPMData.fSiPMTimeStamp": "SiPMTimeStamp",
                        "SiPMData.fSiPMPhotonCount": "SiPMPhotonCount",
                        "SiPMData.fSiPMPosition": "SiPMPosition",
-                       "SiPMData.fSiPMId": "SiPMId",
-                       "SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
-                       "SiPMData.fSiPMQDC": "SiPMPhotonCount"}
+                       "SiPMData.fSiPMId": "SiPMId"}
+                       #"SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
+                       #"SiPMData.fSiPMQDC": "SiPMPhotonCount"}
         return dictSiPMHit
 
     @property
@@ -205,6 +205,8 @@ class RootSimulation:
         if self.hasSiPMHit:
             for tleave in self.leavesTree[2]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
+            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
+                return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
 
         fibrehit = None

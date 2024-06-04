@@ -61,12 +61,12 @@ class DSGraphSiPM(Dataset):
         """
 
         # Batch index
-        node_batch_index = np.load(self.path + "/" + "graph_indicator.npy")
+        node_batch_index = np.load(self.path + "/" + self.name + "_graph_indicator.npy")
         n_nodes = np.bincount(node_batch_index)
         n_nodes_cum = np.concatenate(([0], np.cumsum(n_nodes)[:-1]))
 
         # Read edge lists
-        edges = np.load(self.path + "/" + "A.npy")
+        edges = np.load(self.path + "/" + self.name + "_A.npy")
 
         # Split edges into separate edge lists
         edge_batch_idx = node_batch_index[edges[:, 0]]
@@ -92,7 +92,7 @@ class DSGraphSiPM(Dataset):
 
         # set datasets target (classification / regression)
         y_list = self._get_y_list()
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        labels = np.load(self.path + "/" + self.name + "_graph_labels.npy")
 
         # At this point the full datasets is loaded and filtered according to the settings
         # limited to True positives only if needed
@@ -111,7 +111,7 @@ class DSGraphSiPM(Dataset):
         Grabs node features from files.
         """
         # Node features
-        x_attr = np.load(self.path + "/" + "node_attributes.npy")
+        x_attr = np.load(self.path + "/" + self.name + "_node_attributes.npy")
         if self.norm_x is None:
             self.norm_x = self._get_standardization(x_attr)
         self._standardize(x_attr, self.norm_x)
@@ -123,7 +123,7 @@ class DSGraphSiPM(Dataset):
         """
         Grabs edge features from files.
         """
-        e_attr = np.load(self.path + "/" + "edge_attributes.npy")  # ["arr_0"]
+        e_attr = np.load(self.path + "/" + self.name + "edge_attributes.npy")  # ["arr_0"]
         if self.norm_e is None:
             self.norm_e = self._get_standardization(e_attr)
         self._standardize(e_attr, self.norm_e)
@@ -135,7 +135,7 @@ class DSGraphSiPM(Dataset):
         Grabs targets from files. Type of targets are set during the initialization of the datasets.
         """
         if self.regression is not None:
-            graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
+            graph_attributes = np.load(self.path + "/" + self.name + "_graph_attributes.npy")
             if self.regression == "Energy":
                 y_list = graph_attributes[:, :2]
             elif self.regression == "Position":
@@ -146,11 +146,11 @@ class DSGraphSiPM(Dataset):
 
         else:
             # return class labels
-            y_list = np.load(self.path + "/" + "graph_labels.npy")
+            y_list = np.load(self.path + "/" + self.name + "_graph_labels.npy")
         return y_list
 
     def get_classweight_dict(self):
-        labels = np.load(self.path + "/" + "graph_labels.npy")  # ["arr_0"]
+        labels = np.load(self.path + "/" + self.name + "_graph_labels.npy")  # ["arr_0"]
 
         _, counts = np.unique(labels, return_counts=True)
         class_weights = {0: len(labels) / (2 * counts[0]),
@@ -184,15 +184,15 @@ class DSGraphSiPM(Dataset):
 
     @property
     def sp(self):
-        sp = np.load(self.path + "/" + "graph_sp.npy")
+        sp = np.load(self.path + "/" + self.name + "_graph_sp.npy")
         return sp
 
     @property
     def pe(self):
-        pe = np.load(self.path + "/" + "graph_pe.npy")
+        pe = np.load(self.path + "/" + self.name + "_graph_pe.npy")
         return pe
 
     @property
     def labels(self):
-        labels = np.load(self.path + "/" + "graph_labels.npy")  # ["arr_0"]
+        labels = np.load(self.path + "/" + self.name + "_graph_labels.npy")  # ["arr_0"]
         return labels
