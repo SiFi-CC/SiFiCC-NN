@@ -3,7 +3,7 @@ import tqdm
 import sys
 import os
 
-from .events import EventSimulation, RecoCluster, SiPMHit, FibreHit
+from .events import EventSimulation, SiPMHit, FibreHit
 from .detector import Detector
 
 
@@ -33,7 +33,6 @@ class RootSimulation:
         self.set_leaves()
 
         # information content of the root file
-        self.hasRecoCluster = False
         self.hasSiPMHit = False
         self.hasFibreHit = False
         self._set_file_content()
@@ -50,20 +49,16 @@ class RootSimulation:
     def set_leaves(self):
         """
         Generates a list of all leaves to be read out from the ROOT-file tree. Additionally, sets
-        sub-lists for RecoCluster, SiPMHit and FibreHit response if available from the given
+        sub-lists for  SiPMHit and FibreHit response if available from the given
         root file.
 
         The reason this is implemented as a property instead of using the keys() argument from
         root files is that leaves containing objects won't display their attributes, see SiPM /
-        Fibre and RecoCluster entries.
+        Fibre entries.
         """
         # initialize a key list to scan
         # This list should also contain all sub-entries of custom objects inside a branch
         list_keys = self.events_keys
-        if "RecoClusterPositions" in self.events_keys:
-            list_keys += self.events["RecoClusterPositions"].keys()
-        if "RecoClusterEnergies" in self.events_keys:
-            list_keys += self.events["RecoClusterEnergies"].keys()
         if "SiPMData" in self.events_keys:
             list_keys += self.events["SiPMData"].keys()
         if "FibreData" in self.events_keys:
