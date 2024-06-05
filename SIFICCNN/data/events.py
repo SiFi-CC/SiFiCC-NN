@@ -36,7 +36,7 @@ class EventSimulation:
 
     def __init__(self,
                  EventNumber,
-                 MCEnergy_Primary,
+                 MCEnergyPrimary,
                  MCPosition_source,
                  MCDirection_source,
                  Detector,
@@ -44,7 +44,7 @@ class EventSimulation:
                  FibreHit=None):
         # Global information
         self.EventNumber = EventNumber
-        self.MCEnergy_Primary = MCEnergy_Primary
+        self.MCEnergy_Primary = MCEnergyPrimary
         self.MCPosition_source = TVector3.from_akw(MCPosition_source)
         self.MCDirection_source = TVector3.from_akw(MCDirection_source)
 
@@ -76,6 +76,25 @@ class EventSimulation:
         #   - type: describes the interaction type of particle interaction
         #   - level: describes the secondary level of the interacting particle
         #   - energy: boolean encoding if the interaction deposited energy
+
+    def get_fibre_position(self):
+        """
+        Get the position of the fibre and inside the fibre, where the interaction took place
+
+        return:
+            fibre_position (TVector3) 
+        """
+        return self.FibreHit.FibrePostition
+    
+    def get_fibre_energy(self):
+        """
+        Get energy deposited in fibre
+
+        return:
+            fibre_energy (float)
+        """
+        return self.FibreHit.FibreEnergy
+
 
 
 
@@ -141,16 +160,15 @@ class SiPMHit:
                  SiPMPhotonCount,
                  SiPMPosition,
                  SiPMId,
-                 Scatterer,
-                 Absorber):
+                 Detector):
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
         self.SiPMPhotonCount = np.array(SiPMPhotonCount)
         self.SiPMPosition = tVector_list(SiPMPosition)
         self.SiPMId = np.array(SiPMId)
-        self.scatterer = Scatterer
-        self.absorber = Absorber
+        self.detector = Detector
+
 
     def summary(self, debug=False):
         print("\n# SiPM Data: #")

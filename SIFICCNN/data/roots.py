@@ -88,7 +88,7 @@ class RootSimulation:
             dict
         """
         dictSimulation = {"EventNumber": "EventNumber",
-                          "MCEnergy_Primary": "MCEnergy_Primary",
+                          "MCEnergyPrimary": "MCEnergyPrimary",
                           "MCPosition_source": "MCPosition_source",
                           "MCDirection_source": "MCDirection_source"}
         return dictSimulation
@@ -155,7 +155,7 @@ class RootSimulation:
         # initialize subclasses for the EventSimulation object if needed
         sipmhit = None
         if self.hasSiPMHit:
-            for tleave in self.leavesTree[2]:
+            for tleave in self.leavesTree[1]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
             if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
                 return None
@@ -163,7 +163,7 @@ class RootSimulation:
 
         fibrehit = None
         if self.hasFibreHit:
-            for tleave in self.leavesTree[3]:
+            for tleave in self.leavesTree[2]:
                 dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
             fibrehit = FibreHit(**dictBasketFibreHit)
 
@@ -173,7 +173,8 @@ class RootSimulation:
         # build final event object
         event_simulation = EventSimulation(**dictBasketSimulation,
                                            SiPMHit=sipmhit,
-                                           FibreHit=fibrehit)
+                                           FibreHit=fibrehit
+                                           )
 
         return event_simulation
 

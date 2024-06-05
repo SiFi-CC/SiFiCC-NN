@@ -62,15 +62,6 @@ def dSimulation_to_GraphSiPM(root_simulation,
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if event == None:
             continue
-        idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
-        if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
-            continue
-        """
-        # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS
-        if energy_cut is not None:
-            if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
-                continue
-        """
         k_graphs += 1
         n_nodes += len(event.SiPMHit.SiPMId)
         m_edges += len(event.SiPMHit.SiPMId) ** 2
@@ -105,17 +96,6 @@ def dSimulation_to_GraphSiPM(root_simulation,
             continue
         n_sipm = int(len(event.SiPMHit.SiPMId))
 
-        # coincidence check
-        idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
-        if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
-            continue
-        """
-        # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS   
-        # energy cut if applied
-        if energy_cut is not None:
-            if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
-                continue
-        """
         # double iteration over every cluster to determine adjacency and edge features
         for j in range(n_sipm):
             for k in range(n_sipm):
@@ -160,30 +140,22 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
         # grab target labels and attributes
         event.ph_method = 2
-        distcompton_tag = event.get_distcompton_tag()
-        target_energy_e, target_energy_p = event.get_target_energy()
-        target_position_e, target_position_p = event.get_target_position()
-        ary_graph_labels[graph_id] = distcompton_tag * 1
+
+        fibre_energy = event.get_fibre_energy()
+        fibre_position = event.get_fibre_position()
+        ary_graph_labels[graph_id] = 1
         ary_pe[graph_id] = event.MCEnergy_Primary
         if coordinate_system == "CRACOW":
-            ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                 target_energy_p,
-                                                 target_position_e.z,
-                                                 -target_position_e.y,
-                                                 target_position_e.x,
-                                                 target_position_p.z,
-                                                 -target_position_p.y,
-                                                 target_position_p.x]
+            ary_graph_attributes[graph_id, :] = [fibre_energy,
+                                                 fibre_position.z,
+                                                 -fibre_position.y,
+                                                 fibre_position.x]
             ary_sp[graph_id] = event.MCPosition_source.z
         if coordinate_system == "AACHEN":
-            ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                 target_energy_p,
-                                                 target_position_e.x,
-                                                 target_position_e.y,
-                                                 target_position_e.z,
-                                                 target_position_p.x,
-                                                 target_position_p.y,
-                                                 target_position_p.z]
+            ary_graph_attributes[graph_id, :] = [fibre_energy,
+                                                 fibre_position.x,
+                                                 fibre_position.y,
+                                                 fibre_position.z,]
             ary_sp[graph_id] = event.MCPosition_source.x
 
         # count up graph indexing
