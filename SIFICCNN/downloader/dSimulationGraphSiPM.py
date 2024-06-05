@@ -1,175 +1,126 @@
-####################################################################################################
-#
-# This script converts a SiFi-CC simulation root file to a python readable datasets ready to be
-# used for Neural Network training.
-#
-####################################################################################################
-
-
 import numpy as np
 import os
 import argparse
-import sys
-
-from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 
 
-def dSimulation_to_GraphSiPM(root_simulation,
-                             dataset_name,
-                             path="",
-                             n=None,
-                             coordinate_system="CRACOW",
-                             energy_cut=None):
+
+def are_connected(SiPM1, SiPM2):
+    if SiPM1 > 224 or SiPM2 > 224:
+        raise ValueError("SiPMID outside detector found! IDs: {} ".format((SiPM1, SiPM2)))
+    is_y_neighbor = SiPM1.y != SiPM2.y
+    is_x_z_neighbor = abs(SiPM1.x-SiPM2.x) + abs(SiPM1.z-SiPM2.z) < 1.5
+    return is_x_z_neighbor and is_y_neighbor
+        
+    
+
+
+
+def simulate_to_graph_data(simulation_data,
+                           dataset_name,
+                           path="",
+                           n=None):
     """
-    Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
-
-    Two iterations over the root file are needed: one to determine the array size, one to read the
-    data. Final data is stored as npy files, separated by their usage.
-
+    Script to generate datasets in graph format from simulated detector data.
+    
     Args:
-        root_simulation (RootSimulation):   root file container object
-        dataset_name (str):                 final name of datasets for storage
-        path (str):                         destination path, if not given it will default to
-                                            /datasets in parent directory
-        n (int or None):                    Number of events sampled from root file,
-                                            if None all events are used
-        energy_cut (float or None):         Energy cut applied to sum of all cluster energies,
-                                            if None, no energy cut is applied
-        coordinate_system (str):            Coordinate system of the given root file, everything
-                                            will be converted to Aachen coordinate system
-
+        simulation_data (SimulationData): Simulation data container object
+        dataset_name (str): Name of the dataset for storage
+        path (str): Destination path. Defaults to current directory if not specified
+        n (int or None): Number of events sampled from the simulation data. If None, all events are used
     """
-
-    # generate directory and finalize path
+    
+    # Set path and create directory if not exists
     if path == "":
-        path = parent_directory() + "/datasets/"
-        path = os.path.join(path, "SimGraphSiPM", dataset_name)
+        path = os.path.join(os.getcwd(), "datasets", dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
-
-    # Pre-determine the final array size.
-    # Total number of graphs needed (n samples)
-    # Total number of nodes (Iteration over root file needed)
-    print("Loading root file: {}".format(root_simulation.file_name))
+    
+    print("Loading simulation data: {}".format(simulation_data.file_name))
     print("Dataset name: {}".format(dataset_name))
     print("Path: {}".format(path))
-    print("Energy Cut: {}".format(energy_cut))
-    print("Coordinate system of root file: {}".format(coordinate_system))
-    print("\nCounting number of graphs to be created")
+
+    # Pre-determine the final array sizes
+    print("Counting number of graphs to be created")
     k_graphs = 0
     n_nodes = 0
     m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n)):
-        if event == None:
+    for i, event in enumerate(simulation_data.iterate_events(n=n)):
+        if event is None:
             continue
         k_graphs += 1
         n_nodes += len(event.SiPMHit.SiPMId)
-        m_edges += len(event.SiPMHit.SiPMId) ** 2
-    print("Total number of Graphs to be created: ", k_graphs)
+        edge_counter = 0
+        for j in range(len(event.SiPMHit.SiPMId)):
+            for k in range(len(event.SiPMHit.SiPMId)):
+                if are_connected(event.SiPMHit.SiPMPosition[j], event.SiPMHit.SiPMPosition[k]):
+                    edge_counter+=1
+        m_edges += edge_counter
+    
+    print("Total number of graphs to be created: ", k_graphs)
     print("Total number of nodes to be created: ", n_nodes)
     print("Total number of edges to be created: ", m_edges)
-    print("Graph features: {}".format(10))
-    print("Graph targets: {}".format(9))
+    print("Graph features: {}".format(3))  # SiPM ID, timestamp, number of photons
+    print("Graph targets: {}".format(2))  # Fiber energy, position
 
-    # creating final arrays
-    # datatypes are chosen for minimal size possible (duh)
-    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
-    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
-    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
-    ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
-    ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
-    ary_edge_attributes = np.zeros(shape=(m_edges, 3), dtype=np.float32)
-    # meta data
-    ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
+    # Creating final arrays
+    ary_A = np.zeros((m_edges, 2), dtype=np.int32)
+    ary_graph_indicator = np.zeros((n_nodes,), dtype=np.int32)
+    ary_graph_labels = np.zeros((k_graphs,), dtype=np.float32)
+    ary_node_attributes = np.zeros((n_nodes, 3), dtype=np.float32)  # ID, timestamp, number of photons
+    ary_edge_attributes = np.zeros((m_edges, 2), dtype=np.float32)  # SiPM ID 1, SiPM ID 2
+    ary_edge_targets = np.zeros((m_edges, 2), dtype=np.float32)  # Energy, y_position
 
-    # main iteration over root file, containing beta coincidence check
-    # NOTE:
-    # "id" are here used for indexing instead of using the iteration variables i,j,k since some
-    # events are skipped due to cuts or filters, therefore more controlled indexing is needed
+    # Main iteration over simulation data
     graph_id = 0
     node_id = 0
     edge_id = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n)):
-        # get number of cluster
-        if event == None:
+    for i, event in enumerate(simulation_data.iterate_events(n=n)):
+        if event is None:
             continue
-        n_sipm = int(len(event.SiPMHit.SiPMId))
+        n_sipm = len(event.SiPMHit.SiPMId)
 
-        # double iteration over every cluster to determine adjacency and edge features
+        # Double iteration over SiPM nodes to determine adjacency and edge features
         for j in range(n_sipm):
             for k in range(n_sipm):
-                """
-                # This is an example of a connection rule for adjacency
-                if j in idx_abs and k in idx_scat:
-                    continue
-                """
-                # determine edge attributes
-                if j != k:
-                    # grab edge features in polar and cartesian representation
-                    r, phi, theta = event.SiPMHit.get_edge_features(j, k, cartesian=False)
-                else:
-                    r, phi, theta = 0, 0, 0
-                ary_edge_attributes[edge_id, :] = [r, phi, theta]
+                # Assume we connect each SiPM to the next one in a simple chain
+                if are_connected(event.SiPMHit.SiPMPosition[j], event.SiPMHit.SiPMPosition[k]):
+                    # Grab edge features, here simply IDs for simplicity
+                    ary_edge_attributes[edge_id, :] = [event.SiPMHit.SiPMId[j], event.SiPMHit.SiPMId[k]]
 
                 ary_A[edge_id, :] = [node_id, node_id - j + k]
                 edge_id += 1
 
-            # Graph indicator counts up which node belongs to which graph
+            # Graph indicator counts which node belongs to which graph
             ary_graph_indicator[node_id] = graph_id
 
-            # collect node attributes for each node
-            # exception for different coordinate systems
-            if coordinate_system == "CRACOW":
-                attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
-                                       -event.SiPMHit.SiPMPosition[j].y,
-                                       event.SiPMHit.SiPMPosition[j].x,
-                                       event.SiPMHit.SiPMTimeStamp[j],
-                                       event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[node_id, :] = attributes
-            if coordinate_system == "AACHEN":
-                attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
-                                       event.SiPMHit.SiPMPosition[j].y,
-                                       event.SiPMHit.SiPMPosition[j].z,
-                                       event.SiPMHit.SiPMTimeStamp[j],
-                                       event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[node_id, :] = attributes
+            # Collect node attributes
+            attributes = np.array([event.SiPMHit.SiPMId[j],
+                                   event.SiPMHit.SiPMTimeStamp[j],
+                                   event.SiPMHit.SiPMPhotonCount[j]])
+            ary_node_attributes[node_id, :] = attributes
 
-            # count up node indexing
+            # Increment node ID
             node_id += 1
 
-        # grab target labels and attributes
-        event.ph_method = 2
+        # Grab target labels and attributes for edges
+        for j in range(n_sipm):
+            for k in range(n_sipm):
+                if j != k:
+                    # Assuming you have a method to get fiber energy and position
+                    fibre_energy = event.get_fibre_energy(j, k)
+                    fibre_position = event.get_fibre_position(j, k)
+                    ary_edge_targets[edge_id - n_sipm + k, :] = [fibre_energy, fibre_position]
 
-        fibre_energy = event.get_fibre_energy()
-        fibre_position = event.get_fibre_position()
-        ary_graph_labels[graph_id] = 1
-        ary_pe[graph_id] = event.MCEnergy_Primary
-        if coordinate_system == "CRACOW":
-            ary_graph_attributes[graph_id, :] = [fibre_energy,
-                                                 fibre_position.z,
-                                                 -fibre_position.y,
-                                                 fibre_position.x]
-            ary_sp[graph_id] = event.MCPosition_source.z
-        if coordinate_system == "AACHEN":
-            ary_graph_attributes[graph_id, :] = [fibre_energy,
-                                                 fibre_position.x,
-                                                 fibre_position.y,
-                                                 fibre_position.z,]
-            ary_sp[graph_id] = event.MCPosition_source.x
-
-        # count up graph indexing
+        # Increment graph ID
         graph_id += 1
 
-    # save up all files
-    np.save(path + "/" + "A.npy", ary_A)
-    np.save(path + "/" + "graph_indicator.npy", ary_graph_indicator)
-    np.save(path + "/" + "graph_labels.npy", ary_graph_labels)
-    np.save(path + "/" + "node_attributes.npy", ary_node_attributes)
-    np.save(path + "/" + "graph_attributes.npy", ary_graph_attributes)
-    np.save(path + "/" + "edge_attributes.npy", ary_edge_attributes)
-    np.save(path + "/" + "graph_pe.npy", ary_pe)
-    np.save(path + "/" + "graph_sp.npy", ary_sp)
+    # Save arrays as .npy files
+    np.save(os.path.join(path, "A.npy"), ary_A)
+    np.save(os.path.join(path, "graph_indicator.npy"), ary_graph_indicator)
+    np.save(os.path.join(path, "graph_labels.npy"), ary_graph_labels)
+    np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
+    np.save(os.path.join(path, "edge_attributes.npy"), ary_edge_attributes)
+    np.save(os.path.join(path, "edge_targets.npy"), ary_edge_targets)
 
 
 if __name__ == "__main__":
@@ -180,12 +131,14 @@ if __name__ == "__main__":
     parser.add_argument("-path", type=str, help="Path to final datasets")
     parser.add_argument("-n", type=int, help="Number of events used")
     parser.add_argument("-cs", type=str, help="Coordinate system of root file")
+    parser.add_argument("--rf", type=str, help="Target root file")
     # parser.add_argument("-ec", type=float, help="Energy cut applied to sum of all cluster energies")
     args = parser.parse_args()
 
-    dSimulation_to_GraphSiPM(root_simulation=args.rf,
-                             dataset_name=args.name,
-                             path=args.path if args.path is not None else "",
-                             n=args.n if args.n is not None else None,
-                             coordinate_system=args.cs if args.cs is not None else "CRACOW",
-                             energy_cut=args.ec if args.ec is not None else None)
+    simulate_to_graph_data(simulation_data=args.rf,
+                           dataset_name=args.name,
+                           path=args.path,
+                           n=args.n)
+    
+    #Coordinate system?
+
