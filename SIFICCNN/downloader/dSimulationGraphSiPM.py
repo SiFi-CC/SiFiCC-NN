@@ -87,6 +87,11 @@ def simulate_to_graph_data(simulation_data,
                     # Grab edge features, here simply IDs for simplicity
                     ary_edge_attributes[edge_id, :] = [event.SiPMHit.SiPMId[j], event.SiPMHit.SiPMId[k]]
 
+                    # Get fibre energy and position
+                    fibre_energy = event.get_fibre_energy(j, k)
+                    fibre_position = event.get_fibre_position(j, k)
+                    ary_edge_targets[edge_id - n_sipm + k, :] = [fibre_energy, fibre_position]
+
                 ary_A[edge_id, :] = [node_id, node_id - j + k]
                 edge_id += 1
 
@@ -101,15 +106,6 @@ def simulate_to_graph_data(simulation_data,
 
             # Increment node ID
             node_id += 1
-
-        # Grab target labels and attributes for edges
-        for j in range(n_sipm):
-            for k in range(n_sipm):
-                if j != k:
-                    # Assuming you have a method to get fiber energy and position
-                    fibre_energy = event.get_fibre_energy(j, k)
-                    fibre_position = event.get_fibre_position(j, k)
-                    ary_edge_targets[edge_id - n_sipm + k, :] = [fibre_energy, fibre_position]
 
         # Increment graph ID
         graph_id += 1

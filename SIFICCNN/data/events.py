@@ -295,3 +295,7 @@ class FibreHit:
                     self.FibrePosition[j].y,
                     self.FibrePosition[j].z,
                     self.FibreTime[j]))
+
+
+
+#Which SiPMs are connected by which fibre?
