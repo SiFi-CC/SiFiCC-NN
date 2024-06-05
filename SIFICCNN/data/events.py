@@ -84,7 +84,7 @@ class EventSimulation:
         return:
             fibre_position (TVector3) 
         """
-        return self.FibreHit.FibrePostition
+        return self.FibreHit.FibrePosition
     
     def get_fibre_energy(self):
         """
