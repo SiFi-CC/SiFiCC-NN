@@ -28,7 +28,7 @@ n = 10000 #685891
 # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
 #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
 # NEW FILE 4to1_SiPM
-files = ["OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv6.root"]
+files = ["OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv5_wrongSiPMIDs.root"]
 
 for file in files:
     root_simulation = RootSimulation(path_root + file)
