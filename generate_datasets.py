@@ -32,9 +32,9 @@ files = ["OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv5_wrongSiPMIDs.r
 
 for file in files:
     root_simulation = RootSimulation(path_root + file)
-    dSimulation_to_GraphSiPM(root_simulation=root_simulation,                       #Cluster statt SiPM
+    dSimulation_to_GraphSiPM(simulation_data=root_simulation,                       #Cluster statt SiPM
                                 dataset_name=root_simulation.file_name,
                                 path="",
-                                n=n,
-                                coordinate_system="CRACOW",
-                                energy_cut=None)
+                                n=n,)
+#coordinate_system="CRACOW",
+#energy_cut=None
