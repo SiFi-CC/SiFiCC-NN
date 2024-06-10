@@ -4,7 +4,7 @@ import argparse
 
 def are_connected(SiPM1, SiPM2):
     is_y_neighbor = SiPM1.y != SiPM2.y
-    is_x_z_neighbor = abs(SiPM1.x - SiPM2.x) + abs(SiPM1.z - SiPM2.z) < 1.5
+    is_x_z_neighbor = abs(SiPM1.x - SiPM2.x) + abs(SiPM1.z - SiPM2.z) <=4
     return is_x_z_neighbor and is_y_neighbor
 
 def dSimulation_to_GraphSiPM(simulation_data,
