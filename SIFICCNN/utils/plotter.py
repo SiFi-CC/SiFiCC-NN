@@ -1120,7 +1120,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         # fit gaussian to histogram
         popt_p, pcov_p = curve_fit(gaussian_lin_bg, bins_center[p_frl:p_frr],
                                    hist_ep[p_frl:p_frr],
-                                   p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b])
+                                   p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
+                                   maxfev = 100000)
         plt.plot(bins_center[p_frl:p_frr],
                  gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p), color="deeppink",
                  label=r"$\mu$ = {:.2f} $\pm$ {:.2f}""\n"r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(

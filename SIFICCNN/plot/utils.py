@@ -100,6 +100,7 @@ def auto_hist_fitting(f,
                                ydata=ydata,
                                sigma=sigma,
                                p0=p0 if p0 is not None else [0.0, 1.0, np.sum(hist) * width,
-                                                             0.0, 0.5, np.sum(hist) * width, 0])
+                                                             0.0, 0.5, np.sum(hist) * width, 0],
+                                maxfev = 100000)
         fx = dict_f[f](x, *popt)
         return popt, pcov, x, fx
