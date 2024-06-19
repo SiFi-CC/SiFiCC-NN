@@ -36,5 +36,5 @@ for file in files:
                                 dataset_name=root_simulation.file_name,
                                 path="",
                                 n=n,
-                                coordinate_system="AACHEN",
+                                coordinate_system="CRACOW",
                                 energy_cut=None)
