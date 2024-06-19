@@ -47,7 +47,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     # generate directory and finalize path
     if path == "":
         path = parent_directory() + "/datasets/"
-        path = os.path.join(path, "SimGraphSiPM", dataset_name)
+        path = os.path.join(path, "SimGraphSiPM","Neutrons", dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
 
@@ -66,7 +66,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if event == None:
             continue
-        if event.MCNPrimaryNeutrons == 0:
+        if event.MCNPrimaryNeutrons != 0:
             idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
             if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
                 continue
@@ -108,7 +108,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
         # get number of cluster
         if event == None:
             continue
-        if event.MCNPrimaryNeutrons == 0:
+        if event.MCNPrimaryNeutrons != 0:
             n_sipm = int(len(event.SiPMHit.SiPMId))
 
             # coincidence check
