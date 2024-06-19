@@ -24,7 +24,7 @@ path_datasets = "/net/scratch_g4rt1/clement/datasets"
 # Simulation GraphCluster
 ####################################################################################################
 
-n = None #685891
+n = 1000 #685891
 # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
 #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
 # NEW FILE 4to1_SiPM
@@ -37,4 +37,5 @@ for file in files:
                                 path="",
                                 n=n,
                                 coordinate_system="CRACOW",
-                                energy_cut=None)
+                                energy_cut=None,
+                                with_neutrons=False)

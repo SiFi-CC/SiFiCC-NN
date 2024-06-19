@@ -23,7 +23,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
                              path="",
                              n=None,
                              coordinate_system="CRACOW",
-                             energy_cut=None):
+                             energy_cut=None,
+                             with_neutrons=False):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
@@ -45,9 +46,14 @@ def dSimulation_to_GraphSiPM(root_simulation,
     """
 
     # generate directory and finalize path
+    if with_neutrons:
+        neutron_key = "Neutrons"
+    else:
+        neutron_key = "NoNeutrons"
+    
     if path == "":
         path = parent_directory() + "/datasets/"
-        path = os.path.join(path, "SimGraphSiPM","NoNeutrons", dataset_name)
+        path = os.path.join(path, "SimGraphSiPM",neutron_key, dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
 
@@ -66,7 +72,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if event == None:
             continue
-        if event.MCNPrimaryNeutrons == 0:
+        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons):
             idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
             if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
                 continue
@@ -108,7 +114,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
         # get number of cluster
         if event == None:
             continue
-        if event.MCNPrimaryNeutrons == 0:
+        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons):
             n_sipm = int(len(event.SiPMHit.SiPMId))
 
             # coincidence check
@@ -172,7 +178,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
             ary_graph_labels_NoNeutron[graph_id_NoNeutron] = distcompton_tag * 1
             ary_pe_NoNeutron[graph_id_NoNeutron] = event.MCEnergy_Primary
             if coordinate_system == "CRACOW":
-                ary_graph_attributes_NoNeutron[graph_id, :] = [target_energy_e,
+                ary_graph_attributes_NoNeutron[graph_id_NoNeutron, :] = [target_energy_e,
                                                     target_energy_p,
                                                     target_position_e.z,
                                                     -target_position_e.y,
