@@ -261,12 +261,12 @@ def evaluate(dataset_name,
                                 f="gaussian_gaussian",
                                 file_name="1dhist_energy_gamma_residual.png",
                                 title="Energy residual")
-    plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
+    """ plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
                                          y_true=y_true[labels, 1],
                                          particle="\gamma",
                                          f="gaussian_gaussian",
                                          file_name="1dhist_energy_gamma_residual_relative.png",
-                                         title="Relative energy residual")
+                                         title="Relative energy residual") """
     plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 1],
                                         y_true=y_true[labels, 1],
                                         particle="\gamma",

@@ -113,7 +113,8 @@ class RootSimulation:
                           "MCInteractions_p": "MCInteractions_p",
                           "MCEnergyDeps_e": "MCEnergyDeps_e",
                           "MCEnergyDeps_p": "MCEnergyDeps_p",
-                          "MCEnergyPrimary": "MCEnergy_Primary"}
+                          "MCEnergyPrimary": "MCEnergy_Primary",
+                          "MCNPrimaryNeutrons": "MCNPrimaryNeutrons"}
         return dictSimulation
 
     @property

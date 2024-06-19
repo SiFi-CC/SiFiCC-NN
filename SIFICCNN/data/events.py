@@ -48,6 +48,7 @@ class EventSimulation:
                  MCInteractions_e,
                  MCPosition_p,
                  MCInteractions_p,
+                 MCNPrimaryNeutrons,
                  Scatterer,
                  Absorber,
                  MCEnergyDeps_e=None,
@@ -56,19 +57,20 @@ class EventSimulation:
                  SiPMHit=None,
                  FibreHit=None):
         # Global information
-        self.EventNumber = EventNumber
-        self.MCSimulatedEventType = MCSimulatedEventType
-        self.MCEnergy_Primary = MCEnergy_Primary
-        self.MCEnergy_e = MCEnergy_e
-        self.MCEnergy_p = MCEnergy_p
-        self.MCPosition_source = TVector3.from_akw(MCPosition_source)
-        self.MCDirection_source = TVector3.from_akw(MCDirection_source)
-        self.MCComptonPosition = TVector3.from_akw(MCComptonPosition)
-        self.MCDirection_scatter = TVector3.from_akw(MCDirection_scatter)
-        self.MCPosition_e = tVector_list(MCPosition_e)
-        self.MCInteractions_e = np.array(MCInteractions_e)
-        self.MCPosition_p = tVector_list(MCPosition_p)
-        self.MCInteractions_p = np.array(MCInteractions_p)
+        self.EventNumber            = EventNumber
+        self.MCSimulatedEventType   = MCSimulatedEventType
+        self.MCEnergy_Primary       = MCEnergy_Primary
+        self.MCEnergy_e             = MCEnergy_e
+        self.MCEnergy_p             = MCEnergy_p
+        self.MCPosition_source      = TVector3.from_akw(MCPosition_source)
+        self.MCDirection_source     = TVector3.from_akw(MCDirection_source)
+        self.MCComptonPosition      = TVector3.from_akw(MCComptonPosition)
+        self.MCDirection_scatter    = TVector3.from_akw(MCDirection_scatter)
+        self.MCPosition_e           = tVector_list(MCPosition_e)
+        self.MCInteractions_e       = np.array(MCInteractions_e)
+        self.MCPosition_p           = tVector_list(MCPosition_p)
+        self.MCInteractions_p       = np.array(MCInteractions_p)
+        self.MCNPrimaryNeutrons     = MCNPrimaryNeutrons
 
         # Detector modules
         self.scatterer = Scatterer
@@ -83,9 +85,9 @@ class EventSimulation:
             self.MCEnergyDeps_p = None
 
         # Container objects for additional information
-        self.RecoCluster = RecoCluster
-        self.SiPMHit = SiPMHit
-        self.FibreHit = FibreHit
+        self.RecoCluster    = RecoCluster
+        self.SiPMHit        = SiPMHit
+        self.FibreHit       = FibreHit
 
         # set flags for phantom-hit methods
         # Phantom-hits describe events where the primary prompt gamma undergoes pair-production,
@@ -96,9 +98,9 @@ class EventSimulation:
         #   - 1: Phantom hits are scanned by the pair-production tag of the simulation
         #   - 2: Phantom hits are scanned by proximity of secondary interactions
         #        (USE THIS IF THE SIMULATION DOES NOT CONTAIN PAIR-PRODUCTION TAGS)
-        self.ph_method = 1
-        self.ph_acceptance = 1e-1
-        self.ph_tag = False
+        self.ph_method      = 1
+        self.ph_acceptance  = 1e-1
+        self.ph_tag         = False
 
         # Define new interaction lists
         # During the development of this code the template for interaction id encoding changed
