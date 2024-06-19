@@ -172,7 +172,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
             ary_graph_labels_NoNeutron[graph_id_NoNeutron] = distcompton_tag * 1
             ary_pe_NoNeutron[graph_id_NoNeutron] = event.MCEnergy_Primary
             if coordinate_system == "CRACOW":
-                ary_graph_attributes_NoNeutron[graph_id, :] = [target_energy_e,
+                ary_graph_attributes_NoNeutron[graph_id_NoNeutron, :] = [target_energy_e,
                                                     target_energy_p,
                                                     target_position_e.z,
                                                     -target_position_e.y,
