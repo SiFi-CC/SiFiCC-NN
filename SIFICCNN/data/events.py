@@ -183,19 +183,19 @@ class SiPMHit:
                     self.SiPMPosition[j].z,
                     self.SiPMTimeStamp[j]))
 
-    @staticmethod
-    def sipm_id_to_position(sipm_id):
-        if sipm_id > 224:
+    def sipm_id_to_position(self):
+        sipm_id = self.SiPMId
+        outside_check = np.greater(sipm_id, 224)
+        if np.any(outside_check == True):
             raise ValueError("SiPMID outside detector found! ID: {} ".format(sipm_id))
         # determine y
         y = sipm_id // 112
         # remove third dimension
         sipm_id -= (y * 112)
-        # x and z in detector
-        if sipm_id < 112:
-            x = sipm_id // 28
-            z = (sipm_id % 28)
-        return int(x), int(y), int(z)
+
+        x = sipm_id // 28
+        z = (sipm_id % 28)
+        return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
 
     def get_sipm_feature_map(self, padding=2):
         # hardcoded detector size
