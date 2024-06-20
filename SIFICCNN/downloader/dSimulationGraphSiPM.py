@@ -14,6 +14,7 @@ import numpy as np
 import os
 import argparse
 import sys
+import matplotlib.pyplot as plt
 
 from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 
@@ -44,6 +45,58 @@ def dSimulation_to_GraphSiPM(root_simulation,
                                             will be converted to Aachen coordinate system
 
     """
+
+    #DEBUG
+    PrimaryEnergies = list()
+    NeutronCount = list()
+    def plot_neutrons_vs_energy(NeutronCount, NeutronPrimaryEnergies, key):
+
+        # Create a histogram
+        plt.figure(figsize=(8, 6))
+        plt.hist2d(NeutronCount, NeutronPrimaryEnergies, bins=30, cmap="Reds")
+        plt.title(key+' Count vs Primary Energies')
+        plt.xlabel(key+' Count')
+        plt.ylabel(key+' Primary Energies')
+        plt.colorbar(label='Counts')
+
+        # Show the plot
+        plt.savefig("EnergyNeutronHist_"+neutron_key+".png")
+        plt.close()
+
+    def plot_primary_energy(NeutronPrimaryEnergies, neutron_key,compton=False):
+        if compton:
+            end = "Compton"
+        else:
+            end = ""
+        # Create a histogram
+        plt.figure(figsize=(8, 6))
+        plt.hist(NeutronPrimaryEnergies, bins=np.arange(0,20,0.2))
+        plt.title('Primary Energies'+' '+neutron_key+' '+end)
+        plt.xlabel('Energies / MeV')
+        plt.ylabel('Primary Energies')
+        plt.grid()
+        plt.xlim(left=0,right=20)
+
+        # Show the plot
+        plt.savefig("EnergySpectrum_"+neutron_key+end+".png")
+        plt.close()
+
+    def stacked_primary_energy(compton, not_compton, neutron_key):
+        plt.figure(figsize=(8, 6))
+        
+        # Create the histogram with stacking
+        plt.hist([compton, not_compton], bins=np.arange(0, 20, 0.2), stacked=True, label=["Compton", "Not Compton"])
+        
+        plt.title('Primary Energies ' + neutron_key)
+        plt.xlabel('Energies / MeV')
+        plt.ylabel('Primary Energies')
+        plt.grid()
+        plt.xlim(left=0, right=20)
+        plt.legend()
+        
+        # Save the plot
+        plt.savefig("EnergySpectrumStacked_" + neutron_key + ".png")
+        plt.close()
 
     # generate directory and finalize path
     if with_neutrons:
@@ -85,6 +138,12 @@ def dSimulation_to_GraphSiPM(root_simulation,
             k_graphs_NoNeutron += 1
             n_nodes_NoNeutron += len(event.SiPMHit.SiPMId)
             m_edges_NoNeutron += len(event.SiPMHit.SiPMId) ** 2
+
+            NeutronCount.append(event.MCNPrimaryNeutrons)
+            PrimaryEnergies.append(event.MCEnergy_Primary)
+
+    plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
+    plot_primary_energy(PrimaryEnergies, neutron_key)
     print("Total number of Graphs to be created: ", k_graphs_NoNeutron)
     print("Total number of nodes to be created: ", n_nodes_NoNeutron)
     print("Total number of edges to be created: ", m_edges_NoNeutron)
@@ -110,6 +169,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
     graph_id_NoNeutron = 0
     node_id_NoNeutron = 0
     edge_id_NoNeutron = 0
+
+    distcompton_tags=list()
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         # get number of cluster
         if event == None:
@@ -177,6 +238,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
             target_position_e, target_position_p = event.get_target_position()
             ary_graph_labels_NoNeutron[graph_id_NoNeutron] = distcompton_tag * 1
             ary_pe_NoNeutron[graph_id_NoNeutron] = event.MCEnergy_Primary
+
+            distcompton_tags.append(distcompton_tag)
+
             if coordinate_system == "CRACOW":
                 ary_graph_attributes_NoNeutron[graph_id_NoNeutron, :] = [target_energy_e,
                                                     target_energy_p,
@@ -200,6 +264,17 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
             # count up graph indexing
             graph_id_NoNeutron += 1
+
+
+    NeutronCount=np.array(NeutronCount)
+    PrimaryEnergies=np.array(PrimaryEnergies)
+    distcompton_tags=np.array(distcompton_tags)
+    ComptonPrimaryEnergies=PrimaryEnergies[distcompton_tags]
+    NotComptonPrimaryEnergies=PrimaryEnergies[np.logical_not(distcompton_tags)]
+    plot_primary_energy(ComptonPrimaryEnergies, neutron_key,compton=True)
+    stacked_primary_energy(ComptonPrimaryEnergies,NotComptonPrimaryEnergies,neutron_key)
+    np.save(path + "/" + "ComptonPrimaryEnergies.npy", ComptonPrimaryEnergies)
+
 
     # save up all files
     np.save(path + "/" + "A.npy", ary_A_NoNeutron)
