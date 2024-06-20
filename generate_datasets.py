@@ -54,9 +54,6 @@ if __name__ == "__main__":
     coordinate_system   = args.coordinates if args.coordinates is not None else "CRACOW"
     with_neutrons       = args.neutrons if args.neutrons is not None else False
 
-    print(args.neutrons)
-
-
     main(n, 
          with_neutrons, 
          coordinate_system

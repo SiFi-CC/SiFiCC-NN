@@ -14,3 +14,10 @@ results/**/*.npz
 results/**/*.npy
 results/**/*.txt
 condor
+EnergyNeutronHist_Neutrons.png
+EnergyNeutronHist_NoNeutrons.png
+EnergySpectrum_Neutrons.png
+EnergySpectrum_NeutronsCompton.png
+EnergySpectrum_NoNeutrons.png
+EnergySpectrum_NoNeutronsCompton.png
+EnergySpectrumStacked_NoNeutrons.png
