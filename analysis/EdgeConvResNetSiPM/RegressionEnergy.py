@@ -306,7 +306,7 @@ if __name__ == "__main__":
     base_nOut = 2
     base_activation = "relu"
     base_activation_out = "relu"
-    base_do_training = False
+    base_do_training = True
     base_do_evaluation = True
 
     # this bunch is to set standard configuration if argument parser is not configured
