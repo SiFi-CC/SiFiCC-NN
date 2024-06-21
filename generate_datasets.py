@@ -25,11 +25,14 @@ path_datasets = "/net/scratch_g4rt1/clement/datasets"
 # Simulation GraphCluster
 ####################################################################################################
 
-def main(n, with_neutrons, coordinate_system):
+def main(n, with_neutrons, photon_set, coordinate_system):
     # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
     #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
     # NEW FILE 4to1_SiPM
-    files = ["OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons.root"]
+    if not photon_set:
+        files = ["OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons.root"]
+    else:
+        files = ["OptimisedGeometry_4to1_0mm_4e9protons_simv4.root"]
 
     for file in files:
         root_simulation = RootSimulation(path_root + file)
@@ -39,7 +42,8 @@ def main(n, with_neutrons, coordinate_system):
                                     n=n,
                                     coordinate_system=coordinate_system,
                                     energy_cut=None,
-                                    with_neutrons=with_neutrons)
+                                    with_neutrons=with_neutrons,
+                                    photon_set=photon_set)
 
 if __name__ == "__main__":
     # configure argument parser
@@ -47,15 +51,18 @@ if __name__ == "__main__":
     parser.add_argument("--n", type=int, help="Number of Events")
     parser.add_argument("--coordinates", type=str, help="Coordinate system")
     parser.add_argument("--neutrons", action=argparse.BooleanOptionalAction, help="Dataset consisting of only neutron events or without any neutrons")
+    parser.add_argument("--photon_set", action=argparse.BooleanOptionalAction, help="Dataset does not contain any neutrons, only prompt gammas")
 
     args = parser.parse_args()
 
     n                   = args.n if args.n is not None else None
     coordinate_system   = args.coordinates if args.coordinates is not None else "CRACOW"
-    with_neutrons       = args.neutrons if args.neutrons is not None else False
+    photon_set          = args.photon_set if args.photon_set is not None else True
+    with_neutrons       = args.neutrons if (args.neutrons is not None and not photon_set) else False
 
     main(n, 
          with_neutrons, 
+         photon_set,
          coordinate_system
          )
 

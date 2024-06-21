@@ -135,9 +135,9 @@ class RootSimulation:
         dictSiPMHit = {"SiPMData.fSiPMTimeStamp": "SiPMTimeStamp",
                        "SiPMData.fSiPMPhotonCount": "SiPMPhotonCount",
                        "SiPMData.fSiPMPosition": "SiPMPosition",
-                       "SiPMData.fSiPMId": "SiPMId"}
-                       #"SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
-                       #"SiPMData.fSiPMQDC": "SiPMPhotonCount"}
+                       "SiPMData.fSiPMId": "SiPMId",
+                       "SiPMData.fSiPMTriggerTime": "SiPMTimeStamp",
+                       "SiPMData.fSiPMQDC": "SiPMPhotonCount"}
         return dictSiPMHit
 
     @property

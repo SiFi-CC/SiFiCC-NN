@@ -25,7 +25,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
                              n=None,
                              coordinate_system="CRACOW",
                              energy_cut=None,
-                             with_neutrons=False):
+                             with_neutrons=False,
+                             photon_set=True):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
@@ -103,6 +104,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
         neutron_key = "Neutrons"
     else:
         neutron_key = "NoNeutrons"
+    if photon_set:
+        neutron_key = "OldDataset"
     
     if path == "":
         path = parent_directory() + "/datasets/"
@@ -125,7 +128,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if event == None:
             continue
-        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons):
+        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
             idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
             if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
                 continue
@@ -138,11 +141,12 @@ def dSimulation_to_GraphSiPM(root_simulation,
             k_graphs_NoNeutron += 1
             n_nodes_NoNeutron += len(event.SiPMHit.SiPMId)
             m_edges_NoNeutron += len(event.SiPMHit.SiPMId) ** 2
-
-            NeutronCount.append(event.MCNPrimaryNeutrons)
+            if not photon_set:
+                NeutronCount.append(event.MCNPrimaryNeutrons)
             PrimaryEnergies.append(event.MCEnergy_Primary)
 
-    plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
+    if not photon_set:
+        plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
     plot_primary_energy(PrimaryEnergies, neutron_key)
     print("Total number of Graphs to be created: ", k_graphs_NoNeutron)
     print("Total number of nodes to be created: ", n_nodes_NoNeutron)
@@ -175,7 +179,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
         # get number of cluster
         if event == None:
             continue
-        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons):
+        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
             n_sipm = int(len(event.SiPMHit.SiPMId))
 
             # coincidence check
@@ -265,8 +269,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
             # count up graph indexing
             graph_id_NoNeutron += 1
 
-
-    NeutronCount=np.array(NeutronCount)
+    if not photon_set:
+        NeutronCount=np.array(NeutronCount)
     PrimaryEnergies=np.array(PrimaryEnergies)
     distcompton_tags=np.array(distcompton_tags)
     ComptonPrimaryEnergies=PrimaryEnergies[distcompton_tags]
