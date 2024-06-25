@@ -383,23 +383,23 @@ def plot_position_error(y_pred, y_true, figure_name):
 
     # fitting position resolution
     popt0, pcov0 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist0,
-                             p0=[0.0, 1.0, np.sum(hist0) * width])
+                             p0=[0.0, 1.0, np.sum(hist0) * width] ,maxfev=1000000)
     popt1, pcov1 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist1,
-                             p0=[0.0, 20.0, np.sum(hist1) * width])
+                             p0=[0.0, 20.0, np.sum(hist1) * width] ,maxfev=1000000)
     popt2, pcov2 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist2,
-                             p0=[0.0, 1.0, np.sum(hist2) * width])
+                             p0=[0.0, 1.0, np.sum(hist2) * width] ,maxfev=1000000)
     popt3, pcov3 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist3,
-                             p0=[0.0, 1.0, np.sum(hist3) * width])
+                             p0=[0.0, 1.0, np.sum(hist3) * width] ,maxfev=1000000)
     popt4, pcov4 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist4,
-                             p0=[0.0, 20.0, np.sum(hist4) * width])
+                             p0=[0.0, 20.0, np.sum(hist4) * width] ,maxfev=1000000)
     popt5, pcov5 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist5,
-                             p0=[0.0, 1.0, np.sum(hist5) * width])
+                             p0=[0.0, 1.0, np.sum(hist5) * width] ,maxfev=1000000)
 
     ary_x = np.linspace(min(bins_err_x), max(bins_err_x), 1000)
     ary_y = np.linspace(min(bins_err_y), max(bins_err_y), 1000)
     ary_z = np.linspace(min(bins_err_z), max(bins_err_z), 1000)
 
-    plt.figure(figsize=(8, 5))
+    """ plt.figure(figsize=(8, 5))
     plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     plt.xlabel(r"$r^{Pred}_{x}$ - $r^{True}_{x}$ [mm]")
     plt.ylabel("counts")
@@ -445,7 +445,7 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.minorticks_on()
     plt.tight_layout()
     plt.savefig(figure_name + "_electron_x_relative.png")
-    plt.close()
+    plt.close() """
 
     plt.figure(figsize=(8, 5))
     plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
