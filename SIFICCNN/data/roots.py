@@ -205,8 +205,8 @@ class RootSimulation:
         if self.hasSiPMHit:
             for tleave in self.leavesTree[2]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
-            #if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
-            #    return None
+            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
+                return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
 
         fibrehit = None
