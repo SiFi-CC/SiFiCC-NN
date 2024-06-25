@@ -122,9 +122,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
     print("Energy Cut: {}".format(energy_cut))
     print("Coordinate system of root file: {}".format(coordinate_system))
     print("\nCounting number of graphs to be created")
-    k_graphs_NoNeutron = 0
-    n_nodes_NoNeutron = 0
-    m_edges_NoNeutron = 0
+    k_graphs = 0
+    n_nodes = 0
+    m_edges = 0
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if event == None:
             continue
@@ -138,9 +138,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
                 if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
                     continue
             """
-            k_graphs_NoNeutron += 1
-            n_nodes_NoNeutron += len(event.SiPMHit.SiPMId)
-            m_edges_NoNeutron += len(event.SiPMHit.SiPMId) ** 2
+            k_graphs += 1
+            n_nodes += len(event.SiPMHit.SiPMId)
+            m_edges += len(event.SiPMHit.SiPMId) ** 2
             if not photon_set:
                 NeutronCount.append(event.MCNPrimaryNeutrons)
             PrimaryEnergies.append(event.MCEnergy_Primary)
@@ -148,31 +148,31 @@ def dSimulation_to_GraphSiPM(root_simulation,
     if not photon_set:
         plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
     plot_primary_energy(PrimaryEnergies, neutron_key)
-    print("Total number of Graphs to be created: ", k_graphs_NoNeutron)
-    print("Total number of nodes to be created: ", n_nodes_NoNeutron)
-    print("Total number of edges to be created: ", m_edges_NoNeutron)
+    print("Total number of Graphs to be created: ", k_graphs)
+    print("Total number of nodes to be created: ", n_nodes)
+    print("Total number of edges to be created: ", m_edges)
     print("Graph features: {}".format(10))
     print("Graph targets: {}".format(9))
 
     # creating final arrays
     # datatypes are chosen for minimal size possible (duh)
-    ary_A_NoNeutron = np.zeros(shape=(m_edges_NoNeutron, 2), dtype=np.int32)
-    ary_graph_indicator_NoNeutron = np.zeros(shape=(n_nodes_NoNeutron,), dtype=np.int32)
-    ary_graph_labels_NoNeutron = np.zeros(shape=(k_graphs_NoNeutron,), dtype=np.bool_)
-    ary_node_attributes_NoNeutron = np.zeros(shape=(n_nodes_NoNeutron, 5), dtype=np.float32)
-    ary_graph_attributes_NoNeutron = np.zeros(shape=(k_graphs_NoNeutron, 8), dtype=np.float32)
-    ary_edge_attributes_NoNeutron = np.zeros(shape=(m_edges_NoNeutron, 3), dtype=np.float32)
+    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
+    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
+    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
+    ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
+    ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
+    ary_edge_attributes = np.zeros(shape=(m_edges, 3), dtype=np.float32)
     # meta data
-    ary_pe_NoNeutron = np.zeros(shape=(k_graphs_NoNeutron,), dtype=np.float32)
-    ary_sp_NoNeutron = np.zeros(shape=(k_graphs_NoNeutron,), dtype=np.float32)
+    ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
+    ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
 
     # main iteration over root file, containing beta coincidence check
     # NOTE:
     # "id" are here used for indexing instead of using the iteration variables i,j,k since some
     # events are skipped due to cuts or filters, therefore more controlled indexing is needed
-    graph_id_NoNeutron = 0
-    node_id_NoNeutron = 0
-    edge_id_NoNeutron = 0
+    graph_id = 0
+    node_id = 0
+    edge_id = 0
 
     distcompton_tags=list()
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
@@ -207,13 +207,13 @@ def dSimulation_to_GraphSiPM(root_simulation,
                         r, phi, theta = event.SiPMHit.get_edge_features(j, k, cartesian=False)
                     else:
                         r, phi, theta = 0, 0, 0
-                    ary_edge_attributes_NoNeutron[edge_id_NoNeutron, :] = [r, phi, theta]
+                    ary_edge_attributes[edge_id, :] = [r, phi, theta]
 
-                    ary_A_NoNeutron[edge_id_NoNeutron, :] = [node_id_NoNeutron, node_id_NoNeutron - j + k]
-                    edge_id_NoNeutron += 1
+                    ary_A[edge_id, :] = [node_id, node_id - j + k]
+                    edge_id += 1
 
                 # Graph indicator counts up which node belongs to which graph
-                ary_graph_indicator_NoNeutron[node_id_NoNeutron] = graph_id_NoNeutron
+                ary_graph_indicator[node_id] = graph_id
 
                 # collect node attributes for each node
                 # exception for different coordinate systems
@@ -223,30 +223,30 @@ def dSimulation_to_GraphSiPM(root_simulation,
                                         event.SiPMHit.SiPMPosition[j].x,
                                         event.SiPMHit.SiPMTimeStamp[j],
                                         event.SiPMHit.SiPMPhotonCount[j]])
-                    ary_node_attributes_NoNeutron[node_id_NoNeutron, :] = attributes
+                    ary_node_attributes[node_id, :] = attributes
                 if coordinate_system == "AACHEN":
                     attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
                                         event.SiPMHit.SiPMPosition[j].y,
                                         event.SiPMHit.SiPMPosition[j].z,
                                         event.SiPMHit.SiPMTimeStamp[j],
                                         event.SiPMHit.SiPMPhotonCount[j]])
-                    ary_node_attributes_NoNeutron[node_id_NoNeutron, :] = attributes
+                    ary_node_attributes[node_id, :] = attributes
 
                 # count up node indexing
-                node_id_NoNeutron += 1
+                node_id += 1
 
             # grab target labels and attributes
             event.ph_method = 2
             distcompton_tag = event.get_distcompton_tag()
             target_energy_e, target_energy_p = event.get_target_energy()
             target_position_e, target_position_p = event.get_target_position()
-            ary_graph_labels_NoNeutron[graph_id_NoNeutron] = distcompton_tag * 1
-            ary_pe_NoNeutron[graph_id_NoNeutron] = event.MCEnergy_Primary
+            ary_graph_labels[graph_id] = distcompton_tag * 1
+            ary_pe[graph_id] = event.MCEnergy_Primary
 
             distcompton_tags.append(distcompton_tag)
 
             if coordinate_system == "CRACOW":
-                ary_graph_attributes_NoNeutron[graph_id_NoNeutron, :] = [target_energy_e,
+                ary_graph_attributes[graph_id, :] = [target_energy_e,
                                                     target_energy_p,
                                                     target_position_e.z,
                                                     -target_position_e.y,
@@ -254,9 +254,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
                                                     target_position_p.z,
                                                     -target_position_p.y,
                                                     target_position_p.x]
-                ary_sp_NoNeutron[graph_id_NoNeutron] = event.MCPosition_source.z
+                ary_sp[graph_id] = event.MCPosition_source.z
             if coordinate_system == "AACHEN":
-                ary_graph_attributes_NoNeutron[graph_id_NoNeutron, :] = [target_energy_e,
+                ary_graph_attributes[graph_id, :] = [target_energy_e,
                                                     target_energy_p,
                                                     target_position_e.x,
                                                     target_position_e.y,
@@ -264,10 +264,10 @@ def dSimulation_to_GraphSiPM(root_simulation,
                                                     target_position_p.x,
                                                     target_position_p.y,
                                                     target_position_p.z]
-                ary_sp_NoNeutron[graph_id_NoNeutron] = event.MCPosition_source.x
+                ary_sp[graph_id] = event.MCPosition_source.x
 
             # count up graph indexing
-            graph_id_NoNeutron += 1
+            graph_id += 1
 
     if not photon_set:
         NeutronCount=np.array(NeutronCount)
@@ -281,14 +281,14 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
 
     # save up all files
-    np.save(path + "/" + "A.npy", ary_A_NoNeutron)
-    np.save(path + "/" + "graph_indicator.npy", ary_graph_indicator_NoNeutron)
-    np.save(path + "/" + "graph_labels.npy", ary_graph_labels_NoNeutron)
-    np.save(path + "/" + "node_attributes.npy", ary_node_attributes_NoNeutron)
-    np.save(path + "/" + "graph_attributes.npy", ary_graph_attributes_NoNeutron)
-    np.save(path + "/" + "edge_attributes.npy", ary_edge_attributes_NoNeutron)
-    np.save(path + "/" + "graph_pe.npy", ary_pe_NoNeutron)
-    np.save(path + "/" + "graph_sp.npy", ary_sp_NoNeutron)
+    np.save(path + "/" + "A.npy", ary_A)
+    np.save(path + "/" + "graph_indicator.npy", ary_graph_indicator)
+    np.save(path + "/" + "graph_labels.npy", ary_graph_labels)
+    np.save(path + "/" + "node_attributes.npy", ary_node_attributes)
+    np.save(path + "/" + "graph_attributes.npy", ary_graph_attributes)
+    np.save(path + "/" + "edge_attributes.npy", ary_edge_attributes)
+    np.save(path + "/" + "graph_pe.npy", ary_pe)
+    np.save(path + "/" + "graph_sp.npy", ary_sp)
 
 
 if __name__ == "__main__":
