@@ -57,7 +57,7 @@ def main(run_name="ECRNSiPM_unnamed",
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
     DATASET_CONT = "GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_4e9protons_simv4"
+    DATASET_0MM = "GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4"
     DATASET_5MM = "GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4"
     DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
     DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
@@ -191,9 +191,12 @@ def evaluate(dataset_name,
     # load datasets
     # Here all events are loaded and evaluated,
     # the true compton events are filtered later for plot
-    E_prim_path = parent_directory()
-    E_prim_path = os.path.join(E_prim_path, "datasets", "SimGraphSiPM", dataset_name, "ComptonPrimaryEnergies.npy")
-    E_prim = np.load(E_prim_path)
+    try:
+        E_prim_path = parent_directory()
+        E_prim_path = os.path.join(E_prim_path, "datasets", "SimGraphSiPM", dataset_name, "ComptonPrimaryEnergies.npy")
+        E_prim = np.load(E_prim_path)
+    except:
+        print("No primary energies found!")
     data = DSGraphSiPM(name=dataset_name,
                        norm_x=norm_x,
                        positives=False,
@@ -219,6 +222,23 @@ def evaluate(dataset_name,
     y_true = np.reshape(y_true, newshape=(y_true.shape[0], 6))
     y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 6))
 
+    print(y_true[0:20])
+    print("------------------")
+    print(np.max(y_true[:,0]))
+    print(np.max(y_true[:,1]))
+    print(np.max(y_true[:,2]))
+    print(np.max(y_true[:,3]))
+    print(np.max(y_true[:,4]))
+    print(np.max(y_true[:,5]))
+    print("------------------")
+    print(np.min(y_true[:,0]))
+    print(np.min(y_true[:,1]))
+    print(np.min(y_true[:,2]))
+    print(np.min(y_true[:,3]))
+    print(np.min(y_true[:,4]))
+    print(np.min(y_true[:,5]))
+    print("------------------")
+
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
     np.savetxt(fname=dataset_name + "_regP_pred.txt",
@@ -231,9 +251,60 @@ def evaluate(dataset_name,
                newline="\n")
     labels = data.labels
 
-    #plot_position_error(y_pred=y_pred[labels],
-    #                    y_true=y_true[labels],
-    #                    figure_name="position_error_new_function")
+    print(y_true[0:20])
+    print("------------------")
+    print(np.max(y_true[:,0]))
+    print(np.max(y_true[:,1]))
+    print(np.max(y_true[:,2]))
+    print(np.max(y_true[:,3]))
+    print(np.max(y_true[:,4]))
+    print(np.max(y_true[:,5]))
+    print("------------------")
+    print(np.min(y_true[:,0]))
+    print(np.min(y_true[:,1]))
+    print(np.min(y_true[:,2]))
+    print(np.min(y_true[:,3]))
+    print(np.min(y_true[:,4]))
+    print(np.min(y_true[:,5]))
+    print("------------------")
+
+    print(y_true[labels,:])
+    print("------------------")
+    print(np.max(y_true[labels,0]))
+    print(np.max(y_true[labels,1]))
+    print(np.max(y_true[labels,2]))
+    print(np.max(y_true[labels,3]))
+    print(np.max(y_true[labels,4]))
+    print(np.max(y_true[labels,5]))
+    print("------------------")
+    print(np.min(y_true[labels,0]))
+    print(np.min(y_true[labels,1]))
+    print(np.min(y_true[labels,2]))
+    print(np.min(y_true[labels,3]))
+    print(np.min(y_true[labels,4]))
+    print(np.min(y_true[labels,5]))
+    print("------------------")
+
+    print(y_pred[labels,:])
+    print("------------------")
+    print(np.max(y_pred[labels,0]))
+    print(np.max(y_pred[labels,1]))
+    print(np.max(y_pred[labels,2]))
+    print(np.max(y_pred[labels,3]))
+    print(np.max(y_pred[labels,4]))
+    print(np.max(y_pred[labels,5]))
+    print("------------------")
+    print(np.min(y_pred[labels,0]))
+    print(np.min(y_pred[labels,1]))
+    print(np.min(y_pred[labels,2]))
+    print(np.min(y_pred[labels,3]))
+    print(np.min(y_pred[labels,4]))
+    print(np.min(y_pred[labels,5]))
+    print("------------------")
+
+    """ plot_position_error(y_pred=y_pred[labels],
+                        y_true=y_true[labels],
+                        figure_name="position_error_OLD_DATASET") """
 
     """plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
                                     y_true=y_true[labels, 0],
