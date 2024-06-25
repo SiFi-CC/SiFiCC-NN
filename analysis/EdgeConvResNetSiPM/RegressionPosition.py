@@ -25,7 +25,8 @@ from SIFICCNN.plot import plot_1dhist_energy_residual, \
     plot_1dhist_position_residual, \
     plot_2dhist_energy_residual_vs_true, \
     plot_2dhist_energy_residual_relative_vs_true, \
-    plot_2dhist_position_residual_vs_true
+    plot_2dhist_position_residual_vs_true, \
+    plot_position_resolution
 
 from SIFICCNN.utils.plotter import plot_history_regression, \
     plot_position_error
@@ -56,12 +57,12 @@ def main(run_name="ECRNSiPM_unnamed",
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
     DATASET_CONT = "GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
-    DATASET_0MM = "GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4"
+    DATASET_0MM = "OptimisedGeometry_4to1_0mm_4e9protons_simv4"
     DATASET_5MM = "GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4"
     DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
     DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
-    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_EventsWithNeutrons"
-    DATASET_NONEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_NoNeutrons"
+    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_NEUTRONS"
+    DATASET_NONEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_NONEUTRONS"
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -73,7 +74,7 @@ def main(run_name="ECRNSiPM_unnamed",
         os.mkdir(path_results)
     for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_NEUTRONS]:
         if not os.path.isdir(path_results + "/" + file + "/"):
-            os.mkdir(path_results + "/" + file + "/")
+            os.mkdir(path_results + file + "/")
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
@@ -88,7 +89,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_NEUTRONS, DATASET_NONEUTRONS]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in [DATASET_0MM]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -190,6 +191,9 @@ def evaluate(dataset_name,
     # load datasets
     # Here all events are loaded and evaluated,
     # the true compton events are filtered later for plot
+    E_prim_path = parent_directory()
+    E_prim_path = os.path.join(E_prim_path, "datasets", "SimGraphSiPM", dataset_name, "ComptonPrimaryEnergies.npy")
+    E_prim = np.load(E_prim_path)
     data = DSGraphSiPM(name=dataset_name,
                        norm_x=norm_x,
                        positives=False,
@@ -204,6 +208,7 @@ def evaluate(dataset_name,
     # evaluation of test datasets (looks weird cause of bad tensorflow output format)
     y_true = []
     y_pred = []
+
     for batch in loader_test:
         inputs, target = batch
         p = tf_model(inputs, training=False)
@@ -230,55 +235,56 @@ def evaluate(dataset_name,
     #                    y_true=y_true[labels],
     #                    figure_name="position_error_new_function")
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
-                                  y_true=y_true[labels, 0],
-                                  particle="e",
-                                  coordinate="x",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("x"))
+    """plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
+                                    y_true=y_true[labels, 0],
+                                    particle="e",
+                                    coordinate="x",
+                                    file_name="1dhist_electron_position_{}_residual.png".format("x"))
     plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
-                                  y_true=y_true[labels, 3],
-                                  particle="\gamma",
-                                  coordinate="x",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("x"))
+                                    y_true=y_true[labels, 3],
+                                    particle="\gamma",
+                                    coordinate="x",
+                                    file_name="1dhist_gamma_position_{}_residual.png".format("x"))
 
     plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
-                                  y_true=y_true[labels, 1],
-                                  particle="e",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("y"))
+                                    y_true=y_true[labels, 1],
+                                    particle="e",
+                                    coordinate="y",
+                                    f="lorentzian",
+                                    file_name="1dhist_electron_position_{}_residual.png".format("y"))
     plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
-                                  y_true=y_true[labels, 4],
-                                  particle="\gamma",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("y"))
+                                    y_true=y_true[labels, 4],
+                                    particle="\gamma",
+                                    coordinate="y",
+                                    f="lorentzian",
+                                    file_name="1dhist_gamma_position_{}_residual.png".format("y"))
 
     plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
-                                  y_true=y_true[labels, 2],
-                                  particle="e",
-                                  coordinate="z",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("z"))
+                                    y_true=y_true[labels, 2],
+                                    particle="e",
+                                    coordinate="z",
+                                    file_name="1dhist_electron_position_{}_residual.png".format("z"))
     plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
-                                  y_true=y_true[labels, 5],
-                                  particle="\gamma",
-                                  coordinate="z",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("z"))
+                                    y_true=y_true[labels, 5],
+                                    particle="\gamma",
+                                    coordinate="z",
+                                    file_name="1dhist_gamma_position_{}_residual.png".format("z"))
 
 
     for i, r in enumerate(["x", "y", "z"]):
         plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
-                                              y_true=y_true[labels, i],
-                                              particle="e",
-                                              coordinate=r,
-                                              file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
-                                                  r))
+                                                y_true=y_true[labels, i],
+                                                particle="e",
+                                                coordinate=r,
+                                                file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
+                                                    r))
         plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i + 3],
-                                              y_true=y_true[labels, i + 3],
-                                              particle="\gamma",
-                                              coordinate=r,
-                                              file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
-                                                  r))
+                                                y_true=y_true[labels, i + 3],
+                                                particle="\gamma",
+                                                coordinate=r,
+                                                file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
+                                                    r)) """
+    plot_position_resolution(E_prim, y_true[labels, 1], y_pred[labels, 1], max_energy=10, energy_bins=20)
 
 
 if __name__ == "__main__":
