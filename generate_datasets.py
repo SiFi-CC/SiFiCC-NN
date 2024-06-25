@@ -58,6 +58,8 @@ if __name__ == "__main__":
     n                   = args.n if args.n is not None else None
     coordinate_system   = args.coordinates if args.coordinates is not None else "CRACOW"
     photon_set          = args.photon_set if args.photon_set is not None else True
+    if photon_set and args.neutrons:
+        raise ValueError("Dataset can't contain only photons and have neutrons!")
     with_neutrons       = args.neutrons if (args.neutrons is not None and not photon_set) else False
 
     main(n, 
