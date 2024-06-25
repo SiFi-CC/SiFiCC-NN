@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import AutoMinorLocator
 
-from .utils import auto_hist_fitting
+from .utils import auto_hist_fitting, get_fwhm
 
 # global settings
 plt.rcParams.update({'font.size': 14})
@@ -275,3 +275,31 @@ def plot_2dhist_position_residual_vs_true(y_pred,
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
+
+
+def plot_position_resolution(E_prim, y_true, y_pred, max_energy=10, energy_bins=20):
+    data_array = np.stack((E_prim, y_pred-y_true))
+    step_size = max_energy/energy_bins
+    arr_fwhm = np.zeros(shape=energy_bins, dtype=np.float32)
+    for i in range(energy_bins):
+        low_energy_bound = i*step_size
+        high_energy_bound = (i+1)*step_size
+        energy_slice = np.logical_and(np.greater_equal(data_array[0,:], low_energy_bound), np.less(data_array[0,:], high_energy_bound))
+        print("y_true")
+        print(y_true[energy_slice])
+        print("y_pred")
+        print(y_pred[energy_slice])
+
+        data_slice = data_array[1,energy_slice]
+        arr_fwhm[i] = get_fwhm(data_slice, i)
+
+    # plot the resolution
+    plt.plot(arr_fwhm)
+    plt.xticks(np.linspace(0,max_energy,11))
+    plt.ylim(bottom=0)
+    plt.xlim(left=0, right=max_energy)
+    plt.xlabel("Primary Energy / MeV")
+    plt.ylabel("FWHM-y / mm")
+    plt.title("y resolution")
+    plt.grid()
+    plt.savefig(r"/home/home2/institut_3b/clement/Master/FWHM_OLD_DATASET.png")

@@ -360,8 +360,8 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.rcParams.update({'font.size': 16})
     """
     Do bins_x cover y_true range: -49.4 <= 143.0400848388672 <= 156.94625854492188 <= 49.30000000000141
-Do bins_err_x cover error range: -5.5 <= -28.392242431640625 <= 185.6326446533203 <= 5.399999999999961
-Traceback (most recent call last):
+    Do bins_err_x cover error range: -5.5 <= -28.392242431640625 <= 185.6326446533203 <= 5.399999999999961
+    Traceback (most recent call last):
 
     """
 
