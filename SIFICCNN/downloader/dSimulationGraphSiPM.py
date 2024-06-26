@@ -26,6 +26,7 @@ def sipm_id_to_position(sipm_id):
 def dSimulation_to_GraphSiPM(simulation_data,
                            dataset_name,
                            path="",
+                           coordinate_system="CRACOW",
                            n=None):
     """
     Script to generate datasets in graph format from simulated detector data.
@@ -99,19 +100,25 @@ def dSimulation_to_GraphSiPM(simulation_data,
             # Graph indicator counts which node belongs to which graph
             ary_graph_indicator[node_id] = graph_id
 
-            # Collect node attributes
-            try:
-                attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
-                                    event.SiPMHit.SiPMPosition[j].y,
-                                    event.SiPMHit.SiPMPosition[j].z,
-                                    event.SiPMHit.SiPMTimeStamp[j],
-                                    event.SiPMHit.SiPMPhotonCount[j]])
+            # collect node attributes for each node
+            # exception for different coordinate systems
+            if coordinate_system == "CRACOW":
+                attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
+                                       -event.SiPMHit.SiPMPosition[j].y,
+                                       event.SiPMHit.SiPMPosition[j].x,
+                                       event.SiPMHit.SiPMTimeStamp[j],
+                                       event.SiPMHit.SiPMPhotonCount[j]])
                 ary_node_attributes[node_id, :] = attributes
-                ary_SiPM_ids[node_id] = event.SiPMId[j]
-                # Increment node ID
-                node_id += 1
-            except:
-                continue
+            if coordinate_system == "AACHEN":
+                attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
+                                       event.SiPMHit.SiPMPosition[j].y,
+                                       event.SiPMHit.SiPMPosition[j].z,
+                                       event.SiPMHit.SiPMTimeStamp[j],
+                                       event.SiPMHit.SiPMPhotonCount[j]])
+                ary_node_attributes[node_id, :] = attributes
+
+            # count up node indexing
+            node_id += 1
 
 
         
