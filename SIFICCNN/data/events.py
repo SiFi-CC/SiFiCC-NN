@@ -973,7 +973,7 @@ class SiPMHit:
             phi = vec.phi
             theta = vec.theta
 
-            return r, phi, theta
+            return r, phi, theta, dt, dPhotonCount
 
         else:
             dx = vec.x
