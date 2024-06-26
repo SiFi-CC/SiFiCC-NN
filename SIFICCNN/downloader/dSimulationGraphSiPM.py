@@ -2,26 +2,38 @@ import numpy as np
 import os
 import argparse
 
-def are_connected(SiPM1, SiPM2):
-    is_y_neighbor = SiPM1[1] != SiPM2[1]
-    is_x_z_neighbor = abs(SiPM1[0] - SiPM2[0]) + abs(SiPM1[2] - SiPM2[2]) <=2
-    return is_x_z_neighbor and is_y_neighbor
 
-def sipm_id_to_position(sipm_id):
-    outside_check = np.greater(sipm_id, 224)
-    if np.any(outside_check == True):
-        raise ValueError("SiPMID outside detector found! ID: {} ".format(sipm_id))
-    # determine y
-    y = sipm_id // 112
-    # remove third dimension
-    sipm_id -= (y * 112)
+def get_adjacency_matrix():
+    def are_connected(SiPM1, SiPM2):
+        is_y_neighbor = SiPM1[1] != SiPM2[1]
+        is_x_z_neighbor = abs(SiPM1[0] - SiPM2[0]) + abs(SiPM1[2] - SiPM2[2]) <=2
+        return is_x_z_neighbor and is_y_neighbor
 
-    x = sipm_id // 28
-    z = (sipm_id % 28)
-    if type(x)==int:
-        return np.array([x,y,z])        
-    else:
-        return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
+    def sipm_id_to_position(sipm_id):
+        outside_check = np.greater(sipm_id, 224)
+        if np.any(outside_check == True):
+            raise ValueError("SiPMID outside detector found! ID: {} ".format(sipm_id))
+        # determine y
+        y = sipm_id // 112
+        # remove third dimension
+        sipm_id -= (y * 112)
+
+        x = sipm_id // 28
+        z = (sipm_id % 28)
+        try:
+            return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
+        except TypeError:
+            return np.array([x,y,z])
+		
+	       
+	       
+    A = np.zeros((224,224),dtype=np.int8)
+    I = np.arange(0,224,1)
+    for i in I:
+        for j in I:
+            if are_connected(sipm_id_to_position(i),sipm_id_to_position(j)):
+                A[i,j]=1
+    return A
 
 def dSimulation_to_GraphSiPM(simulation_data,
                            dataset_name,
@@ -70,7 +82,7 @@ def dSimulation_to_GraphSiPM(simulation_data,
     # Creating final arrays
     total_nodes = n_nodes 
     fibre_nodes = n_fibre_nodes
-    ary_A = np.zeros((224, 224), dtype=np.int8)
+    ary_A = get_adjacency_matrix()
     ary_graph_indicator = np.zeros((total_nodes,), dtype=np.int32)
     ary_node_attributes = np.zeros((total_nodes, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
     graph_attributes = np.zeros((k_graphs,55,7,2), dtype=np.float32) # Tensor with fibres (E,y)
@@ -84,26 +96,17 @@ def dSimulation_to_GraphSiPM(simulation_data,
     for i, event in enumerate(simulation_data.iterate_events(n=n)):
         if event is None:
             continue
-        #n_sipm = len(event.SiPMHit.SiPMId)
+        n_sipm = len(event.SiPMHit.SiPMId)
         #n_fibres = len(event.FibreHit.FibreId)
-        n_sipm = 224
         n_fibres = 385
 
         # Double iteration over SiPM nodes to determine adjacency
         for j in range(n_sipm):
-            if i==0:
-                for k in range(n_sipm):
-                    if are_connected(sipm_id_to_position(j), sipm_id_to_position(k)):
-                        # Add the edge
-                        ary_A[j, k] = 1
-
             # Graph indicator counts which node belongs to which graph
             ary_graph_indicator[node_id] = graph_id
 
             # collect node attributes for each node
             # exception for different coordinate systems
-            event.SiPMHit.summary()
-            print(event.SiPMHit.SiPMPosition[j])
             if coordinate_system == "CRACOW":
                 attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
                                        -event.SiPMHit.SiPMPosition[j].y,
