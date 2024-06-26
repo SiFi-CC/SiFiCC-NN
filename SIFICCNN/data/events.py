@@ -964,7 +964,9 @@ class SiPMHit:
         Returns:
             euclidean distance, azimuthal angle, polar angle
         """
-        vec = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
+        vec             = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
+        dt              = self.SiPMTimeStamp[idx2] - self.SiPMTimeStamp[idx1]
+        dPhotonCount    = self.SiPMPhotonCount[idx2]- self.SiPMPhotonCount[idx1]
 
         if not cartesian:
             r = vec.mag
@@ -978,7 +980,7 @@ class SiPMHit:
             dy = vec.y
             dz = vec.z
 
-            return dx, dy, dz
+            return dx, dy, dz, dt, dPhotonCount
 
 
 class FibreHit:

@@ -127,10 +127,10 @@ def dSimulation_to_GraphSiPM(root_simulation,
                 # determine edge attributes
                 if j != k:
                     # grab edge features in polar and cartesian representation
-                    r, phi, theta = event.SiPMHit.get_edge_features(j, k, cartesian=False)
+                    r, phi, theta, dt, dPhotonCount = event.SiPMHit.get_edge_features(j, k, cartesian=False)
                 else:
-                    r, phi, theta = 0, 0, 0
-                ary_edge_attributes[edge_id, :] = [r, phi, theta]
+                    r, phi, theta, dt, dPhotonCount = 0, 0, 0 ,0 ,0
+                ary_edge_attributes[edge_id, :] = [r, phi, theta, dt, dPhotonCount]
 
                 ary_A[edge_id, :] = [node_id, node_id - j + k]
                 edge_id += 1
