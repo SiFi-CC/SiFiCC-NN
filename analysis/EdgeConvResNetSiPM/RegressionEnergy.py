@@ -17,7 +17,7 @@ from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
-from SIFICCNN.models import SiFiECRNShort
+from SIFICCNN.models import SiFiECRNShort, SiFiECRNShortReshape
 from SIFICCNN.utils import parent_directory
 
 from SIFICCNN.plot import plot_1dhist_energy_residual, \
@@ -36,6 +36,7 @@ def main(run_name="ECRNSiPM_unnamed",
          dropout=0.1,
          nFilter=32,
          nOut=2,
+         shape=(2,),
          activation="relu",
          activation_out="relu",
          do_training=False,
@@ -48,6 +49,7 @@ def main(run_name="ECRNSiPM_unnamed",
     modelParameter = {"nFilter": nFilter,
                       "activation": activation,
                       "n_out": nOut,
+                      "shape": shape,
                       "activation_out": activation_out,
                       "dropout": dropout}
 
@@ -107,7 +109,7 @@ def training(dataset_name,
                        regression="Energy")
 
     # build tensorflow model
-    tf_model = SiFiECRNShort(F=5, **modelParameter)
+    tf_model = SiFiECRNShortReshape(F=5, **modelParameter)
     print(tf_model.summary())
 
     # generate disjoint loader from datasets
