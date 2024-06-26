@@ -60,8 +60,8 @@ def main(run_name="ECRNSiPM_unnamed",
     DATASET_5MM = "GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4"
     DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
     DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
-    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
-    DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
+    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
+    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -71,7 +71,7 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_NEUTRONS]:
+    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
@@ -88,7 +88,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_NEUTRONS]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in []: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
