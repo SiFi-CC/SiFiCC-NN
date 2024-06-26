@@ -72,9 +72,7 @@ def dSimulation_to_GraphSiPM(simulation_data,
     ary_A = np.zeros((224, 224), dtype=np.int8)
     ary_graph_indicator = np.zeros((total_nodes,), dtype=np.int32)
     ary_node_attributes = np.zeros((total_nodes, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
-    #ary_fibre_targets = np.zeros((n_fibre_nodes, 4), dtype=np.float32)  # x, z, y, energy
-    #ary_fibre_graph_indicator = np.zeros((fibre_nodes,), dtype=np.int32)
-    fibre_tensor = np.zeros((k_graphs,55,7,2), dtype=np.float32)
+    graph_attributes = np.zeros((k_graphs,55,7,2), dtype=np.float32) # Tensor with fibres (E,y)
     ary_SiPM_ids = np.zeros((total_nodes), dtype=np.int8)
 
     # Main iteration over simulation data
@@ -119,7 +117,7 @@ def dSimulation_to_GraphSiPM(simulation_data,
         
         for j in range(n_fibres):
             try:
-                fibre_tensor[graph_id,int((event.FibreHit.FibrePosition[j].x+55)//2),int((event.FibreHit.FibrePosition[j].z-220)//2),:]=np.array([event.FibreHit.FibrePosition[j].y, event.FibreHit.FibreEnergy[j]])
+                graph_attributes[graph_id,int((event.FibreHit.FibrePosition[j].x+55)//2),int((event.FibreHit.FibrePosition[j].z-220)//2),:]=np.array([event.FibreHit.FibrePosition[j].y, event.FibreHit.FibreEnergy[j]])
             except:
                 continue
         # Increment graph ID
@@ -132,7 +130,7 @@ def dSimulation_to_GraphSiPM(simulation_data,
     np.save(os.path.join(path, "A.npy"), ary_A)
     np.save(os.path.join(path, "graph_indicator.npy"), ary_graph_indicator)
     np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
-    np.save(os.path.join(path, "graph_attributes.npy"), fibre_tensor)
+    np.save(os.path.join(path, "graph_attributes.npy"), graph_attributes)
     np.save(os.path.join(path, "sipm_ids.npy"), ary_SiPM_ids)
 
 
