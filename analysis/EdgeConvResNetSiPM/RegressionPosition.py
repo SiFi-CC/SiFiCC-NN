@@ -55,11 +55,11 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
-    DATASET_0MM = "GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4"
-    DATASET_5MM = "GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4"
-    DATASET_10MM = "GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4"
-    DATASET_m5MM = "GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
+    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
+    DATASET_0MM = "OptimisedGeometry_4to1_0mm_4e9protons_simv4"
+    DATASET_5MM = "OptimisedGeometry_4to1_5mm_4e9protons_simv4"
+    DATASET_10MM = "OptimisedGeometry_4to1_10mm_4e9protons_simv4"
+    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
@@ -306,8 +306,8 @@ if __name__ == "__main__":
     base_nOut = 6
     base_activation = "relu"
     base_activation_out = "linear"
-    base_do_training = False
-    base_do_evaluation = True
+    base_do_training = True
+    base_do_evaluation = False
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
