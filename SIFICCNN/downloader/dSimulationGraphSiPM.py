@@ -71,7 +71,6 @@ def dSimulation_to_GraphSiPM(simulation_data,
     fibre_nodes = n_fibre_nodes
     ary_A = np.zeros((224, 224), dtype=np.int8)
     ary_graph_indicator = np.zeros((total_nodes,), dtype=np.int32)
-    ary_graph_labels = np.zeros((k_graphs,), dtype=np.float32)
     ary_node_attributes = np.zeros((total_nodes, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
     #ary_fibre_targets = np.zeros((n_fibre_nodes, 4), dtype=np.float32)  # x, z, y, energy
     #ary_fibre_graph_indicator = np.zeros((fibre_nodes,), dtype=np.int32)
@@ -127,14 +126,11 @@ def dSimulation_to_GraphSiPM(simulation_data,
         graph_id += 1
 
 
-        distcompton_tag = event.get_distcompton_tag()
-        ary_graph_labels[graph_id] = distcompton_tag * 1
 
 
     # Save arrays as .npy files
     np.save(os.path.join(path, "A.npy"), ary_A)
     np.save(os.path.join(path, "graph_indicator.npy"), ary_graph_indicator)
-    np.save(os.path.join(path, "graph_labels.npy"), ary_graph_labels)
     np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
     np.save(os.path.join(path, "graph_attributes.npy"), fibre_tensor)
     np.save(os.path.join(path, "sipm_ids.npy"), ary_SiPM_ids)
