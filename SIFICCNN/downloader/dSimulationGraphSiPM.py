@@ -102,6 +102,8 @@ def dSimulation_to_GraphSiPM(simulation_data,
 
             # collect node attributes for each node
             # exception for different coordinate systems
+            event.SiPMHit.summary()
+            print(event.SiPMHit.SiPMPosition[j])
             if coordinate_system == "CRACOW":
                 attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
                                        -event.SiPMHit.SiPMPosition[j].y,
