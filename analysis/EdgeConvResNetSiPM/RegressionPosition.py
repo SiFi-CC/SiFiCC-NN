@@ -88,7 +88,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in []: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in [DATASET_0MM]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -306,8 +306,8 @@ if __name__ == "__main__":
     base_nOut = 6
     base_activation = "relu"
     base_activation_out = "linear"
-    base_do_training = True
-    base_do_evaluation = False
+    base_do_training = False
+    base_do_evaluation = True
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
