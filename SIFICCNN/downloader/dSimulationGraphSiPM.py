@@ -127,16 +127,17 @@ def dSimulation_to_GraphSiPM(simulation_data,
         graph_id += 1
 
 
+        distcompton_tag = event.get_distcompton_tag()
+        ary_graph_labels[graph_id] = distcompton_tag * 1
+
 
     # Save arrays as .npy files
     np.save(os.path.join(path, "A.npy"), ary_A)
     np.save(os.path.join(path, "graph_indicator.npy"), ary_graph_indicator)
     np.save(os.path.join(path, "graph_labels.npy"), ary_graph_labels)
     np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
-    np.save(os.path.join(path, "fibre_tensor.npy"), fibre_tensor)
+    np.save(os.path.join(path, "graph_attributes.npy"), fibre_tensor)
     np.save(os.path.join(path, "sipm_ids.npy"), ary_SiPM_ids)
-    """ np.save(os.path.join(path, "fibre_targets.npy"), ary_fibre_targets)
-    np.save(os.path.join(path, "fibre_indicator.npy"), ary_fibre_graph_indicator) """
 
 
 if __name__ == "__main__":
