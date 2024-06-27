@@ -283,7 +283,7 @@ if __name__ == "__main__":
 
     # base settings if no parameters are given
     # can also be used to execute this script without console parameter
-    base_run_name = "SimGraphSiPM"
+    base_run_name = "SimGraphSiPMwithdtdQDC"
     base_epochs = 100
     base_batch_size = 64
     base_dropout = 0.0
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     base_activation = "relu"
     base_activation_out = "sigmoid"
     base_do_training = True
-    base_do_evaluation = False
+    base_do_evaluation = True
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
