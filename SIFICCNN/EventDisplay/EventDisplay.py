@@ -188,15 +188,15 @@ class EventDisplay:
     def draw_fibre_hits(self):
         self._verify_event()
         # fibre hits plus boxes
-        for i in range(len(self.event.fibre_position)):
-            self.ax.plot3D(self.event.fibre_position.x[i],
-                           self.event.fibre_position.y[i],
-                           self.event.fibre_position.z[i],
+        for i in range(len(self.event.FibreHit.FibrePosition)):
+            self.ax.plot3D(self.event.FibreHit.FibrePosition[i].x,
+                           self.event.FibreHit.FibrePosition[i].y,
+                           self.event.FibreHit.FibrePosition[i].z,
                            "o",
                            color="lime")
-            list_fibre_edges = get_edges(self.event.fibre_position.x[i],
+            list_fibre_edges = get_edges(self.event.FibreHit.FibrePosition[i].x,
                                          0,
-                                         self.event.fibre_position.z[i],
+                                         self.event.FibreHit.FibrePosition[i].z,
                                          1.94,
                                          100,
                                          1.94)
@@ -209,10 +209,10 @@ class EventDisplay:
     def draw_sipm_hits(self):
         self._verify_event()
 
-        for i in range(len(self.event.SiPM_position)):
-            list_sipm_edges = get_edges(self.event.SiPM_position.x[i],
-                                        self.event.SiPM_position.y[i],
-                                        self.event.SiPM_position.z[i],
+        for i in range(len(self.event.SiPMHit.SiPMPosition)):
+            list_sipm_edges = get_edges(self.event.SiPMHit.SiPMPosition[i].x,
+                                        self.event.SiPMHit.SiPMPosition[i].y,
+                                        self.event.SiPMHit.SiPMPosition[i].z,
                                         4.0,
                                         0,
                                         4.0)
@@ -221,7 +221,20 @@ class EventDisplay:
                                list_sipm_edges[j][1],
                                list_sipm_edges[j][2],
                                color="darkgreen")
+                
+    def draw_all(self, coordinate_system):
+        self.set_coordinate_system(coordinate_system)
+        #self.draw_cluster_hits()
+        self.draw_cone_targets()
+        self.draw_cone_true()
+        self.draw_detector()
+        self.draw_fibre_hits()
+        self.draw_interactions()
+        self.draw_promptgamma()
+        self.draw_reference_axis()
+        self.draw_sipm_hits()
 
     @staticmethod
     def show():
         plt.show()
+        plt.close()
