@@ -237,4 +237,3 @@ class EventDisplay:
     @staticmethod
     def show():
         plt.show()
-        plt.close()
