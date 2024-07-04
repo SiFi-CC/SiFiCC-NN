@@ -87,7 +87,6 @@ def dSimulation_to_GraphSiPM(root_simulation,
     ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
-    ary_edge_attributes = np.zeros(shape=(m_edges, 5), dtype=np.float32)
     # meta data
     ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
     ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
@@ -125,12 +124,6 @@ def dSimulation_to_GraphSiPM(root_simulation,
                     continue
                 """
                 # determine edge attributes
-                if j != k:
-                    # grab edge features in polar and cartesian representation
-                    r, phi, theta, dt, dPhotonCount = event.SiPMHit.get_edge_features(j, k, cartesian=False)
-                else:
-                    r, phi, theta, dt, dPhotonCount = 0, 0, 0 ,0 ,0
-                ary_edge_attributes[edge_id, :] = [r, phi, theta, dt, dPhotonCount]
 
                 ary_A[edge_id, :] = [node_id, node_id - j + k]
                 edge_id += 1
@@ -195,7 +188,6 @@ def dSimulation_to_GraphSiPM(root_simulation,
     np.save(path + "/" + "graph_labels.npy", ary_graph_labels)
     np.save(path + "/" + "node_attributes.npy", ary_node_attributes)
     np.save(path + "/" + "graph_attributes.npy", ary_graph_attributes)
-    np.save(path + "/" + "edge_attributes.npy", ary_edge_attributes)
     np.save(path + "/" + "graph_pe.npy", ary_pe)
     np.save(path + "/" + "graph_sp.npy", ary_sp)
 
