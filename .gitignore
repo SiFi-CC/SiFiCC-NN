@@ -3,8 +3,10 @@
 *.pyc
 
 # data storage directories
-/root_files/*
-/datasets/*
+/root_files
+/datasets
+/results
+/condor
 
 # ignore .png, .root, .npz and .npy in results subdirectory
 # files are too large and too many to properly comit
@@ -22,3 +24,5 @@ EnergySpectrum_NoNeutrons.png
 EnergySpectrum_NoNeutronsCompton.png
 EnergySpectrumStacked_Neutrons.png
 EnergySpectrumStacked_NoNeutrons.png
+datasets
+results
