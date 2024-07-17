@@ -181,9 +181,11 @@ class EventSimulation:
                     else:
                         self.MCInteractions_p_full[i, 3] = 1
 
+    """
     # neural network target getter methods
     def get_target_position(self):
-        """
+    """
+    """
         Get Monte-Carlo Truth position for scatterer and absorber Compton interactions.
         The scatterer interaction is defined by the Compton scattering position of the initial
         prompt gamma, the absorber position will be defined by either an additional interaction of
@@ -194,7 +196,8 @@ class EventSimulation:
         return:
             target_position_e (TVector3) : target electron (scatterer) interaction
             target_position_P (TVector3) : target photon (absorber) interaction
-        """
+    """
+    """
 
         # initialization
         # The target electron interaction is always predefined by the Compton scattering interaction
@@ -257,6 +260,101 @@ class EventSimulation:
         # scattering
         else:
             return target_position_e, target_position_p
+    """
+
+    def get_target_position(self, ph_method="TRUE", ph_acceptance=1e-1):
+        """
+        Get Monte-Carlo Truth position for scatterer and absorber Compton interactions.
+        The scatterer interaction is defined by the Compton scattering position of the initial
+        prompt gamma, the absorber position will be defined by either an additional interaction of
+        the prompt gamma or the next best secondary interaction. For that each absorber interaction
+        will be tested if their position matches with the scattering direction of the scattered
+        prompt gamma.
+
+        return:
+            target_position_e (TVector3) : target electron (scatterer) interaction
+            target_position_P (TVector3) : target photon (absorber) interaction
+        """
+
+        # initialization
+        target_position_e = self.MCComptonPosition
+        target_position_p = TVector3(0, 0, 0)
+
+        # exceptions for interaction list that are too short due to missing interactions
+        # Note: This is mostly if the scattering is only happening in the scatterer
+        if len(self.MCPosition_p) <= 1:
+            return target_position_e, target_position_p
+
+        # check if the first interaction is compton scattering in the scatterer
+        if (self.MCInteractions_p_full[0, 0] == 1 and
+                self.scatterer.is_vec_in_module(self.MCPosition_p[0])):
+
+            # scan for the next interaction of the primary prompt gamma
+            # Its position interactions auto determines if the event is a dist. Compton
+            for i in range(1, len(self.MCInteractions_p_full)):
+                if self.MCInteractions_p_full[i, 1] == 0 and self.MCInteractions_p_full[i, 3] == 1:
+                    target_position_p = self.MCPosition_p[i]
+                    return target_position_e, target_position_p
+
+            """
+            NOTE: Previous exceptions used below, needs to be investigated if they are now redundant
+            
+            # check if the next interaction is not additional scattering in the scatterer
+            # by checking the interaction type of the next interaction and its x-position
+            # if true, break as compton cone is not reproducible
+            if (self.MCInteractions_p_uni[1, 0] == 1 and
+                    self.scatterer.is_vec_in_module(self.MCPosition_p[1])):
+                return target_position_e, target_position_p
+
+            # check if the next interaction is energy deposition in the absorber
+            if (self.MCInteractions_p_uni[1, 1] == 0 and
+                    self.absorber.is_vec_in_module(self.MCPosition_p[1]) and
+                    self.MCInteractions_p_uni[1, 3] == 1):
+                # set correct targets
+                target_position_p = self.MCPosition_p[1]
+                return target_position_e, target_position_p
+            """
+
+            # Phantom hit exception:
+            # check if a secondary interaction can substitute a missing primary interaction
+            # depending on the pre-defined phantom hit definition
+            # exception if phantom hits are disabled
+            if ph_method == "NONE":
+                return target_position_e, target_position_p
+
+            # True method: uses pair-production tag in interaction list
+            if ph_method == "TRUE":
+                for i in range(1, len(self.MCInteractions_p_full)):
+                    if self.MCInteractions_p_full[i, 0] == 3:
+                        target_position_p = self.MCPosition_p[i + 1]
+                        self.tag_phantom_hit = True
+                        return target_position_e, target_position_p
+
+            # Fake method:
+            # Uses distance of interaction to expected prompt gamma track, allowed maximum
+            # distance is limited by ph_acceptance parameter
+            if ph_method == "FAKE":
+                for i in range(1, len(self.MCInteractions_p_full)):
+                    # skip zero energy deposition interactions
+                    if self.MCInteractions_p_full[i, 3] == 0:
+                        continue
+                    if (self.MCInteractions_p_full[i, 1] <= 2 and
+                            self.absorber.is_vec_in_module(self.MCPosition_p[i])):
+                        # check additionally if the interaction is in the scattering
+                        # direction
+                        tmp_angle = vector_angle(
+                            self.MCPosition_p[i] - self.MCComptonPosition,
+                            self.MCDirection_scatter)
+                        r = (self.MCPosition_p[i] - self.MCComptonPosition).mag
+                        tmp_dist = np.sin(tmp_angle) * r
+                        if tmp_dist < ph_acceptance:
+                            self.tag_phantom_hit = True
+                            target_position_p = self.MCPosition_p[i]
+                            return target_position_e, target_position_p
+
+        return target_position_e, target_position_p
+
+
 
     def get_target_energy(self):
         """
