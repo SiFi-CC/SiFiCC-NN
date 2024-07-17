@@ -49,7 +49,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     n                   = args.n if args.n is not None else None
-    coordinate_system   = args.coordinates if args.coordinates is not None else "CRACOW"
+    coordinate_system   = args.coordinates if args.coordinates is not None else "AACHEN"
     if args.file is not None:
         file = args.file
     else:
