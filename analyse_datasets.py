@@ -60,16 +60,17 @@ def go_through_path(data, path):
 
 def main():
     directory_paths = [
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_Continuous_2e10protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_0mm_4e9protons_simv4", 
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_5mm_4e9protons_simv4", 
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_10mm_4e9protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_minus5mm_4e9protons_simv4",  
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4",
-        "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4",
+        "/home/philippe/Master/github/SiFiCC-NN/datasets_0/SimGraphSiPM/OptimisedGeometry_4to1_Continuous_2e10protons_simv4",
+        "/home/philippe/Master/github/SiFiCC-NN/datasets_0/SimGraphSiPM/OptimisedGeometry_4to1_Continuous_2e10protons_simv4_SIFICCNNFUNCTION",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_0mm_4e9protons_simv4", 
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_5mm_4e9protons_simv4", 
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_10mm_4e9protons_simv4",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/OptimisedGeometry_4to1_minus5mm_4e9protons_simv4",  
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_0mm_4e9protons_simv4",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_5mm_4e9protons_simv4",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_10mm_4e9protons_simv4",
+        #"/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/datasets/SimGraphSiPM/archive/GraphSiPM_OptimisedGeometry_4to1_minus5mm_4e9protons_simv4",
         ]
     for directory_path in directory_paths:
         data = read_files(directory_path)
