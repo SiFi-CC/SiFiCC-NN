@@ -1,27 +1,38 @@
 import numpy as np
-from numba import jit, njit
 import os
 
+def get_compton_distances(arr):
+    if arr.shape[1]==8:
+        print("-------------------------")
+        e_slice = arr[:,2:5]
+        p_slice = arr[:,5:]
+        distances = e_slice-p_slice
+        print(distances)
+        return mean_std(distances)
+    else:
+        return np.inf
 
-@njit
 def mean_std(arr):
     return np.mean(arr), np.std(arr)
 
-@njit(parallel=True)
 def iterate_array(arr):
-    results=np.zeros(arr.shape[-1])
+    results=np.zeros((arr.shape[-1],2))
+    print(mean_std(arr[:,0]))
+    print(results.shape)
     for i in range(arr.shape[-1]):
-        results[i] = mean_std(arr[:,i])
+        results[i,0], results[i,1] = mean_std(arr[:,i])
 
+    print(get_compton_distances(arr))
+    return results
 
 def read_files(path):
     suffixes = [
-        'A.npy', 
+        #'A.npy', 
         'graph_attributes.npy', 
-        'graph_labels.npy', 
-        'graph_sp.npy',
-        'graph_indicator.npy', 
-        'graph_pe.npy', 
+        #'graph_labels.npy', 
+        #'graph_sp.npy',
+        #'graph_indicator.npy', 
+        #'graph_pe.npy', 
         'node_attributes.npy',
     ]
 
@@ -34,17 +45,17 @@ def read_files(path):
 
     return data
 
-@njit(parallel=True)
 def go_through_path(data, path):
     for key, value in data.items():
-        means, stds = calculate_statistics(value)
-        means_path = os.path.join("/home/home2/institut_3b/clement/Master/github/",path.split("/")[-1], f"{key}_means.npy")
-        stds_path = os.path.join("/home/home2/institut_3b/clement/Master/github/",path.split("/")[-1], f"{key}_stds.npy")
-        np.save(means_path, means)
-        np.save(stds_path, stds)
+        results = iterate_array(value)
+        #means_path = os.path.join("/home/home2/institut_3b/clement/Master/github/",path.split("/")[-1], f"{key}_means.npy")
+        #stds_path = os.path.join("/home/home2/institut_3b/clement/Master/github/",path.split("/")[-1], f"{key}_stds.npy")
+        #np.save(means_path, means)
+        #np.save(stds_path, stds)
         print(f"Saved statistics for {key}:")
-        print(f"  Means saved to: {means_path}")
-        print(f"  Standard Deviations saved to: {stds_path}")
+        #print(f"  Means saved to: {means_path}")
+        #print(f"  Standard Deviations saved to: {stds_path}")
+        print(results)
 
 
 def main():
@@ -62,7 +73,7 @@ def main():
         ]
     for directory_path in directory_paths:
         data = read_files(directory_path)
-        go_through_path(data, path)
+        go_through_path(data, directory_path)
 
 
 
