@@ -32,7 +32,7 @@ n = 10000 #685891
 
 
 def main(n, file, coordinate_system):
-    root_simulation = RootSimulation(path_root + file)
+    root_simulation = RootSimulation(file)#pathroot+
     dSimulation_to_GraphSiPM(root_simulation=root_simulation,                       #Cluster statt SiPM
                                 dataset_name=root_simulation.file_name,
                                 path="",

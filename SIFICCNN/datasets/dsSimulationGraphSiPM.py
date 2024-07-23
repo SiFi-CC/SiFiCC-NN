@@ -119,15 +119,17 @@ class DSGraphSiPM(Dataset):
 
         return x_list
 
-    def _get_e_list(self, n_edges_cum):
+    def _get_e_list(self, n_edges_cum, n_nodes):
         """
         Grabs edge features from files.
         """
+
         e_attr = np.load(self.path + "/" + "edge_attributes.npy")  # ["arr_0"]
         if self.norm_e is None:
             self.norm_e = self._get_standardization(e_attr)
         self._standardize(e_attr, self.norm_e)
         e_list = np.split(e_attr, n_edges_cum)
+
         return e_list
 
     def _get_y_list(self):
