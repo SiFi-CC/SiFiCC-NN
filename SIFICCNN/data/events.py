@@ -181,11 +181,11 @@ class EventSimulation:
                     else:
                         self.MCInteractions_p_full[i, 3] = 1
 
-    """
+    
     # neural network target getter methods
     def get_target_position(self):
-    """
-    """
+    
+        """
         Get Monte-Carlo Truth position for scatterer and absorber Compton interactions.
         The scatterer interaction is defined by the Compton scattering position of the initial
         prompt gamma, the absorber position will be defined by either an additional interaction of
@@ -196,8 +196,8 @@ class EventSimulation:
         return:
             target_position_e (TVector3) : target electron (scatterer) interaction
             target_position_P (TVector3) : target photon (absorber) interaction
-    """
-    """
+        """
+    
 
         # initialization
         # The target electron interaction is always predefined by the Compton scattering interaction
@@ -260,9 +260,9 @@ class EventSimulation:
         # scattering
         else:
             return target_position_e, target_position_p
-    """
+    
 
-    def get_target_position(self, ph_method="TRUE", ph_acceptance=1e-1):
+    def get_target_position_old(self, ph_method="TRUE", ph_acceptance=1e-1):
         """
         Get Monte-Carlo Truth position for scatterer and absorber Compton interactions.
         The scatterer interaction is defined by the Compton scattering position of the initial
