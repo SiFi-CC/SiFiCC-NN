@@ -171,7 +171,8 @@ class RootSimulation:
                             desc="iterating root tree")
         progbar_step = 0
         progbar_update_size = 1000
-
+        if n_start is None:
+            n_start = 0
         for batch in self.events.iterate(step_size="1000000 kB",
                                          entry_start=n_start,
                                          entry_stop=n+n_start):
