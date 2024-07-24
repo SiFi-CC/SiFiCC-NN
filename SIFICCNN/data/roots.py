@@ -160,8 +160,10 @@ class RootSimulation:
             yield event at every root tree entry
 
         """
+        if n_start is None:
+            n_start = 0
         # evaluate parameter n
-        if n_start is not None and n_start > self.events_entries:
+        if n_start > self.events_entries:
             raise ValueError("Can't start at index {}, root file only contains {} events!".format(n_start, self.events_entries))
         if n is None:
             n = self.events_entries-n_start
@@ -171,8 +173,7 @@ class RootSimulation:
                             desc="iterating root tree")
         progbar_step = 0
         progbar_update_size = 1000
-        if n_start is None:
-            n_start = 0
+
         for batch in self.events.iterate(step_size="1000000 kB",
                                          entry_start=n_start,
                                          entry_stop=n+n_start):
