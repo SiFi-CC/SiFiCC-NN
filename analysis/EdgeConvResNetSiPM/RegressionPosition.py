@@ -298,7 +298,7 @@ if __name__ == "__main__":
 
     # base settings if no parameters are given
     # can also be used to execute this script without console parameter
-    base_run_name = "SimGraphSiPM"
+    base_run_name = "StartingAt2000000"
     base_epochs = 5
     base_batch_size = 64
     base_dropout = 0.0
