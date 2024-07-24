@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-import numpy as np
 
-from ..utils import TVector3, compton_scattering_angle, vector_angle
-from .utils import get_edges, get_compton_cone_aachen, get_compton_cone_cracow, get_surface
+from ..utils import  vector_angle
+from .utils import get_edges, get_compton_cone_aachen, get_compton_cone_cracow
 
 
 class EventDisplay:

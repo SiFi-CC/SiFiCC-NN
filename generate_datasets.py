@@ -31,14 +31,15 @@ n = 10000 #685891
 # NEW FILE 4to1_SiPM
 
 
-def main(n, file, coordinate_system):
+def main(n, file, coordinate_system, n_start):
     root_simulation = RootSimulation(file)#pathroot+
     dSimulation_to_GraphSiPM(root_simulation=root_simulation,                       #Cluster statt SiPM
                                 dataset_name=root_simulation.file_name,
                                 path="",
                                 n=n,
                                 coordinate_system=coordinate_system,
-                                energy_cut=None)
+                                energy_cut=None,
+                                n_start=n_start)
     
 if __name__ == "__main__":
     # configure argument parser
@@ -46,10 +47,12 @@ if __name__ == "__main__":
     parser.add_argument("--n", type=int, help="Number of Events")
     parser.add_argument("--coordinates", type=str, help="Coordinate system")
     parser.add_argument("--file", type=str, help="File name")
+    parser.add_argument("--n_start", type=int, help="Start at Event")
     args = parser.parse_args()
 
     n                   = args.n if args.n is not None else None
     coordinate_system   = args.coordinates if args.coordinates is not None else "AACHEN"
+    n_start             = args.n_start if args.n_start is not None else None
     if args.file is not None:
         file = args.file
     else:
@@ -57,5 +60,6 @@ if __name__ == "__main__":
 
     main(n, 
          file,
-         coordinate_system
+         coordinate_system,
+         n_start
          )

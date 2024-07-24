@@ -148,7 +148,7 @@ class RootSimulation:
                         "FibreData.fFibreId": "FibreId"}
         return dictFibreHit
 
-    def iterate_events(self, n=None):
+    def iterate_events(self, n=None, n_start=None):
         """
         iteration over the events root tree
 
@@ -161,8 +161,10 @@ class RootSimulation:
 
         """
         # evaluate parameter n
+        if n_start is not None and n_start > self.events_entries:
+            raise ValueError("Can't start at index {}, root file only contains {} events!".format(n_start, self.events_entries))
         if n is None:
-            n = self.events_entries
+            n = self.events_entries-n_start
 
         # define progress bar
         progbar = tqdm.tqdm(total=n, ncols=100, file=sys.stdout,
@@ -171,8 +173,8 @@ class RootSimulation:
         progbar_update_size = 1000
 
         for batch in self.events.iterate(step_size="1000000 kB",
-                                         entry_start=0,
-                                         entry_stop=n):
+                                         entry_start=n_start,
+                                         entry_stop=n+n_start):
             length = len(batch)
             for idx in range(length):
                 yield self.__event_at_basket(batch, idx)

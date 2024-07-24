@@ -9,9 +9,9 @@
 import numpy as np
 import os
 import argparse
-import sys
 
-from SIFICCNN.utils import TVector3, tVector_list, parent_directory
+from SIFICCNN.utils import  parent_directory
+from SIFICCNN.EventDisplay import EventDisplay # for debugging
 
 
 def dSimulation_to_GraphSiPM(root_simulation,
@@ -19,7 +19,8 @@ def dSimulation_to_GraphSiPM(root_simulation,
                              path="",
                              n=None,
                              coordinate_system="CRACOW",
-                             energy_cut=None):
+                             energy_cut=None,
+                             n_start=None):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
@@ -59,7 +60,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     k_graphs = 0
     n_nodes = 0
     m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n)):
+    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
         if event == None:
             continue
         idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
