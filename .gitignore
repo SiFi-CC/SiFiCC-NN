@@ -14,3 +14,5 @@ results/**/*.npz
 results/**/*.npy
 results/**/*.txt
 condor
+datasets
+datasets_0
