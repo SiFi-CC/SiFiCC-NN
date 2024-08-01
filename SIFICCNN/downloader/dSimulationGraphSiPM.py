@@ -43,7 +43,7 @@ def process_event_chunk(chunk, nodes_per_event, node_id_at_event, edge_id_at_eve
             # double iteration over every cluster to determine adjacency and edge features
             for j in range(n_sipm):
                 for k in range(n_sipm):
-                    local_ary_A.append([edge_id, node_id, node_id - j + k])
+                    local_ary_A.append((edge_id, node_id, node_id - j + k))
                     edge_id += 1
 
                 # Graph indicator counts up which node belongs to which graph
@@ -186,10 +186,10 @@ def dSimulation_to_GraphSiPM(root_simulation,
             i, n = future.result()
             nodes_per_event[i] = n
 
-    k_graphs = np.count_nonzero(n_nodes)
+    k_graphs = np.count_nonzero(nodes_per_event)
     n_nodes = np.sum(nodes_per_event)
 
-    print("Total number of Graphs to be created: ", np.count_nonzero(n_nodes))
+    print("Total number of Graphs to be created: ", np.count_nonzero(nodes_per_event))
     print("Total number of nodes to be created: ", np.sum(n_nodes))
     print("Graph features: {}".format(5))
     print("Graph targets: {}".format(9))
@@ -231,20 +231,20 @@ def dSimulation_to_GraphSiPM(root_simulation,
         (local_ary_A, local_ary_graph_indicator, local_ary_node_attributes,
         local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp) = result
 
-        for edge in local_ary_A:
-            ary_A[edge[0], :] = edge[1:]
+        for edge_id, node1, node2 in local_ary_A:
+            ary_A[int(edge_id), :] = np.array((node1, node2), dtype=np.int32)
         for node_id, graph_id in local_ary_graph_indicator.items():
-            ary_graph_indicator[node_id] = graph_id
+            ary_graph_indicator[int(node_id)] = int(graph_id)
         for node_id, attributes in local_ary_node_attributes:
-            ary_node_attributes[node_id, :] = attributes
+            ary_node_attributes[int(node_id), :] = attributes
         for graph_id, label in local_ary_graph_labels.items():
-            ary_graph_labels[graph_id] = label
+            ary_graph_labels[int(graph_id)] = label
         for graph_id, pe in local_ary_pe.items():
-            ary_pe[graph_id] = pe
+            ary_pe[int(graph_id)] = pe
         for graph_id, attributes in local_ary_graph_attributes:
-            ary_graph_attributes[graph_id, :] = attributes
+            ary_graph_attributes[int(graph_id), :] = attributes
         for graph_id, sp in local_ary_sp.items():
-            ary_sp[graph_id] = sp
+            ary_sp[int(graph_id)] = sp
 
     
     """   
