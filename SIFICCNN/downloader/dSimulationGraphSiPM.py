@@ -166,7 +166,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     """
     #--------------------------------------------------------------------
     nodes_per_event = np.zeros(root_simulation.events_entries, dtype=np.uint16)
-    chunk_size = 10000
+    chunk_size = 100000
 
     
 
