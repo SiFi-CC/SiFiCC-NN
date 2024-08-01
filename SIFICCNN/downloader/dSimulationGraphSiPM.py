@@ -14,75 +14,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from SIFICCNN.utils import  parent_directory
 from SIFICCNN.EventDisplay import EventDisplay # for debugging
 
-
-def dSimulation_to_GraphSiPM(root_simulation,
-                             dataset_name,
-                             path="",
-                             n=None,
-                             coordinate_system="CRACOW",
-                             energy_cut=None,
-                             n_start=None):
-    """
-    Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
-
-    Two iterations over the root file are needed: one to determine the array size, one to read the
-    data. Final data is stored as npy files, separated by their usage.
-
-    Args:
-        root_simulation (RootSimulation):   root file container object
-        dataset_name (str):                 final name of datasets for storage
-        path (str):                         destination path, if not given it will default to
-                                            /datasets in parent directory
-        n (int or None):                    Number of events sampled from root file,
-                                            if None all events are used
-        energy_cut (float or None):         Energy cut applied to sum of all cluster energies,
-                                            if None, no energy cut is applied
-        coordinate_system (str):            Coordinate system of the given root file, everything
-                                            will be converted to Aachen coordinate system
-
-    """
-
-    # generate directory and finalize path
-    if path == "":
-        path = parent_directory() + "/datasets_0/"
-        path = os.path.join(path, "SimGraphSiPM", dataset_name)
-        if not os.path.isdir(path):
-            os.makedirs(path, exist_ok=True)
-
-    # Pre-determine the final array size.
-    # Total number of graphs needed (n samples)
-    # Total number of nodes (Iteration over root file needed)
-    print("Loading root file: {}".format(root_simulation.file_name))
-    print("Dataset name: {}".format(dataset_name))
-    print("Path: {}".format(path))
-    print("Energy Cut: {}".format(energy_cut))
-    print("Coordinate system of root file: {}".format(coordinate_system))
-    print("\nCounting number of graphs to be created")
-    """
-    k_graphs = 0
-    n_nodes = 0
-    m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
-        if event == None:
-            continue
-        idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
-        if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
-            continue
-        k_graphs += 1
-        n_nodes += len(event.SiPMHit.SiPMId)
-        m_edges += len(event.SiPMHit.SiPMId) ** 2
-    print("Total number of Graphs to be created: ", k_graphs)
-    print("Total number of nodes to be created: ", n_nodes)
-    print("Total number of edges to be created: ", m_edges)
-    print("Graph features: {}".format(5))
-    print("Graph targets: {}".format(9))
-
-    """
-    #--------------------------------------------------------------------
-    nodes_per_event = np.zeros(root_simulation.events_entries, dtype=np.uint16)
-    chunk_size = 10000
-
-    def process_event(i, event):
+def process_event(i, event):
         if event == None:
             return i, 0
         idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
@@ -90,52 +22,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
             return i, 0
         return i, len(event.SiPMHit.SiPMId)
 
-    with ProcessPoolExecutor() as executor:
-        futures = []
-        for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
-            futures.append(executor.submit(process_event, i, event))
-
-            if len(futures) >= chunk_size:
-                for future in as_completed(futures):
-                    i, n = future.result()
-                    nodes_per_event[i] = n
-                futures = []
-
-        # Process remaining futures 
-        for future in as_completed(futures):
-            i, n = future.result()
-            nodes_per_event[i] = n
-
-    k_graphs = np.count_nonzero(n_nodes)
-    n_nodes = np.sum(nodes_per_event)
-
-    print("Total number of Graphs to be created: ", np.count_nonzero(n_nodes))
-    print("Total number of nodes to be created: ", np.sum(n_nodes))
-    print("Graph features: {}".format(5))
-    print("Graph targets: {}".format(9))
-
-    # creating final arrays
-    # datatypes are chosen for minimal size possible (duh)
-    ary_A = np.zeros(shape=(n_nodes, 2), dtype=np.int32)
-    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
-    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
-    ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
-    ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
-    # meta data
-    ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
-
-    # main iteration over root file, containing beta coincidence check
-    # NOTE:
-    # "id" are here used for indexing instead of using the iteration variables i,j,k since some
-    # events are skipped due to cuts or filters, therefore more controlled indexing is needed
-
-    edges_per_event = nodes_per_event**2
-    graph_id_at_event = np.cumsum((nodes_per_event!=0)*1)
-    edge_id_at_event = np.cumsum(edges_per_event)
-    node_id_at_event = np.cumsum(nodes_per_event)
-
-    def process_event_chunk(chunk, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system):
+def process_event_chunk(chunk, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system):
         local_ary_A = []
         local_ary_graph_indicator = {}
         local_ary_node_attributes = []
@@ -214,37 +101,152 @@ def dSimulation_to_GraphSiPM(root_simulation,
                 local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp)
 
 
-    def parallel_process_events(root_simulation, n, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system, chunk_size):
-        chunks = [(i, event) for i, event in enumerate(root_simulation.iterate_events(n=n))]
-        chunks = [chunks[i:i + chunk_size] for i in range(0, len(chunks), chunk_size)]
+def dSimulation_to_GraphSiPM(root_simulation,
+                             dataset_name,
+                             path="",
+                             n=None,
+                             coordinate_system="CRACOW",
+                             energy_cut=None,
+                             n_start=None):
+    """
+    Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
-        with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(process_event_chunk, chunk, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system) for chunk in chunks]
-            
-            results = [future.result() for future in futures]
+    Two iterations over the root file are needed: one to determine the array size, one to read the
+    data. Final data is stored as npy files, separated by their usage.
 
-        # Combine results
-        for result in results:
-            (local_ary_A, local_ary_graph_indicator, local_ary_node_attributes,
-            local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp) = result
+    Args:
+        root_simulation (RootSimulation):   root file container object
+        dataset_name (str):                 final name of datasets for storage
+        path (str):                         destination path, if not given it will default to
+                                            /datasets in parent directory
+        n (int or None):                    Number of events sampled from root file,
+                                            if None all events are used
+        energy_cut (float or None):         Energy cut applied to sum of all cluster energies,
+                                            if None, no energy cut is applied
+        coordinate_system (str):            Coordinate system of the given root file, everything
+                                            will be converted to Aachen coordinate system
 
-            for edge in local_ary_A:
-                ary_A[edge[0], :] = edge[1:]
-            for node_id, graph_id in local_ary_graph_indicator.items():
-                ary_graph_indicator[node_id] = graph_id
-            for node_id, attributes in local_ary_node_attributes:
-                ary_node_attributes[node_id, :] = attributes
-            for graph_id, label in local_ary_graph_labels.items():
-                ary_graph_labels[graph_id] = label
-            for graph_id, pe in local_ary_pe.items():
-                ary_pe[graph_id] = pe
-            for graph_id, attributes in local_ary_graph_attributes:
-                ary_graph_attributes[graph_id, :] = attributes
-            for graph_id, sp in local_ary_sp.items():
-                ary_sp[graph_id] = sp
+    """
 
-    parallel_process_events(root_simulation, n, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system, chunk_size)
+    # generate directory and finalize path
+    if path == "":
+        path = parent_directory() + "/datasets_0/"
+        path = os.path.join(path, "SimGraphSiPM", dataset_name)
+        if not os.path.isdir(path):
+            os.makedirs(path, exist_ok=True)
 
+    # Pre-determine the final array size.
+    # Total number of graphs needed (n samples)
+    # Total number of nodes (Iteration over root file needed)
+    print("Loading root file: {}".format(root_simulation.file_name))
+    print("Dataset name: {}".format(dataset_name))
+    print("Path: {}".format(path))
+    print("Energy Cut: {}".format(energy_cut))
+    print("Coordinate system of root file: {}".format(coordinate_system))
+    print("\nCounting number of graphs to be created")
+    """
+    k_graphs = 0
+    n_nodes = 0
+    m_edges = 0
+    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+        if event == None:
+            continue
+        idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
+        if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
+            continue
+        k_graphs += 1
+        n_nodes += len(event.SiPMHit.SiPMId)
+        m_edges += len(event.SiPMHit.SiPMId) ** 2
+    print("Total number of Graphs to be created: ", k_graphs)
+    print("Total number of nodes to be created: ", n_nodes)
+    print("Total number of edges to be created: ", m_edges)
+    print("Graph features: {}".format(5))
+    print("Graph targets: {}".format(9))
+
+    """
+    #--------------------------------------------------------------------
+    nodes_per_event = np.zeros(root_simulation.events_entries, dtype=np.uint16)
+    chunk_size = 10000
+
+    
+
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+            futures.append(executor.submit(process_event, i, event))
+
+            if len(futures) >= chunk_size:
+                for future in as_completed(futures):
+                    i, n = future.result()
+                    nodes_per_event[i] = n
+                futures = []
+
+        # Process remaining futures 
+        for future in as_completed(futures):
+            i, n = future.result()
+            nodes_per_event[i] = n
+
+    k_graphs = np.count_nonzero(n_nodes)
+    n_nodes = np.sum(nodes_per_event)
+
+    print("Total number of Graphs to be created: ", np.count_nonzero(n_nodes))
+    print("Total number of nodes to be created: ", np.sum(n_nodes))
+    print("Graph features: {}".format(5))
+    print("Graph targets: {}".format(9))
+
+    # creating final arrays
+    # datatypes are chosen for minimal size possible (duh)
+    ary_A = np.zeros(shape=(n_nodes, 2), dtype=np.int32)
+    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
+    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
+    ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
+    ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
+    # meta data
+    ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
+    ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
+
+    # main iteration over root file, containing beta coincidence check
+    # NOTE:
+    # "id" are here used for indexing instead of using the iteration variables i,j,k since some
+    # events are skipped due to cuts or filters, therefore more controlled indexing is needed
+
+    edges_per_event = nodes_per_event**2
+    graph_id_at_event = np.cumsum((nodes_per_event!=0)*1)
+    edge_id_at_event = np.cumsum(edges_per_event)
+    node_id_at_event = np.cumsum(nodes_per_event)
+
+    
+
+
+    chunks = [(i, event) for i, event in enumerate(root_simulation.iterate_events(n=n))]
+    chunks = [chunks[i:i + chunk_size] for i in range(0, len(chunks), chunk_size)]
+
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(process_event_chunk, chunk, nodes_per_event, node_id_at_event, edge_id_at_event, graph_id_at_event, coordinate_system) for chunk in chunks]
+        
+        results = [future.result() for future in futures]
+
+    # Combine results
+    for result in results:
+        (local_ary_A, local_ary_graph_indicator, local_ary_node_attributes,
+        local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp) = result
+
+        for edge in local_ary_A:
+            ary_A[edge[0], :] = edge[1:]
+        for node_id, graph_id in local_ary_graph_indicator.items():
+            ary_graph_indicator[node_id] = graph_id
+        for node_id, attributes in local_ary_node_attributes:
+            ary_node_attributes[node_id, :] = attributes
+        for graph_id, label in local_ary_graph_labels.items():
+            ary_graph_labels[graph_id] = label
+        for graph_id, pe in local_ary_pe.items():
+            ary_pe[graph_id] = pe
+        for graph_id, attributes in local_ary_graph_attributes:
+            ary_graph_attributes[graph_id, :] = attributes
+        for graph_id, sp in local_ary_sp.items():
+            ary_sp[graph_id] = sp
+
+    
     """   
     for i, event in enumerate(root_simulation.iterate_events(n=n)):
         if nodes_per_event[i] == 0:
