@@ -2,6 +2,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, models
+from sklearn.model_selection import train_test_split
 
 # %%
 import os
@@ -83,29 +84,57 @@ def build_gat_model(num_node_features, num_out_features, num_graph_attributes):
 
 # %%
 # Load data
-adj_matrices, node_features, graph_attributes = load_data()
+adj_matrix, node_features, graph_attributes = load_data()
+
+train_features, val_features, train_labels, val_labels = train_test_split(
+    node_features, graph_attributes, test_size=0.2, random_state=42
+)
 
 
 # %%
 # Prepare dataset
 num_graph_attributes = graph_attributes.shape[1]  # Flattened shape
-dataset = prepare_dataset(adj_matrices, node_features, graph_attributes)
+#dataset = prepare_dataset(adj_matrices, node_features, graph_attributes)
+
+train_dataset = prepare_dataset( adj_matrix, train_features, train_labels)
+val_dataset = prepare_dataset(adj_matrix, val_features,  val_labels)
+
+
+
 
 # %%
 # Build model
 num_node_features = node_features.shape[-1]  # Update as needed
 num_out_features = 10
-model = build_gat_model(num_node_features, num_out_features, num_graph_attributes)
+model = build_gat_model(num_node_features, num_out_features, train_labels.shape[1])
 
 
 # %%
 
 # Train model
 batch_size = 64
-epochs = 10
-model.fit(dataset.batch(batch_size), epochs=epochs)
+epochs = 3
+history = model.fit(train_dataset.batch(batch_size), 
+                    epochs=epochs,
+                    validation_data=val_dataset.batch(batch_size))
 
 # %%
 
+import matplotlib.pyplot as plt
 
+# Plotting the training and validation loss
+loss = history.history['loss']
+val_loss = history.history.get('val_loss', [])
+
+plt.figure(figsize=(10, 5))
+plt.plot(loss, label='Training Loss')
+plt.plot(val_loss, label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid(True)
+plt.savefig("loss.png")
+
+# %%
 

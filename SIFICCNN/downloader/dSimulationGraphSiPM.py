@@ -65,34 +65,33 @@ def dSimulation_to_GraphSiPM(simulation_data,
 
     # Pre-determine the final array sizes
     print("Counting number of graphs to be created")
-    k_graphs = 0
-    for i, event in enumerate(simulation_data.iterate_events(n=n)):
-        if event is None:
-            continue
-        k_graphs += 1
+    if n == None:
+        n = simulation_data.events_entries
 
 
-    print("Total number of graphs to be created: ", k_graphs)
-    print("Graph features: {}".format(5))  # x, y, z, timestamp, photon count
+    print("Total number of graphs to be created: ", n)
+    print("Graph features: {}".format(2))  # timestamp, photon count
     print("Graph targets: {}".format(2))  # Fibre energy, position
 
     # Creating final arrays
     ary_A = get_adjacency_matrix()
-    #ary_node_attributes = np.zeros((k_graphs, 224, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
-    #ary_graph_attributes = np.zeros((k_graphs, 385, 2), dtype=np.float32) # Tensor with fibres (E,y)
-    ary_node_attributes, ary_graph_attributes = list(), list()
+    ary_node_attributes = np.zeros((n, 224, 2), dtype=np.float32)  # x, y, z, timestamp, photon count
+    ary_graph_attributes = np.zeros((n, 385, 2), dtype=np.float32) # Tensor with fibres (E,y)
 
     # Main iteration over simulation data
-    #graph_id = 0
-    #node_id = 0
+    graph_id = 0
 
-    #graph_id = 0
+    noHitEvents = np.ones(n, dtype=np.bool_)
+
     for i, event in enumerate(simulation_data.iterate_events(n=n)):
         if event is None:
             continue
         n_sipm = len(event.SiPMHit.SiPMId)
         #n_fibres = len(event.FibreHit.FibreId)
         n_fibres = len(event.FibreHit.FibreId)
+        if event.SiPMHit.SiPMId.size==0:
+            raise ValueError("======ofonnt")
+            noHitEvents[i] = False
 
         # Double iteration over SiPM nodes to determine adjacency
         for j in range(n_sipm):
@@ -101,37 +100,34 @@ def dSimulation_to_GraphSiPM(simulation_data,
             # collect node attributes for each node
             # exception for different coordinate systems
             if coordinate_system == "CRACOW":
-                attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
-                                       -event.SiPMHit.SiPMPosition[j].y,
-                                       event.SiPMHit.SiPMPosition[j].x,
-                                       event.SiPMHit.SiPMTimeStamp[j],
+                attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
                                        event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes.append(attributes)
+                ary_node_attributes[graph_id, event.SiPMHit.SiPMId[j],:] = attributes
             if coordinate_system == "AACHEN":
-                attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
-                                       event.SiPMHit.SiPMPosition[j].y,
-                                       event.SiPMHit.SiPMPosition[j].z,
-                                       event.SiPMHit.SiPMTimeStamp[j],
+                attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
                                        event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes.append(attributes)
+                ary_node_attributes[graph_id, event.SiPMHit.SiPMId[j],:] = attributes
    
         for j in range(n_fibres):
             try:
                 if coordinate_system == "CRACOW":
                     attributes = np.array([-event.FibreHit.FibrePosition[j].y, 
                                            event.FibreHit.FibreEnergy[j]])
-                    ary_graph_attributes.append(attributes)
+                    ary_graph_attributes[graph_id, event.FibreHit.FibreId[j],:] = attributes
                 if coordinate_system == "AACHEN":
                     attributes = np.array([event.FibreHit.FibrePosition[j].y, 
                                            event.FibreHit.FibreEnergy[j]])
-                    ary_graph_attributes.append(attributes)
+                    ary_graph_attributes[graph_id, event.FibreHit.FibreId[j],:] = attributes
             except:
                 continue
         # Increment graph ID
-        #graph_id += 1
+        graph_id += 1
 
 
 
+
+    print(noHitEvents)
+    print(np.histogram(noHitEvents))
 
     # Save arrays as .npy files
     np.save(os.path.join(path, "A.npy"), ary_A)
