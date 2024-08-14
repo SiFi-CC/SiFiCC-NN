@@ -16,3 +16,4 @@ results/**/*.txt
 condor
 datasets
 datasets_0
+datasets_old
