@@ -23,9 +23,7 @@ def get_adjacency_matrix():
         try:
             return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
         except TypeError:
-            return np.array([x,y,z])
-		
-	       
+            return np.array([x,y,z])   
 	       
     A = np.zeros((224,224),dtype=np.int8)
     I = np.arange(0,224,1)
@@ -34,6 +32,11 @@ def get_adjacency_matrix():
             if are_connected(sipm_id_to_position(i),sipm_id_to_position(j)):
                 A[i,j]=1
     return A
+
+def create_edge_index_from_adjacency_matrix(adjacency_matrix):
+    # Converts the adjacency matrix to edge indices
+    sources, targets = np.nonzero(adjacency_matrix)
+    return np.vstack((sources, targets))
 
 def dSimulation_to_GraphSiPM(simulation_data,
                            dataset_name,
@@ -63,47 +66,36 @@ def dSimulation_to_GraphSiPM(simulation_data,
     # Pre-determine the final array sizes
     print("Counting number of graphs to be created")
     k_graphs = 0
-    n_nodes = 0
-    m_edges = 0
-    n_fibre_nodes = 0
     for i, event in enumerate(simulation_data.iterate_events(n=n)):
         if event is None:
             continue
         k_graphs += 1
-        n_nodes += len(event.SiPMHit.SiPMId)
-        n_fibre_nodes += len(event.FibreHit.FibreId)
+
 
     print("Total number of graphs to be created: ", k_graphs)
-    print("Total number of SiPM nodes to be created: ", n_nodes)
-    print("Total number of fibre nodes to be created: ", n_fibre_nodes)
     print("Graph features: {}".format(5))  # x, y, z, timestamp, photon count
     print("Graph targets: {}".format(2))  # Fibre energy, position
 
     # Creating final arrays
-    total_nodes = n_nodes 
-    fibre_nodes = n_fibre_nodes
     ary_A = get_adjacency_matrix()
-    ary_graph_indicator = np.zeros((total_nodes,), dtype=np.int32)
-    ary_node_attributes = np.zeros((total_nodes, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
-    graph_attributes = np.zeros((k_graphs,55,7,2), dtype=np.float32) # Tensor with fibres (E,y)
-    ary_SiPM_ids = np.zeros((total_nodes), dtype=np.int8)
+    ary_node_attributes = np.zeros((k_graphs, 224, 5), dtype=np.float32)  # x, y, z, timestamp, photon count
+    ary_graph_attributes = np.zeros((k_graphs, 385, 2), dtype=np.float32) # Tensor with fibres (E,y)
 
     # Main iteration over simulation data
     graph_id = 0
     node_id = 0
 
-
+    graph_id = 0
     for i, event in enumerate(simulation_data.iterate_events(n=n)):
         if event is None:
             continue
         n_sipm = len(event.SiPMHit.SiPMId)
         #n_fibres = len(event.FibreHit.FibreId)
-        n_fibres = 385
+        n_fibres = len(event.FibreHit.FibreId)
 
         # Double iteration over SiPM nodes to determine adjacency
         for j in range(n_sipm):
             # Graph indicator counts which node belongs to which graph
-            ary_graph_indicator[node_id] = graph_id
 
             # collect node attributes for each node
             # exception for different coordinate systems
@@ -113,23 +105,25 @@ def dSimulation_to_GraphSiPM(simulation_data,
                                        event.SiPMHit.SiPMPosition[j].x,
                                        event.SiPMHit.SiPMTimeStamp[j],
                                        event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[node_id, :] = attributes
+                ary_node_attributes[graph_id, :] = attributes
             if coordinate_system == "AACHEN":
                 attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
                                        event.SiPMHit.SiPMPosition[j].y,
                                        event.SiPMHit.SiPMPosition[j].z,
                                        event.SiPMHit.SiPMTimeStamp[j],
                                        event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[node_id, :] = attributes
-
-            # count up node indexing
-            node_id += 1
-
-
-        
+                ary_node_attributes[graph_id, :] = attributes
+   
         for j in range(n_fibres):
             try:
-                graph_attributes[graph_id,int((event.FibreHit.FibrePosition[j].x+55)//2),int((event.FibreHit.FibrePosition[j].z-220)//2),:]=np.array([event.FibreHit.FibrePosition[j].y, event.FibreHit.FibreEnergy[j]])
+                if coordinate_system == "CRACOW":
+                    attributes = np.array([-event.FibreHit.FibrePosition[j].y, 
+                                           event.FibreHit.FibreEnergy[j]])
+                    ary_graph_attributes[graph_id, :] = attributes
+                if coordinate_system == "AACHEN":
+                    attributes = np.array([event.FibreHit.FibrePosition[j].y, 
+                                           event.FibreHit.FibreEnergy[j]])
+                    ary_graph_attributes[graph_id, :] = attributes
             except:
                 continue
         # Increment graph ID
@@ -140,10 +134,8 @@ def dSimulation_to_GraphSiPM(simulation_data,
 
     # Save arrays as .npy files
     np.save(os.path.join(path, "A.npy"), ary_A)
-    np.save(os.path.join(path, "graph_indicator.npy"), ary_graph_indicator)
     np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
-    np.save(os.path.join(path, "graph_attributes.npy"), graph_attributes)
-    np.save(os.path.join(path, "sipm_ids.npy"), ary_SiPM_ids)
+    np.save(os.path.join(path, "graph_attributes.npy"), ary_graph_attributes)
 
 
 if __name__ == "__main__":
