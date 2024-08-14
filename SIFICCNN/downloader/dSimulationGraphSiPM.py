@@ -96,7 +96,6 @@ def process_event_chunk(chunk, nodes_per_event, node_id_at_event, edge_id_at_eve
                                                             target_position_p.y,
                                                             target_position_p.z]))
                 local_ary_sp[graph_id] = event.MCPosition_source.x
-        
         return (local_ary_A, local_ary_graph_indicator, local_ary_node_attributes,
                 local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp)
 
@@ -177,18 +176,18 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
             if len(futures) >= chunk_size:
                 for future in as_completed(futures):
-                    i, n = future.result()
-                    nodes_per_event[i] = n
+                    i, nodes = future.result()
+                    nodes_per_event[i] = nodes
                 futures = []
 
         # Process remaining futures 
         for future in as_completed(futures):
-            i, n = future.result()
-            nodes_per_event[i] = n
-
+            i, nodes = future.result()
+            nodes_per_event[i] = nodes
+    nodes_per_event = nodes_per_event.astype(np.int32)
     k_graphs = np.count_nonzero(nodes_per_event)
     n_nodes = np.sum(nodes_per_event)
-
+    m_edges = np.sum(nodes_per_event**2)
     print("Total number of Graphs to be created: ", np.count_nonzero(nodes_per_event))
     print("Total number of nodes to be created: ", np.sum(n_nodes))
     print("Graph features: {}".format(5))
@@ -196,7 +195,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
     # creating final arrays
     # datatypes are chosen for minimal size possible (duh)
-    ary_A = np.zeros(shape=(n_nodes, 2), dtype=np.int32)
+    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
     ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
     ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
@@ -230,8 +229,9 @@ def dSimulation_to_GraphSiPM(root_simulation,
     for result in results:
         (local_ary_A, local_ary_graph_indicator, local_ary_node_attributes,
         local_ary_graph_labels, local_ary_pe, local_ary_graph_attributes, local_ary_sp) = result
-
+        
         for edge_id, node1, node2 in local_ary_A:
+            print(local_ary_A)
             ary_A[int(edge_id), :] = np.array((node1, node2), dtype=np.int32)
         for node_id, graph_id in local_ary_graph_indicator.items():
             ary_graph_indicator[int(node_id)] = int(graph_id)
