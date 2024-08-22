@@ -1,42 +1,59 @@
 import numpy as np
 import os
 import argparse
+import matplotlib.pyplot as plt
+import sys
+from collections import defaultdict
 
 
-def get_adjacency_matrix():
-    def are_connected(SiPM1, SiPM2):
-        is_y_neighbor = SiPM1[1] != SiPM2[1]
-        is_x_z_neighbor = abs(SiPM1[0] - SiPM2[0]) + abs(SiPM1[2] - SiPM2[2]) <=2
-        return is_x_z_neighbor and is_y_neighbor
+def get_Fibre_SiPM_connections():
+    # Initialize fibres with -1
+    fibres = np.full((385,2), -1, dtype = np.int16)
 
-    def sipm_id_to_position(sipm_id):
-        outside_check = np.greater(sipm_id, 224)
-        if np.any(outside_check == True):
-            raise ValueError("SiPMID outside detector found! ID: {} ".format(sipm_id))
-        # determine y
-        y = sipm_id // 112
-        # remove third dimension
-        sipm_id -= (y * 112)
+    for i in range(7):
+        bottom_offset   = ((i+1)//2)*28
+        top_offset      = (i//2)*28+112
+        
+        for j in range(55):
+            fibres[j+i*55] = np.array([(j+1)//2+bottom_offset, j//2+top_offset])
 
-        x = sipm_id // 28
-        z = (sipm_id % 28)
-        try:
-            return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
-        except TypeError:
-            return np.array([x,y,z])   
-	       
-    A = np.zeros((224,224),dtype=np.int8)
-    I = np.arange(0,224,1)
-    for i in I:
-        for j in I:
-            if are_connected(sipm_id_to_position(i),sipm_id_to_position(j)):
-                A[i,j]=1
-    return A
+    return fibres
 
-def create_edge_index_from_adjacency_matrix(adjacency_matrix):
-    # Converts the adjacency matrix to edge indices
-    sources, targets = np.nonzero(adjacency_matrix)
-    return np.vstack((sources, targets))
+def get_adjacency_matrix(fibres):
+    # Convert the fibres array to an adjacency matrix
+    adj_matrix = np.zeros((480, 480), dtype=int)
+
+    # Populate the adjacency matrix
+    for pair in fibres:
+        adj_matrix[pair[0], pair[1]] = 1
+        adj_matrix[pair[1], pair[0]] = 1
+    return adj_matrix
+
+def get_neighboring_SiPMs_map(Fibre_connections):
+    # Original array
+    array = Fibre_connections
+
+    # Create a dictionary of lists to store the associations
+    associations = defaultdict(list)
+
+    # Populate the dictionary with associations
+    for x, y in array:
+        associations[x].append(y)
+        associations[y].append(x)
+
+    # Convert to a regular dictionary if needed (not necessary for functionality)
+    associations = dict(associations)
+
+    # If you want to use a list of lists instead of a dictionary, find the maximum index
+    max_index = max(max(array.flatten()), len(array)-1)
+    associations_list = [[] for _ in range(max_index + 1)]
+
+    # Populate the list of lists
+    for key, value in associations.items():
+        associations_list[key] = value
+
+    return associations_list
+
 
 def dSimulation_to_GraphSiPM(simulation_data,
                            dataset_name,
@@ -70,69 +87,107 @@ def dSimulation_to_GraphSiPM(simulation_data,
 
 
     print("Total number of graphs to be created: ", n)
-    print("Graph features: {}".format(2))  # timestamp, photon count
-    print("Graph targets: {}".format(2))  # Fibre energy, position
+    print("Graph features: {}".format(3))  # timestamp, photon count, ID
+    print("Graph targets: {}".format(3))  # Fibre energy, y-position, ID
 
     # Creating final arrays
-    ary_A = get_adjacency_matrix()
-    ary_node_attributes = np.zeros((n, 224, 2), dtype=np.float32)  # x, y, z, timestamp, photon count
-    ary_graph_attributes = np.zeros((n, 385, 2), dtype=np.float32) # Tensor with fibres (E,y)
+    Fibre_connections       = get_Fibre_SiPM_connections()
+    SiPM_adjacency_matrix   = get_adjacency_matrix(Fibre_connections)
+    neighboring_SiPMs_map   = get_neighboring_SiPMs_map(Fibre_connections)
+    ary_A                   = list()
+    ary_node_attributes     = list()  # timestamp, photon count, ID
+    ary_edge_attributes     = list() # fibres (E,y), ID
+    ary_node_indicator      = list()
+    ary_edge_indicator      = list()
+    ary_A_ids               = list()
 
     # Main iteration over simulation data
     graph_id = 0
-
-    noHitEvents = np.ones(n, dtype=np.bool_)
-
+    
     for i, event in enumerate(simulation_data.iterate_events(n=n)):
+
         if event is None:
             continue
+
         n_sipm = len(event.SiPMHit.SiPMId)
-        #n_fibres = len(event.FibreHit.FibreId)
-        n_fibres = len(event.FibreHit.FibreId)
-        if event.SiPMHit.SiPMId.size==0:
-            raise ValueError("======ofonnt")
-            noHitEvents[i] = False
 
-        # Double iteration over SiPM nodes to determine adjacency
-        for j in range(n_sipm):
-            # Graph indicator counts which node belongs to which graph
+        if n_sipm==0:
+            continue
+        sipm_ids                = []
+        all_potential_fibres    = []
+        # For the case, that not all SiPM neighbors are triggered. They still need to be initialized for the edges to exist
+        for j, sipm_id in enumerate(event.SiPMHit.SiPMId):
+            potential_fibres = np.argwhere((Fibre_connections == sipm_id).any(axis=1))[:,0]
+            neighboring_SiPMIds = Fibre_connections[potential_fibres].flatten()
+            neighboring_SiPMIds = neighboring_SiPMIds[neighboring_SiPMIds!=sipm_id]
 
-            # collect node attributes for each node
-            # exception for different coordinate systems
-            if coordinate_system == "CRACOW":
-                attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
-                                       event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[graph_id, event.SiPMHit.SiPMId[j],:] = attributes
-            if coordinate_system == "AACHEN":
-                attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
-                                       event.SiPMHit.SiPMPhotonCount[j]])
-                ary_node_attributes[graph_id, event.SiPMHit.SiPMId[j],:] = attributes
-   
-        for j in range(n_fibres):
             try:
+                # Graph indicator counts which node belongs to which graph
+
+                # collect node attributes for each node
+                # exception for different coordinate systems
+                #print("SIPM")
+                #print(event.SiPMHit.SiPMPhotonCount[j])
                 if coordinate_system == "CRACOW":
-                    attributes = np.array([-event.FibreHit.FibrePosition[j].y, 
-                                           event.FibreHit.FibreEnergy[j]])
-                    ary_graph_attributes[graph_id, event.FibreHit.FibreId[j],:] = attributes
+                    attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
+                                        event.SiPMHit.SiPMPhotonCount[j],], dtype=np.float32)
                 if coordinate_system == "AACHEN":
-                    attributes = np.array([event.FibreHit.FibrePosition[j].y, 
-                                           event.FibreHit.FibreEnergy[j]])
-                    ary_graph_attributes[graph_id, event.FibreHit.FibreId[j],:] = attributes
+                    attributes = np.array([event.SiPMHit.SiPMTimeStamp[j],
+                                        event.SiPMHit.SiPMPhotonCount[j],], dtype=np.float32)
+                ary_node_attributes.append(attributes)
+                ary_node_indicator.append(graph_id)
+                sipm_ids.append(sipm_id)
+                all_potential_fibres.extend(potential_fibres.tolist())
+
+                for neighbor in neighboring_SiPMIds:
+                    if neighbor not in sipm_ids and neighbor not in event.SiPMHit.SiPMId:
+                        attributes = np.array([-1, #No Time
+                                            0,], dtype=np.float32) #No Photons
+                        ary_node_attributes.append(attributes)
+                        ary_node_indicator.append(graph_id)
+                        sipm_ids.append(neighbor)
+
             except:
                 continue
+
+        # Fibres that have not triggered any SiPMs are ignored as they cannot be reconstructed anyway
+
+        # Iterating potential fibres
+        sipm_ids = np.array(sipm_ids)
+        all_potential_fibres = np.array(list(set(all_potential_fibres)))
+
+
+        for fibre_id in all_potential_fibres:
+            ary_A.append(np.where(np.isin(sipm_ids, Fibre_connections[fibre_id]))[0])
+            ary_A_ids.append(Fibre_connections[fibre_id])
+            if fibre_id in event.FibreHit.FibreId:
+                fibre_number = np.where(event.FibreHit.FibreId==fibre_id)[0][0]
+                if coordinate_system == "CRACOW":
+                    attributes = np.array([-event.FibreHit.FibrePosition[fibre_number].y, 
+                                        event.FibreHit.FibreEnergy[fibre_number],], dtype=np.float32)
+                if coordinate_system == "AACHEN":
+                    attributes = np.array([event.FibreHit.FibrePosition[fibre_number].y, 
+                                        event.FibreHit.FibreEnergy[fibre_number],], dtype=np.float32)
+            else:
+                attributes = np.array([0,  #arbitraty choice. Possibly not ideal as it is contained in the fibre
+                                       0,], dtype=np.float32) #No Energy
+            ary_edge_attributes.append(attributes)
+            ary_edge_indicator.append(graph_id)
+
         # Increment graph ID
         graph_id += 1
+            
 
-
-
-
-    print(noHitEvents)
-    print(np.histogram(noHitEvents))
 
     # Save arrays as .npy files
     np.save(os.path.join(path, "A.npy"), ary_A)
+    np.save(os.path.join(path, "A_ids.npy"), ary_A_ids)
     np.save(os.path.join(path, "node_attributes.npy"), ary_node_attributes)
-    np.save(os.path.join(path, "graph_attributes.npy"), ary_graph_attributes)
+    np.save(os.path.join(path, "edge_attributes.npy"), ary_edge_attributes)
+    np.save(os.path.join(path, "node_indicator.npy"), ary_node_indicator)
+    np.save(os.path.join(path, "edge_indicator.npy"), ary_edge_indicator)
+    
+
 
 
 if __name__ == "__main__":

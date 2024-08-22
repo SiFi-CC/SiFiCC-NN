@@ -112,8 +112,8 @@ model = build_gat_model(num_node_features, num_out_features, train_labels.shape[
 # %%
 
 # Train model
-batch_size = 64
-epochs = 3
+batch_size = 1000
+epochs = 1
 history = model.fit(train_dataset.batch(batch_size), 
                     epochs=epochs,
                     validation_data=val_dataset.batch(batch_size))
@@ -134,7 +134,12 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plt.savefig("loss.png")
+plt.show()
 
 # %%
+# Make predictions using the validation set
+predictions = model.predict(val_dataset.batch(batch_size))
 
+# Compare predictions with actual values
+print("Predictions:", predictions[:50])  # Print first 5 predictions
+print("Actual Values:", val_labels[:50])  # Print first 5 actual values

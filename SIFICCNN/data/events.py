@@ -164,10 +164,11 @@ class SiPMHit:
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
-        self.SiPMPhotonCount = np.array(SiPMPhotonCount)
+        self.SiPMPhotonCount = np.array(SiPMPhotonCount, dtype=np.uint16)
         self.SiPMPosition = tVector_list(SiPMPosition)
-        self.SiPMId = np.array(SiPMId)
+        self.SiPMId = np.array(SiPMId, dtype=np.uint16)
         self.detector = Detector
+        #self.SiPMfeatures = self.get_sipm_features()
 
 
     def summary(self, debug=False):
@@ -183,70 +184,8 @@ class SiPMHit:
                     self.SiPMPosition[j].z,
                     self.SiPMTimeStamp[j]))
 
-    def sipm_id_to_position(self):
-        sipm_id = self.SiPMId
-        outside_check = np.greater(sipm_id, 224)
-        if np.any(outside_check == True):
-            raise ValueError("SiPMID outside detector found! ID: {} ".format(sipm_id))
-        # determine y
-        y = sipm_id // 112
-        # remove third dimension
-        sipm_id -= (y * 112)
-
-        x = sipm_id // 28
-        z = (sipm_id % 28)
-        return np.array([(int(x_i), int(y_i), int(z_i)) for (x_i,y_i,z_i) in zip(x,y,z)])
-
-    def get_sipm_feature_map(self, padding=2):
-        # hardcoded detector size
-        dimx = 4
-        dimy = 2
-        dimz = 28
-
-        ary_feature = np.zeros(shape=(
-            dimx + 2 * padding, dimy + 2 * padding,
-            dimz + 2 * padding, 2))
-
-        for i, sipm_id in enumerate(self.SiPMId):
-            x, y, z = self.sipm_id_to_position(sipm_id=sipm_id)
-            x_final = x + padding 
-            y_final = y + padding
-            z_final = z + padding
-
-            ary_feature[x_final, y_final, z_final, 0] = self.SiPMPhotonCount[i]
-            ary_feature[x_final, y_final, z_final, 1] = self.SiPMTimeStamp[i]
-
-        return ary_feature
 
 
-    def get_edge_features(self, idx1, idx2, cartesian=True):
-        """
-        Calculates the euclidean distance, azimuthal angle, polar angle between two vectors.
-
-        Args:
-            idx1: Vector 1 given by index of RecoClusterPosition list
-            idx2: Vector 2 given by index of RecoClusterPosition list
-            cartesian:  bool, if true vector difference is given in cartesian coordinates
-                        otherwise in polar coordinates
-
-        Returns:
-            euclidean distance, azimuthal angle, polar angle
-        """
-        vec = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
-
-        if not cartesian:
-            r = vec.mag
-            phi = vec.phi
-            theta = vec.theta
-
-            return r, phi, theta
-
-        else:
-            dx = vec.x
-            dy = vec.y
-            dz = vec.z
-
-            return dx, dy, dz
 
 
 class FibreHit:
@@ -275,7 +214,11 @@ class FibreHit:
                  FibreId,
                  Detector):
         self.FibreTime = np.array(FibreTime)
-        self.FibreTimeStart = min(FibreTime)
+        try:
+            self.FibreTimeStart = min(FibreTime)
+        except:
+            print(FibreTime)
+            self.FibreTimeStart = 0
         self.FibreTime -= self.FibreTimeStart
         self.FibreEnergy = np.array(FibreEnergy)
         self.FibrePosition = tVector_list(FibrePosition)
