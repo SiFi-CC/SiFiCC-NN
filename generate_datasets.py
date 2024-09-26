@@ -24,7 +24,7 @@ path_root = "~/Master/root_files/"
 # Simulation GraphCluster
 ####################################################################################################
 
-n = 1000000 #685891
+n = 10000 #685891
 # files = ["1to1_Cluster_BP0mm_2e10protons_simV3.root"]
 #files = ["1to1_Cluster_CONT_2e10protons_simV3.root"]
 # NEW FILE 4to1_SiPM
