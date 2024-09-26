@@ -1,0 +1,95 @@
+[NbClientApp] Executing VarGatEnergyNew.ipynb
+[NbClientApp] Executing notebook with kernel: python3
+2024-09-26 14:28:10.406980: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-09-26 14:28:10.554477: E tensorflow/stream_executor/cuda/cuda_blas.cc:2981] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2024-09-26 14:28:11.859818: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer.so.7'; dlerror: libnvinfer.so.7: cannot open shared object file: No such file or directory
+2024-09-26 14:28:11.859907: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer_plugin.so.7'; dlerror: libnvinfer_plugin.so.7: cannot open shared object file: No such file or directory
+2024-09-26 14:28:11.859914: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Cannot dlopen some TensorRT libraries. If you would like to use Nvidia GPU with TensorRT, please make sure the missing libraries mentioned above are installed properly.
+Traceback (most recent call last):
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/bin/jupyter-execute", line 8, in <module>
+    sys.exit(main())
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/jupyter_core/application.py", line 282, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/traitlets/config/application.py", line 1052, in launch_instance
+    app.initialize(argv)
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/traitlets/config/application.py", line 117, in inner
+    return method(app, *args, **kwargs)
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/cli.py", line 114, in initialize
+    [self.run_notebook(path) for path in self.notebooks]
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/cli.py", line 114, in <listcomp>
+    [self.run_notebook(path) for path in self.notebooks]
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/cli.py", line 157, in run_notebook
+    client.execute()
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/jupyter_core/utils/__init__.py", line 168, in wrapped
+    return loop.run_until_complete(inner)
+  File "/usr/lib64/python3.9/asyncio/base_events.py", line 647, in run_until_complete
+    return future.result()
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/client.py", line 705, in async_execute
+    await self.async_execute_cell(
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/client.py", line 1058, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/nbclient/client.py", line 914, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+data = DSGraphNew(name="OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv5")
+------------------
+
+----- stdout -----
+Missing download method!
+------------------
+
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mFileNotFoundError[0m                         Traceback (most recent call last)
+Cell [0;32mIn [2], line 1[0m
+[0;32m----> 1[0m data [38;5;241m=[39m [43mDSGraphNew[49m[43m([49m[43mname[49m[38;5;241;43m=[39;49m[38;5;124;43m"[39;49m[38;5;124;43mOptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv5[39;49m[38;5;124;43m"[39;49m[43m)[49m
+
+Cell [0;32mIn [1], line 17[0m, in [0;36mDSGraphNew.__init__[0;34m(self, name, norm_x, norm_e, **kwargs)[0m
+[1;32m     14[0m [38;5;28mself[39m[38;5;241m.[39mnorm_x [38;5;241m=[39m norm_x
+[1;32m     15[0m [38;5;28mself[39m[38;5;241m.[39mnorm_e [38;5;241m=[39m norm_e
+[0;32m---> 17[0m [38;5;28;43msuper[39;49m[43m([49m[43m)[49m[38;5;241;43m.[39;49m[38;5;21;43m__init__[39;49m[43m([49m[38;5;241;43m*[39;49m[38;5;241;43m*[39;49m[43mkwargs[49m[43m)[49m
+
+File [0;32m/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/spektral/data/dataset.py:118[0m, in [0;36mDataset.__init__[0;34m(self, transforms, **kwargs)[0m
+[1;32m    115[0m     [38;5;28mself[39m[38;5;241m.[39mdownload()
+[1;32m    117[0m [38;5;66;03m# Read graphs[39;00m
+[0;32m--> 118[0m [38;5;28mself[39m[38;5;241m.[39mgraphs [38;5;241m=[39m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mread[49m[43m([49m[43m)[49m
+[1;32m    119[0m [38;5;28;01mif[39;00m [38;5;28mself[39m[38;5;241m.[39ma [38;5;129;01mis[39;00m [38;5;28;01mNone[39;00m [38;5;129;01mand[39;00m [38;5;28mself[39m[38;5;241m.[39m[38;5;21m__len__[39m() [38;5;241m>[39m [38;5;241m0[39m [38;5;129;01mand[39;00m [38;5;124m"[39m[38;5;124ma[39m[38;5;124m"[39m [38;5;129;01mnot[39;00m [38;5;129;01min[39;00m [38;5;28mself[39m[38;5;241m.[39mgraphs[[38;5;241m0[39m]:
+[1;32m    120[0m     warnings[38;5;241m.[39mwarn(
+[1;32m    121[0m         [38;5;124m"[39m[38;5;124mThe graphs in this dataset have no adjacency matrix. [39m[38;5;124m"[39m
+[1;32m    122[0m         [38;5;124m"[39m[38;5;124mIs this intentional?[39m[38;5;124m"[39m
+[1;32m    123[0m     )
+
+Cell [0;32mIn [1], line 45[0m, in [0;36mDSGraphNew.read[0;34m(self)[0m
+[1;32m     37[0m [38;5;124;03m"""[39;00m
+[1;32m     38[0m [38;5;124;03mLoads datasets from files and generates graph objects.[39;00m
+[1;32m     39[0m 
+[1;32m     40[0m [38;5;124;03mReturns:[39;00m
+[1;32m     41[0m [38;5;124;03m    List[Graph]: List of Graph objects with node features and edge attributes.[39;00m
+[1;32m     42[0m [38;5;124;03m"""[39;00m
+[1;32m     44[0m [38;5;66;03m# Load data from files[39;00m
+[0;32m---> 45[0m adjacency_list, node_attributes, node_indicator, edge_attributes, edge_indicator [38;5;241m=[39m [38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43m_load_data[49m[43m([49m[43m)[49m
+[1;32m     47[0m [38;5;66;03m# Process nodes[39;00m
+[1;32m     48[0m n_nodes [38;5;241m=[39m np[38;5;241m.[39mbincount(node_indicator)
+
+Cell [0;32mIn [1], line 81[0m, in [0;36mDSGraphNew._load_data[0;34m(self)[0m
+[1;32m     74[0m [38;5;28;01mdef[39;00m [38;5;21m_load_data[39m([38;5;28mself[39m):
+[1;32m     75[0m     [38;5;124;03m"""[39;00m
+[1;32m     76[0m [38;5;124;03m    Loads data from files.[39;00m
+[1;32m     77[0m [38;5;124;03m    [39;00m
+[1;32m     78[0m [38;5;124;03m    Returns:[39;00m
+[1;32m     79[0m [38;5;124;03m        tuple: adjacency_list, node_attributes, node_indicator, edge_attributes, edge_indicator[39;00m
+[1;32m     80[0m [38;5;124;03m    """[39;00m
+[0;32m---> 81[0m     adjacency_list [38;5;241m=[39m [43mnp[49m[38;5;241;43m.[39;49m[43mload[49m[43m([49m[43mos[49m[38;5;241;43m.[39;49m[43mpath[49m[38;5;241;43m.[39;49m[43mjoin[49m[43m([49m[38;5;28;43mself[39;49m[38;5;241;43m.[39;49m[43mpath[49m[43m,[49m[43m [49m[38;5;124;43m"[39;49m[38;5;124;43mA.npy[39;49m[38;5;124;43m"[39;49m[43m)[49m[43m)[49m
+[1;32m     82[0m     node_attributes [38;5;241m=[39m np[38;5;241m.[39mload(os[38;5;241m.[39mpath[38;5;241m.[39mjoin([38;5;28mself[39m[38;5;241m.[39mpath, [38;5;124m"[39m[38;5;124mnode_attributes.npy[39m[38;5;124m"[39m))
+[1;32m     83[0m     node_indicator [38;5;241m=[39m np[38;5;241m.[39mload(os[38;5;241m.[39mpath[38;5;241m.[39mjoin([38;5;28mself[39m[38;5;241m.[39mpath, [38;5;124m"[39m[38;5;124mnode_indicator.npy[39m[38;5;124m"[39m))
+
+File [0;32m/.automount/net_ro/net__software/deep-learning/virtualenv/python3.9/tensorflow2.10/lib64/python3.9/site-packages/numpy/lib/npyio.py:427[0m, in [0;36mload[0;34m(file, mmap_mode, allow_pickle, fix_imports, encoding, max_header_size)[0m
+[1;32m    425[0m     own_fid [38;5;241m=[39m [38;5;28;01mFalse[39;00m
+[1;32m    426[0m [38;5;28;01melse[39;00m:
+[0;32m--> 427[0m     fid [38;5;241m=[39m stack[38;5;241m.[39menter_context([38;5;28;43mopen[39;49m[43m([49m[43mos_fspath[49m[43m([49m[43mfile[49m[43m)[49m[43m,[49m[43m [49m[38;5;124;43m"[39;49m[38;5;124;43mrb[39;49m[38;5;124;43m"[39;49m[43m)[49m)
+[1;32m    428[0m     own_fid [38;5;241m=[39m [38;5;28;01mTrue[39;00m
+[1;32m    430[0m [38;5;66;03m# Code to distinguish from NumPy binary files and pickles.[39;00m
+
+[0;31mFileNotFoundError[0m: [Errno 2] No such file or directory: '/home/philippe/Master/github/SiFiCC-NN/datasets/OptimisedGeometry_CodedMaskHIT_Spot1_2e10_protons_simv5/A.npy'
+

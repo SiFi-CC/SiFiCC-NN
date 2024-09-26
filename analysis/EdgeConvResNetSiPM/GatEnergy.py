@@ -134,7 +134,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plt.show()
+plt.savefig("GatEnergyTraining.png")
 
 # %%
 # Make predictions using the validation set
