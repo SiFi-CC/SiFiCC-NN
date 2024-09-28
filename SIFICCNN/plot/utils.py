@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 
 def gaussian(x, mu, sigma, A, c):
@@ -100,6 +101,59 @@ def auto_hist_fitting(f,
                                ydata=ydata,
                                sigma=sigma,
                                p0=p0 if p0 is not None else [0.0, 1.0, np.sum(hist) * width,
-                                                             0.0, 0.5, np.sum(hist) * width, 0])
+                                                             0.0, 0.5, np.sum(hist) * width, 0],
+                                maxfev = 100000)
         fx = dict_f[f](x, *popt)
         return popt, pcov, x, fx
+
+
+""" def get_fwhm(data_slice):
+    print(data_slice.shape)
+    if data_slice.shape[0] > 1:
+        y, bins = np.histogram(data_slice, 20)
+        plt.stairs(y,bins)
+        plt.show()
+        plt.close()
+        max_y   = np.max(y)
+        xs = [bins[x] for x in range(y.shape[0]) if y[x] > max_y/2.0]
+        return np.max(xs)-np.min(xs)
+    else:
+        return 0 """
+
+def get_fwhm(data_slice, i):
+    if data_slice.shape[0] > 1:
+        # Calculate histogram
+        plt.hist(data_slice,bins=1000)
+        plt.xlim(left=-200, right=200)
+        plt.show()
+        plt.close()
+        y, bins = np.histogram(data_slice[np.abs(data_slice)<300], bins=600)
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        # Plot histogram
+        plt.stairs(y, bins)
+        plt.xlim(left=-300, right=300)
+
+        # Initial guess for Gaussian parameters
+        initial_guess = [0, 20, np.max(y), 0]
+        
+        try:
+            # Fit Gaussian
+            popt, _ = curve_fit(gaussian, bin_centers, y, p0=initial_guess, bounds=[(-200,5,np.max(y)/1.5,-2),(200,150,1.5*np.max(y),2)], maxfev=1000000)
+            mean, stddev, amplitude, offset = popt
+
+            # Calculate FWHM from stddev (FWHM = 2 * sqrt(2 * ln(2)) * stddev)
+            fwhm = 2 * np.sqrt(2 * np.log(2)) * stddev
+
+            # Plot the histogram and the fitted Gaussian
+            x_fit = np.linspace(bins[0], bins[-1], 1000)
+            y_fit = gaussian(x_fit, *popt)
+            plt.plot(x_fit, y_fit, label='Gaussian fit')
+            plt.legend()
+        except RuntimeError:
+            print("Fit "+str(i)+" failed!")
+        plt.savefig("/home/home2/institut_3b/clement/Master/fit"+str(i)+".png")
+        plt.close()
+        return fwhm
+    else:
+        return 0

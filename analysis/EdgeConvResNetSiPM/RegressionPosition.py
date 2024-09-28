@@ -25,6 +25,8 @@ from SIFICCNN.plot import plot_1dhist_energy_residual, \
     plot_1dhist_position_residual, \
     plot_2dhist_energy_residual_vs_true, \
     plot_2dhist_energy_residual_relative_vs_true, \
+    plot_2dhist_position_residual_vs_true, \
+    plot_position_resolution, \
     plot_2dhist_position_residual_vs_true
 
 from SIFICCNN.utils.plotter import plot_history_regression, \
@@ -190,6 +192,13 @@ def evaluate(dataset_name,
     # load datasets
     # Here all events are loaded and evaluated,
     # the true compton events are filtered later for plot
+    try:
+        E_prim_path = parent_directory()
+        E_prim_path = os.path.join(E_prim_path, "datasets", "SimGraphSiPM", dataset_name, "ComptonPrimaryEnergies.npy")
+        E_prim = np.load(E_prim_path)
+    except:
+        print("No primary energies found!")
+
     data = DSGraphSiPM(name=dataset_name,
                        norm_x=norm_x,
                        positives=False,

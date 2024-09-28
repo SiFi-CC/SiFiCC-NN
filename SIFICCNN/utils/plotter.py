@@ -360,8 +360,8 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.rcParams.update({'font.size': 16})
     """
     Do bins_x cover y_true range: -49.4 <= 143.0400848388672 <= 156.94625854492188 <= 49.30000000000141
-Do bins_err_x cover error range: -5.5 <= -28.392242431640625 <= 185.6326446533203 <= 5.399999999999961
-Traceback (most recent call last):
+    Do bins_err_x cover error range: -5.5 <= -28.392242431640625 <= 185.6326446533203 <= 5.399999999999961
+    Traceback (most recent call last):
 
     """
 
@@ -383,23 +383,23 @@ Traceback (most recent call last):
 
     # fitting position resolution
     popt0, pcov0 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist0,
-                             p0=[0.0, 1.0, np.sum(hist0) * width])
+                             p0=[0.0, 1.0, np.sum(hist0) * width] ,maxfev=1000000)
     popt1, pcov1 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist1,
-                             p0=[0.0, 20.0, np.sum(hist1) * width])
+                             p0=[0.0, 20.0, np.sum(hist1) * width] ,maxfev=1000000)
     popt2, pcov2 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist2,
-                             p0=[0.0, 1.0, np.sum(hist2) * width])
+                             p0=[0.0, 1.0, np.sum(hist2) * width] ,maxfev=1000000)
     popt3, pcov3 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist3,
-                             p0=[0.0, 1.0, np.sum(hist3) * width])
+                             p0=[0.0, 1.0, np.sum(hist3) * width] ,maxfev=1000000)
     popt4, pcov4 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist4,
-                             p0=[0.0, 20.0, np.sum(hist4) * width])
+                             p0=[0.0, 20.0, np.sum(hist4) * width] ,maxfev=1000000)
     popt5, pcov5 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist5,
-                             p0=[0.0, 1.0, np.sum(hist5) * width])
+                             p0=[0.0, 1.0, np.sum(hist5) * width] ,maxfev=1000000)
 
     ary_x = np.linspace(min(bins_err_x), max(bins_err_x), 1000)
     ary_y = np.linspace(min(bins_err_y), max(bins_err_y), 1000)
     ary_z = np.linspace(min(bins_err_z), max(bins_err_z), 1000)
 
-    plt.figure(figsize=(8, 5))
+    """ plt.figure(figsize=(8, 5))
     plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     plt.xlabel(r"$r^{Pred}_{x}$ - $r^{True}_{x}$ [mm]")
     plt.ylabel("counts")
@@ -445,7 +445,7 @@ Traceback (most recent call last):
     plt.minorticks_on()
     plt.tight_layout()
     plt.savefig(figure_name + "_electron_x_relative.png")
-    plt.close()
+    plt.close() """
 
     plt.figure(figsize=(8, 5))
     plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -1043,6 +1043,14 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
 
         # calc additional quantities for better fitting estimation
         y0 = hist_ee[e_frl]
+        print("-----------------------------------")
+        print("hist shape:", hist_ee.shape)
+        print("hist_size:", hist_ee.size)
+        print("e_frr:", e_frr)
+        if hist_ee.size <= e_frr:
+            e_frr = hist_ee.size-1
+        print("hist_ee:", hist_ee.size)
+        print("-----------------------------------")
         y1 = hist_ee[e_frr]
         p0_m = (y1 - y0) / (bins_center[e_frr] - bins_center[e_frl])
         p0_b = (y1 - y0) / 2
@@ -1051,7 +1059,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         # fit gaussian to histogram
         popt_e, pcov_e = curve_fit(gaussian_lin_bg, bins_center[e_frl:e_frr],
                                    hist_ee[e_frl:e_frr],
-                                   p0=[0.0, 1.0, np.sum(hist_ee[e_frl:e_frr]) * width, p0_m, p0_b])
+                                   p0=[0.0, 1.0, np.sum(hist_ee[e_frl:e_frr]) * width, p0_m, p0_b],
+                                   maxfev=100000)
         plt.plot(bins_center[e_frl:e_frr],
                  gaussian_lin_bg(bins_center[e_frl:e_frr], *popt_e), color="deeppink",
                  label=r"$\mu$ = {:.2f} $\pm$ {:.2f}""\n"r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
@@ -1112,6 +1121,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
 
         # calc additional quantities for better fitting estimation
         y0 = hist_ep[p_frl]
+        if hist_ee.size <= p_frr:
+            p_frr = hist_ee.size-1
         y1 = hist_ep[p_frr]
         p0_m = (y1 - y0) / (bins_center[p_frr] - bins_center[p_frl])
         p0_b = (y1 - y0) / 2
@@ -1120,7 +1131,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         # fit gaussian to histogram
         popt_p, pcov_p = curve_fit(gaussian_lin_bg, bins_center[p_frl:p_frr],
                                    hist_ep[p_frl:p_frr],
-                                   p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b])
+                                   p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
+                                   maxfev = 100000)
         plt.plot(bins_center[p_frl:p_frr],
                  gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p), color="deeppink",
                  label=r"$\mu$ = {:.2f} $\pm$ {:.2f}""\n"r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
