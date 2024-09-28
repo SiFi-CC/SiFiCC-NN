@@ -54,11 +54,11 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_4e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_4e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_4e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
+    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
+    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
+    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
+    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
+    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
     # go backwards in directory tree until the main repo directory is matched
