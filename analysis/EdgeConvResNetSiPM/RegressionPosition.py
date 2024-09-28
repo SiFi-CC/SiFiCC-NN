@@ -55,11 +55,11 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_4e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_4e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_4e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_4e9protons_simv4"
+    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons"
+    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons"
+    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons"
+    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons"
+    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
@@ -88,7 +88,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -298,15 +298,15 @@ if __name__ == "__main__":
 
     # base settings if no parameters are given
     # can also be used to execute this script without console parameter
-    base_run_name = "StartingAt2000000"
-    base_epochs = 5
+    base_run_name = "CCNewDataset"
+    base_epochs = 50
     base_batch_size = 64
     base_dropout = 0.0
     base_nfilter = 32
     base_nOut = 6
     base_activation = "relu"
     base_activation_out = "linear"
-    base_do_training = True
+    base_do_training = False
     base_do_evaluation = True
 
     # this bunch is to set standard configuration if argument parser is not configured
