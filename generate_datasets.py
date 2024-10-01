@@ -36,7 +36,6 @@ def main(n, file, coordinate_system, n_start, neutrons):
         n                  = n,
         coordinate_system  = coordinate_system,
         energy_cut         = None,
-        n_start            = n_start,
         neutrons           = neutrons,
     )
 
