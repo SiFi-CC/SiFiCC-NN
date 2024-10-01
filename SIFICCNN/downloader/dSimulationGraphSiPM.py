@@ -46,6 +46,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     """
     if neutrons==0:
         photon_set=True
+        with_neutrons=False
     else:
         photon_set=False
         if neutrons==2:

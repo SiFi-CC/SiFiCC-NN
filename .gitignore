@@ -27,3 +27,7 @@ EnergySpectrumStacked_NoNeutrons.png
 datasets
 results
 datasets_0
+EnergySpectrum_Photons.png
+EnergySpectrum_PhotonsCompton.png
+EnergySpectrumStacked_Photons.png
+continuousNeutronUpdate.log
