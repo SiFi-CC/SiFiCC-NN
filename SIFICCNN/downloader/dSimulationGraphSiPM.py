@@ -202,7 +202,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
             # collect node attributes for each node
             for j in range(n_sipm):
                 for k in range(n_sipm):
-                    ary_A[edge_id, :] = [node_id + j, node_id + k]
+                    ary_A[edge_id, :] = [node_id, node_id - j + k]
                     edge_id += 1
                 if coordinate_system == "CRACOW":
                     attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
