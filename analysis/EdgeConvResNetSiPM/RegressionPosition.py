@@ -73,7 +73,7 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
@@ -90,7 +90,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM]:
+        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -307,16 +307,16 @@ if __name__ == "__main__":
 
     # base settings if no parameters are given
     # can also be used to execute this script without console parameter
-    base_run_name = "StartingAt2000000"
-    base_epochs = 5
+    base_run_name = "SimGraphSiPM_default"
+    base_epochs = 20
     base_batch_size = 64
     base_dropout = 0.0
     base_nfilter = 32
     base_nOut = 6
     base_activation = "relu"
     base_activation_out = "linear"
-    base_do_training = True
-    base_do_evaluation = True
+    base_do_training = False
+    base_do_evaluation = False
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
