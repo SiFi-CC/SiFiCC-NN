@@ -3,10 +3,8 @@
 *.pyc
 
 # data storage directories
-/root_files
-/datasets
-/results
-/condor
+/root_files/*
+/datasets/*
 
 # ignore .png, .root, .npz and .npy in results subdirectory
 # files are too large and too many to properly comit
@@ -15,7 +13,11 @@ results/**/*.root
 results/**/*.npz
 results/**/*.npy
 results/**/*.txt
+condor
+datasets
+datasets_0
+datasets_old
 *.png
 *.log
-datasets
 results
+.vscode/settings.json
