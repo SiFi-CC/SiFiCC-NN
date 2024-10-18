@@ -49,10 +49,8 @@ class DSGraphSiPM(Dataset):
         """
         Returns the path to the dataset directory.
         """
-        # Get current path, go two subdirectories higher
         path = parent_directory()
-        # Hardcoded path to the dataset directory
-        path = "/net/scratch_g4rt1/clement/AFdatasets/SimGraphSiPM/GraphSiPM_OptimisedGeometry_4to1_Continuous_2e10protons_simv4"
+        path = os.path.join(path, "datasets", "SimGraphSiPM", self.name)
 
         return path
 
