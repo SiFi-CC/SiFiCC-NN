@@ -22,6 +22,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
                              coordinate_system="CRACOW",
                              energy_cut=None,
                              neutrons=0,
+                             n_start=0,
                              ):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
@@ -42,6 +43,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
                                             will be converted to Aachen coordinate system
         with_neutrons (bool):               Include events with neutrons
         photon_set (bool):                  Include photon set
+        n_start (int):                      Start iteration at event n_start
 
     """
     if neutrons==0:
@@ -181,7 +183,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     edge_id = 0
 
     distcompton_tags=list()
-    for i, event in enumerate(root_simulation.iterate_events(n=n)):
+    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
         # get number of cluster
         if event == None:
             continue

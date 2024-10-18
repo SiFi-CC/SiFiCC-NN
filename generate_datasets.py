@@ -37,6 +37,7 @@ def main(n, file, coordinate_system, n_start, neutrons):
         coordinate_system  = coordinate_system,
         energy_cut         = None,
         neutrons           = neutrons,
+        n_start            = n_start
     )
 
 if __name__ == "__main__":
