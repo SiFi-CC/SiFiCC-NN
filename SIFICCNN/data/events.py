@@ -1,6 +1,6 @@
 import numpy as np
 
-from SIFICCNN.utils import TVector3, tVector_list, vector_angle, compton_scattering_angle
+from SIFICCNN.utils import TVector3, tVector_list, vector_angle
 
 
 class EventSimulation:
@@ -36,20 +36,10 @@ class EventSimulation:
 
     def __init__(self,
                  EventNumber,
-                 MCSimulatedEventType,
                  MCEnergy_Primary,
-                 MCEnergy_e,
-                 MCEnergy_p,
                  MCPosition_source,
                  MCDirection_source,
-                 MCComptonPosition,
-                 MCDirection_scatter,
-                 MCPosition_e,
-                 MCInteractions_e,
-                 MCPosition_p,
-                 MCInteractions_p,
-                 Scatterer,
-                 Absorber,
+                 Detector,
                  MCNPrimaryNeutrons=None,
                  MCEnergyDeps_e=None,
                  MCEnergyDeps_p=None,
@@ -58,23 +48,13 @@ class EventSimulation:
                  FibreHit=None):
         # Global information
         self.EventNumber            = EventNumber
-        self.MCSimulatedEventType   = MCSimulatedEventType
         self.MCEnergy_Primary       = MCEnergy_Primary
-        self.MCEnergy_e             = MCEnergy_e
-        self.MCEnergy_p             = MCEnergy_p
         self.MCPosition_source      = TVector3.from_akw(MCPosition_source)
         self.MCDirection_source     = TVector3.from_akw(MCDirection_source)
-        self.MCComptonPosition      = TVector3.from_akw(MCComptonPosition)
-        self.MCDirection_scatter    = TVector3.from_akw(MCDirection_scatter)
-        self.MCPosition_e           = tVector_list(MCPosition_e)
-        self.MCInteractions_e       = np.array(MCInteractions_e)
-        self.MCPosition_p           = tVector_list(MCPosition_p)
-        self.MCInteractions_p       = np.array(MCInteractions_p)
         self.MCNPrimaryNeutrons     = MCNPrimaryNeutrons
 
         # Detector modules
-        self.scatterer = Scatterer
-        self.absorber = Absorber
+        self.detector = Detector
 
         # additional attributes. May not be present in every file, if so filled with None
         if MCEnergyDeps_e is not None:
@@ -88,7 +68,8 @@ class EventSimulation:
         self.RecoCluster    = RecoCluster
         self.SiPMHit        = SiPMHit
         self.FibreHit       = FibreHit
-
+        if type(self.FibreHit) is not None:
+            self.FibreCluster = FibreCluster(self.FibreHit)
         # set flags for phantom-hit methods
         # Phantom-hits describe events where the primary prompt gamma undergoes pair-production,
         # resulting in a missing interaction in the absorber module. The phantom hit tag is only
@@ -101,328 +82,6 @@ class EventSimulation:
         self.ph_method      = 1
         self.ph_acceptance  = 1e-1
         self.ph_tag         = False
-
-        # Define new interaction lists
-        # During the development of this code the template for interaction id encoding changed
-        # significantly. Therefor to allow usage of older datasets containing legacy variant of
-        # interaction list, the definition is uniformed at this point and translated from legacy
-        # variants. Uniformed variant is defined in a (nx3) array where the columns describe:
-        #   - type: describes the interaction type of particle interaction
-        #   - level: describes the secondary level of the interacting particle
-        #   - energy: boolean encoding if the interaction deposited energy
-        self.MCInteractions_e_full = np.zeros(shape=(len(self.MCInteractions_e), 4))
-        self.MCInteractions_p_full = np.zeros(shape=(len(self.MCInteractions_p), 4))
-        self.set_interaction_list()
-
-    def set_interaction_list(self):
-        """
-        Setter method for MCInteraction_e_uni and MCInteraction_p_uni.
-        Legacy variants of interactions lists include:
-            - 2 length or lower:    First legacy variant. Used in all old root files. Interactions
-                                    encoded in two digits numbers. First describing the secondary
-                                    level, the second the interaction type.
-            - 3 length fixed:   Same as 2 length with an additional digit for particle
-                                identification.
-            - 5 length fixed:   Current version used for all new root files. Encoding: UVXYZ
-                                U:  Hit type (electron or photon interaction tree)
-                                VX: Interaction type (Two digits now for more encoding space)
-                                Y:  Secondary level
-                                Z:  Particle type (0: blank, 1: Photon, 2: electron, 3: positron)
-
-        Goal is to define a uniform and usable interaction list compatible with all legacy versions.
-        The final interaction list has the form of:
-            - (Interaction type, Secondary level, Particle Type, Energy deposition (boolean))
-
-        return:
-            None
-        """
-        # check if interaction list has valid entries
-        if len(self.MCInteractions_e) > 0 and len(self.MCInteractions_p) > 0:
-            # scan for interaction id integer length and encode accordingly
-            # X // 10**n % 10 is an elegant method to get the n+1'st digit of X
-            if len(str(self.MCInteractions_e[0])) <= 2:
-                for i, interact in enumerate(self.MCInteractions_e):
-                    self.MCInteractions_e_full[i, :2] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10]
-                    self.MCInteractions_e_full[i, 3] = 1
-                for i, interact in enumerate(self.MCInteractions_p):
-                    self.MCInteractions_p_full[i, :2] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10]
-                    self.MCInteractions_p_full[i, 3] = 1
-            elif len(str(self.MCInteractions_e[0])) == 3:
-                for i, interact in enumerate(self.MCInteractions_e):
-                    self.MCInteractions_e_full[i, :3] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10,
-                                                         interact // 10 ** 2 % 10]
-                    self.MCInteractions_e_full[i, 3] = 1
-                for i, interact in enumerate(self.MCInteractions_p):
-                    self.MCInteractions_p_full[i, :3] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10,
-                                                         interact // 10 ** 2 % 10]
-                    self.MCInteractions_p_full[i, 3] = 1
-            elif len(str(self.MCInteractions_e[0])) == 5:
-                for i, interact in enumerate(self.MCInteractions_e):
-                    self.MCInteractions_e_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 * (interact // 10 ** 3 % 10),
-                        interact // 10 ** 1 % 10,
-                        interact // 10 ** 0 % 10]
-
-                    if self.MCEnergyDeps_e is not None:
-                        self.MCInteractions_e_full[i, 3] = (self.MCEnergyDeps_e[i] > 0.0) * 1
-                    else:
-                        self.MCInteractions_e_full[i, 3] = 1
-
-                for i, interact in enumerate(self.MCInteractions_p):
-                    self.MCInteractions_p_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 * (interact // 10 ** 3 % 10),
-                        interact // 10 ** 1 % 10,
-                        interact // 10 ** 0 % 10]
-
-                    if self.MCEnergyDeps_p is not None:
-                        self.MCInteractions_p_full[i, 3] = (self.MCEnergyDeps_p[i] > 0.0) * 1
-                    else:
-                        self.MCInteractions_p_full[i, 3] = 1
-
-    # neural network target getter methods
-    def get_target_position(self):
-        """
-        Get Monte-Carlo Truth position for scatterer and absorber Compton interactions.
-        The scatterer interaction is defined by the Compton scattering position of the initial
-        prompt gamma, the absorber position will be defined by either an additional interaction of
-        the prompt gamma or the next best secondary interaction. For that each absorber interaction
-        will be tested if their position matches with the scattering direction of the scattered
-        prompt gamma.
-
-        return:
-            target_position_e (TVector3) : target electron (scatterer) interaction
-            target_position_P (TVector3) : target photon (absorber) interaction
-        """
-
-        # initialization
-        # The target electron interaction is always predefined by the Compton scattering interaction
-        # position and not interaction position, to exclude the electron travel
-        target_position_e = self.MCComptonPosition
-        target_position_p = TVector3.zeros()
-
-        # exceptions for interaction list that are too short due to missing interactions
-        # Note: This is mostly if the scattering is only happening in the scatterer
-        if len(self.MCPosition_p) <= 1:
-            return target_position_e, target_position_p
-
-        # check if the first interaction is compton scattering in the scatterer
-        if (self.MCInteractions_p_full[0, 0] == 1 and
-                self.scatterer.is_vec_in_module(self.MCPosition_p[0])):
-
-            # scan for the next interaction of the primary prompt gamma
-            # Its position interactions auto determines the gamma absorption position if the event
-            # is a dist. Compton event
-            if self.MCInteractions_p_full[1, 1] == 0 and self.MCInteractions_p_full[1, 3] == 1:
-                target_position_p = self.MCPosition_p[1]
-                return target_position_e, target_position_p
-
-            # exceptions here are phantom hits and are dependent on the strategy to scan for
-            # phantom hits
-            else:
-                # Phantom hits are ignored
-                if self.ph_method == 0:
-                    return target_position_e, target_position_p
-                # Phantom hits are scanned by simulation tag
-                if self.ph_method == 1:
-                    for i in range(1, len(self.MCInteractions_p_full)):
-                        if self.MCInteractions_p_full[i, 0] == 3:
-                            target_position_p = self.MCPosition_p[i + 1]
-                            self.ph_tag = True
-                            return target_position_e, target_position_p
-                    return target_position_e, target_position_p
-                # Phantom hits are scanned by secondary interaction proximity
-                if self.ph_method == 2:
-                    for i in range(1, len(self.MCInteractions_p_full)):
-                        # skip zero energy deposition interactions
-                        if self.MCInteractions_p_full[i, 3] == 0:
-                            continue
-                        if (self.MCInteractions_p_full[i, 1] <= 2 and
-                                self.absorber.is_vec_in_module(self.MCPosition_p[i])):
-                            # check additionally if the interaction is in the scattering
-                            # direction
-                            tmp_angle = vector_angle(
-                                self.MCPosition_p[i] - self.MCComptonPosition,
-                                self.MCDirection_scatter)
-                            r = (self.MCPosition_p[i] - self.MCComptonPosition).mag
-                            tmp_dist = np.sin(tmp_angle) * r
-                            if tmp_dist < self.ph_acceptance:
-                                self.ph_tag = True
-                                target_position_p = self.MCPosition_p[i]
-                                return target_position_e, target_position_p
-                    return target_position_e, target_position_p
-
-        # Global exception for every interaction list where the first interaction is not Compton
-        # scattering
-        else:
-            return target_position_e, target_position_p
-
-    def get_target_energy(self):
-        """
-        Get Monte-Carlo Truth energies for scatterer and absorber Compton interactions.
-        Energies are defined by the electron and photon energies after Compton scattering.
-
-        Currently defined in a simple manner as energy is directly given my Monte-Carlo.
-        Method only exist to make further changes (if needed) easier.
-
-        return:
-            target_energy_e (float): target electron energy
-            target_energy_p (float): target photon energy
-        """
-        target_energy_e = self.MCEnergy_e
-        target_energy_p = self.MCEnergy_p
-
-        return target_energy_e, target_energy_p
-
-    def get_distcompton_tag(self):
-        """
-        Used Monte-Carlo information to define if the given event is a distributed Compton event.
-        Distributed Compton events are used to classify which events are good for image
-        reconstruction. Often also denoted as "ideal Compton events"
-
-        Distributed Compton events:
-            -   Compton energy stored in event (Base condition to determine if Compton scattering
-                occured).
-            -   Target position of electron in scatterer and target position of photon in absorber
-            - Simulated event type is left open and can be any
-            - Back-scattering is not included in this definition
-
-        return:
-            True, if distributed compton tag conditions are met
-        """
-        target_position_e, target_position_p = self.get_target_position()
-        target_energy_e, target_energy_p = self.get_target_energy()
-
-        # check for valid target energies
-        if target_energy_e == 0. or target_energy_p == 0.:
-            return False
-
-        # check if interaction positions are in the correct module
-        if (self.scatterer.is_vec_in_module(target_position_e)
-                and self.absorber.is_vec_in_module(target_position_p)):
-            return True
-        return False
-
-    def get_distcompton_tag_legacy(self):
-        """
-        Legacy definition of distributed Compton events (Used in Awals thesis).
-
-        PARTS OF THIS CODE HAVE BEEN CHANGED TO ALLOW COMPATIBILITY WITH OLDER ROOT FILE VERSIONS!
-
-        return:
-            True, if legacy conditions for distributed Compton event tag are met
-        """
-
-        """
-        # NOT USED ANYMORE AS DATASETS DO NOT CONTAIN NON COINCIDENCE EVENTS ANYMORE
-        # check if the event is a valid event by considering the clusters
-        # associated with it, the event is considered valid if there are at
-        # least one cluster within each module of the SiFiCC
-        if self.clusters_count >= 2 
-                and scatterer.is_any_point_inside_x(self.clusters_position) 
-                and absorber.is_any_point_inside_x(self.clusters_position):
-            self.is_distributed_clusters = True
-        else:
-            self.is_distributed_clusters = False
-        """
-        target_position_p = TVector3.zeros()
-        target_position_e = TVector3.zeros()
-
-        # check if the event is a Compton event
-        is_compton = True if self.MCEnergy_e != 0 else False
-
-        # check if the event is a complete Compton event
-        # complete Compton event= Compton event + both e and p go through a
-        # second interation in which
-        # 0 < p interaction < 10
-        # 10 <= e interaction < 20
-        # Note: first interaction of p is the compton event
-        if is_compton \
-                and len(self.MCPosition_p) >= 2 \
-                and len(self.MCPosition_e) >= 1 \
-                and ((self.MCInteractions_p_full[0, 1:] > 0) & (
-                self.MCInteractions_p_full[0, 1:] < 10)).any() \
-                and ((self.MCInteractions_e_full[0, 0] >= 10) & (
-                self.MCInteractions_e_full[0, 0] < 20)):
-            is_complete_compton = True
-        else:
-            is_complete_compton = False
-
-        # initialize e & p first interaction position
-        if is_complete_compton:
-            for idx in range(1, len(self.MCInteractions_p_full)):
-                if 0 < self.MCInteractions_p_full[0, idx] < 10:
-                    target_position_p = self.MCPosition_p[idx]
-                    break
-            for idx in range(0, len(self.MCInteractions_e_full)):
-                if 10 <= self.MCInteractions_e_full[0, idx] < 20:
-                    target_position_e = self.MCPosition_e[idx]
-                    break
-        """
-        # DISABLED CAUSE IT IS NOT NEEDED
-        # check if the event is a complete distributed Compton event
-        # complete distributed Compton event= complete Compton event +
-        # each e and p go through a secondary
-        # interaction in a different module of the SiFiCC
-        if is_complete_compton \
-                and self.scatterer.is_vec_in_module(self.MCPosition_p) \
-                and self.absorber.is_vec_in_module(self.MCPosition_e):
-            is_complete_distributed_compton = True
-        else:
-            is_complete_distributed_compton = False
-        """
-        # check if the event is an ideal Compton event and what type is it
-        # (EP or PE)
-        # ideal Compton event = complete distributed Compton event where the
-        # next interaction of both
-        # e and p is in the different modules of SiFiCC
-        if is_complete_compton \
-                and self.scatterer.is_vec_in_module(target_position_e) \
-                and self.absorber.is_vec_in_module(target_position_p) \
-                and self.MCSimulatedEventType == 2:
-            return True
-        elif is_complete_compton \
-                and self.scatterer.is_vec_in_module(target_position_p) \
-                and self.absorber.is_vec_in_module(target_position_e) \
-                and self.MCSimulatedEventType == 2:
-            return True
-        return False
-
-    @property
-    def theta_compton(self):
-        """
-        Calculate scattering angle theta in radiant from Compton scattering formula.
-
-        return:
-            scatter angle theta (based on energy)
-        """
-        target_energy_e, target_energy_p = self.get_target_energy()
-        return compton_scattering_angle(target_energy_e + target_energy_p, target_energy_p)
-
-    @property
-    def theta_dotvec(self):
-        """
-        Calculate scattering angle theta in radiant from the dot product of two vectors.
-
-        return:
-            scatter angle theta (based on position)
-        """
-        vec1 = self.MCDirection_source
-        vec2 = self.MCDirection_scatter
-
-        if vec1.mag == 0 or vec2.mag == 0:
-            return 0.0
-
-        ary_vec1 = np.array([vec1.x, vec1.y, vec1.z])
-        ary_vec2 = np.array([vec2.x, vec2.y, vec2.z])
-
-        ary_vec1 /= np.sqrt(np.dot(ary_vec1, ary_vec1))
-        ary_vec2 /= np.sqrt(np.dot(ary_vec2, ary_vec2))
-
-        return np.arccos(np.clip(np.dot(ary_vec1, ary_vec2), -1.0, 1.0))
 
     def summary(self, verbose=0):
         """
@@ -871,16 +530,14 @@ class SiPMHit:
                  SiPMPhotonCount,
                  SiPMPosition,
                  SiPMId,
-                 Scatterer,
-                 Absorber):
+                 Detector):
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
         self.SiPMPhotonCount = np.array(SiPMPhotonCount)
         self.SiPMPosition = tVector_list(SiPMPosition)
         self.SiPMId = np.array(SiPMId)
-        self.scatterer = Scatterer
-        self.absorber = Absorber
+        self.detector = Detector
 
     def summary(self, debug=False):
         print("\n# SiPM Data: #")
@@ -932,26 +589,6 @@ class SiPMHit:
 
         return ary_feature
 
-    def sort_sipm_by_module(self):
-        """
-        sort sipms by corresponding module only
-        creates list of array idx's.
-
-        return:
-            sorted array idx scatterer, absorber
-
-        """
-        idx_scatterer = []
-        idx_absorber = []
-
-        for i in range(len(self.SiPMId)):
-            if self.scatterer.is_vec_in_module(self.SiPMPosition[i], a=2):
-                idx_scatterer.append(i)
-                continue
-            if self.absorber.is_vec_in_module(self.SiPMPosition[i], a=2):
-                idx_absorber.append(i)
-                continue
-        return idx_scatterer, idx_absorber
 
     def get_edge_features(self, idx1, idx2, cartesian=True):
         """
@@ -987,7 +624,7 @@ class SiPMHit:
 
 class FibreHit:
     """
-    A Container to represent the SiPM hits of a single simulated event.
+    A Container to represent the Fibre hits of a single simulated event.
 
         Attributes:
             FibreTime (array<float>):           List of Fibre hit times (in [ns]).
@@ -996,7 +633,6 @@ class FibreHit:
             FibreId (array<TVector3>):          List of hit Fibre unique IDs. For mapping of
                                                 Fibre ro unique ID consult the GCCB wiki.
             Scatterer (Detector):               Object containing scatterer module dimensions
-            Absorber (Detector):                Object containing absorber module dimensions
 
     INFO:
     The FibreHit container class contains the Scatterer abs Absorber modules as the methods of the
@@ -1009,16 +645,20 @@ class FibreHit:
                  FibreEnergy,
                  FibrePosition,
                  FibreId,
-                 Scatterer,
-                 Absorber):
-        self.FibreTime = np.array(FibreTime)
+                 Detector):
+        if len(FibreEnergy) == 0:
+            raise ValueError("FibreEnergy is empty: ", FibreEnergy)
+        self.FibreEnergy = np.array(FibreEnergy)
+        self.FibreEnergymin = min(FibreEnergy) #DEBUG
+        self.FibreTime = FibreTime
+        self.FibreTime = np.array(self.FibreTime)
         self.FibreTimeStart = min(FibreTime)
         self.FibreTime -= self.FibreTimeStart
-        self.FibreEnergy = np.array(FibreEnergy)
         self.FibrePosition = tVector_list(FibrePosition)
         self.FibreId = np.array(FibreId)
-        self.scatterer = Scatterer
-        self.absorber = Absorber
+        self.detector = Detector
+        
+
 
     def summary(self, debug=False):
         # add Cluster reconstruction print out
@@ -1033,3 +673,91 @@ class FibreHit:
                     self.FibrePosition[j].y,
                     self.FibrePosition[j].z,
                     self.FibreTime[j]))
+            
+class FibreCluster:
+    def __init__(self, fibreHit):
+        self.FibreHit = fibreHit
+        #self.SiPMHit = sipmHit
+        #self.PhotonCount_r = np.sum(np.array([self.SiPMHit.SiPMPhotonCount[i] for i in range(len(self.SiPMHit.SiPMId)) if self.SiPMHit.SiPMPosition.y[i] > 0]))
+        #self.PhotonCount_l = np.sum(np.array([self.SiPMHit.SiPMPhotonCount[i] for i in range(len(self.SiPMHit.SiPMId)) if self.SiPMHit.SiPMPosition.y[i] < 0]))
+        self.ClusterEnergy = np.sum(self.FibreHit.FibreEnergy)
+        self.ClusterTime = self.FibreHit.FibreTimeStart
+        self.ClusterPosition = TVector3.zeros()
+        self.ElarPar = {
+            "lambda" : 124,
+            "L" : 100,
+            "xi" : 1.030,
+            "eta_prime_r" : 0.862,
+            "eta_prime_l" : 0.667,
+            "S0_prime" : 163.89,
+        } # taken from Paper: A systematic study of LYSO:Ce, LuAG:Ce and GAGG:Ce scintillating fibers properties
+
+    def PElar(self):
+        exp_L_lambda = np.exp(self.ElarPar["L"] / self.ElarPar["lambda"])
+        exp_2L_lambda = np.exp(2 * self.ElarPar["L"] / self.ElarPar["lambda"])
+
+        def LElar(self):
+            upper = exp_L_lambda*(exp_L_lambda*self.ElarPar["xi"]*self.PhotonCount_l-self.PhotonCount_r*self.ElarPar["eta_prime_r"])
+            lower = self.ElarPar["xi"]*exp_2L_lambda-self.ElarPar["eta_prime_l"]*self.ElarPar["eta_prime_r"]
+            return upper/lower
+    
+        def RElar(self):
+            upper = exp_L_lambda*(-exp_L_lambda*self.PhotonCount_r+self.ElarPar["xi"]*self.PhotonCount_l*self.ElarPar["eta_prime_l"])
+            lower = self.ElarPar["xi"]*(exp_2L_lambda-self.ElarPar["eta_prime_r"]*self.ElarPar["eta_prime_l"])
+            return -upper/lower
+
+        return LElar+RElar
+    
+    def Elar_y_finder(self):
+
+        def leftSignal(y):
+            return self.ElarPar["S0_prime"]*(np.exp(-y/self.ElarPar["lambda"])+self.ElarPar["eta_prime_r"]*np.exp(-(2*self.ElarPar["L"]-y)/self.ElarPar["lambda"]))
+        
+        def rightSignal(y):
+            return self.ElarPar["S0_prime"]*self.ElarPar["xi"]*(np.exp(-self.ElarPar["L"]+y/self.ElarPar["lambda"])+self.ElarPar["eta_prime_l"]*np.exp((-self.ElarPar["L"]-y)/self.ElarPar["lambda"]))
+
+        def intersect_signals(max_iterations=1000):
+            best_y = 0
+            min_diff = abs(leftSignal(best_y) - rightSignal(best_y))
+
+            for _ in range(max_iterations):
+                diff = leftSignal(best_y) - rightSignal(best_y)
+                
+                if diff > 0:
+                    y = best_y * 1.001
+                else:
+                    y = best_y * 0.999
+                
+                current_diff = abs(leftSignal(y) - rightSignal(y))
+                if current_diff < min_diff:
+                    min_diff = current_diff
+                    best_y = y
+                else:
+                    break
+            
+            return best_y
+                    
+        return intersect_signals()
+
+    def get_first_layer(self):
+        # get the first layer that participates in the interaction
+        min_layer = np.min([pos.z for pos in self.FibreHit.FibrePosition])
+        if min_layer > 239 or min_layer < 227 or min_layer%2==0:
+            raise ValueError("First layer %s index is out of range 227 to 239" % (min_layer,))
+        return min_layer
+    
+    def get_row_coordinates(self):
+        # Using weighted mean to determine the row position with energy as weights
+        return np.average([fibre.x for fibre in self.FibreHit.FibrePosition], weights=self.FibreHit.FibreEnergy)
+
+    
+    def reconstruct_cluster(self, coordinate_system="AACHEN"):
+        if coordinate_system == "AACHEN":
+            self.ClusterPosition.x = self.get_row_coordinates()
+            self.ClusterPosition.y = self.Elar_y_finder()
+            self.ClusterPosition.z = self.get_first_layer()
+        elif coordinate_system == "CRACOW":
+            self.ClusterPosition.z = self.get_row_coordinates()
+            self.ClusterPosition.y = -self.Elar_y_finder()
+            self.ClusterPosition.x = self.get_first_layer()
+        return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
