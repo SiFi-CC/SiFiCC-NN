@@ -12,7 +12,7 @@ import argparse
 
 from SIFICCNN.data import RootSimulation
 from SIFICCNN.utils import parent_directory
-from SIFICCNN.downloader import dSimulation_to_GraphSiPM
+from SIFICCNN.downloader import dSimulation_to_GraphSiPMCM
 
 # Get current path, go two subdirectories higher
 path = parent_directory()
@@ -29,7 +29,7 @@ def main(n, file, coordinate_system, n_start, neutrons):
     root_simulation = RootSimulation(file)
     
     # Convert simulation data to GraphSiPM format
-    dSimulation_to_GraphSiPM(
+    dSimulation_to_GraphSiPMCM(
         root_simulation    = root_simulation,
         dataset_name       = root_simulation.file_name,
         path               = "",
@@ -39,6 +39,8 @@ def main(n, file, coordinate_system, n_start, neutrons):
         neutrons           = neutrons,
         n_start            = n_start
     )
+
+    
 
 if __name__ == "__main__":
     # Configure argument parser
