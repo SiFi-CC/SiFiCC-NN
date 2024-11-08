@@ -11,13 +11,14 @@ import pickle as pkl
 import json
 import tensorflow as tf
 import argparse
+import csv
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
-from SIFICCNN.models import SiFiECRNShort
+from SIFICCNN.models import SiFiECRNShort, SiFiECRN4, SiFiECRN5
 from SIFICCNN.utils import parent_directory
 
 from SIFICCNN.plot import plot_1dhist_energy_residual, \
@@ -42,7 +43,8 @@ def main(run_name="ECRNSiPM_unnamed",
          activation="relu",
          activation_out="linear",
          do_training=False,
-         do_evaluation=False):
+         do_evaluation=False,
+         model_type="SiFiECRNShort"):
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -87,10 +89,11 @@ def main(run_name="ECRNSiPM_unnamed",
                  batch_size=batch_size,
                  nEpochs=epochs,
                  path=path_results,
-                 modelParameter=modelParameter)
+                 modelParameter=modelParameter,
+                 model_type=model_type)
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in [DATASET_0MM]:#, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -103,15 +106,22 @@ def training(dataset_name,
              batch_size,
              nEpochs,
              path,
-             modelParameter):
+             modelParameter,
+             model_type="SiFiECRNShort"):
     # load graph datasets
     data = DSGraphSiPM(name=dataset_name,
                        norm_x=None,
                        positives=True,
                        regression="Position")
 
-    # build tensorflow model
-    tf_model = SiFiECRNShort(F=5, **modelParameter)
+    # select the model class based on model_type
+    if model_type == "SiFiECRN4":
+        tf_model = SiFiECRN4(F=5, **modelParameter)
+    elif model_type == "SiFiECRN5":
+        tf_model = SiFiECRN5(F=5, **modelParameter)
+    else:
+        tf_model = SiFiECRNShort(F=5, **modelParameter)
+    
     print(tf_model.summary())
 
     # generate disjoint loader from datasets
@@ -136,8 +146,7 @@ def training(dataset_name,
                                                                            factor=1. / 3.,
                                                                            patience=4,
                                                                            min_delta=1e-2,
-                                                                           min_lr=1e-6,
-                                                                           verbose=0)])
+                                                                           )])
 
     # Save everything after training process
     os.chdir(path)
@@ -239,40 +248,58 @@ def evaluate(dataset_name,
     #                    y_true=y_true[labels],
     #                    figure_name="position_error_new_function")
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
+    fit_e_x = plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
                                   y_true=y_true[labels, 0],
                                   particle="e",
                                   coordinate="x",
                                   file_name="1dhist_electron_position_{}_residual.png".format("x"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
+    fit_p_x = plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
                                   y_true=y_true[labels, 3],
                                   particle="\gamma",
                                   coordinate="x",
                                   file_name="1dhist_gamma_position_{}_residual.png".format("x"))
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
+    fit_e_y = plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
                                   y_true=y_true[labels, 1],
                                   particle="e",
                                   coordinate="y",
                                   f="lorentzian",
                                   file_name="1dhist_electron_position_{}_residual.png".format("y"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
+    fit_p_y = plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
                                   y_true=y_true[labels, 4],
                                   particle="\gamma",
                                   coordinate="y",
                                   f="lorentzian",
                                   file_name="1dhist_gamma_position_{}_residual.png".format("y"))
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
+    fit_e_z = plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
                                   y_true=y_true[labels, 2],
                                   particle="e",
                                   coordinate="z",
                                   file_name="1dhist_electron_position_{}_residual.png".format("z"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
+    fit_p_z = plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
                                   y_true=y_true[labels, 5],
                                   particle="\gamma",
                                   coordinate="z",
                                   file_name="1dhist_gamma_position_{}_residual.png".format("z"))
+    
+    # Collect all fit results into a dictionary
+    fit_results = {
+        "fit_e_x": fit_e_x,
+        "fit_p_x": fit_p_x,
+        "fit_e_y": fit_e_y,
+        "fit_p_y": fit_p_y,
+        "fit_e_z": fit_e_z,
+        "fit_p_z": fit_p_z
+    }
+
+    # Write the fit results to a CSV file
+    with open('pos_fit_results.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Fit Type", "Parameters"])
+        for key, value in fit_results.items():
+            writer.writerow([key, value])
+                                  
 
 
     for i, r in enumerate(["x", "y", "z"]):
@@ -288,6 +315,7 @@ def evaluate(dataset_name,
                                               coordinate=r,
                                               file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
                                                   r))
+    
 
 
 if __name__ == "__main__":
@@ -303,6 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--activation_out", type=str, help="Activation function of output node")
     parser.add_argument("--training", type=bool, help="If true, do training process")
     parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
+    parser.add_argument("--model_type", type=str, help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
     args = parser.parse_args()
 
     # base settings if no parameters are given
@@ -317,6 +346,7 @@ if __name__ == "__main__":
     base_activation_out = "linear"
     base_do_training = False
     base_do_evaluation = False
+    base_model_type = "SiFiECRNShort"
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
@@ -330,6 +360,7 @@ if __name__ == "__main__":
     activation_out = args.activation_out if args.activation_out is not None else base_activation_out
     do_training = args.training if args.training is not None else base_do_training
     do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
+    model_type = args.model_type if args.model_type is not None else base_model_type
 
     main(run_name=run_name,
          epochs=epochs,
@@ -340,4 +371,5 @@ if __name__ == "__main__":
          activation=activation,
          activation_out=activation_out,
          do_training=do_training,
-         do_evaluation=do_evaluation)
+         do_evaluation=do_evaluation,
+         model_type=model_type)
