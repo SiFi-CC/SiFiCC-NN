@@ -2,6 +2,7 @@ import uproot
 import tqdm
 import sys
 import os
+import warnings
 
 from .events import EventSimulation, RecoCluster, SiPMHit, FibreHit
 from .detector import Detector
@@ -210,15 +211,21 @@ class RootSimulation:
         if self.hasSiPMHit:
             for tleave in self.leavesTree[2]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
-            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
+            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:
+                warnings.warn("No SiPM hit found in event, skipping event %s." % idx)                       
                 return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
+
 
         fibrehit = None
         if self.hasFibreHit:
             for tleave in self.leavesTree[3]:
                 dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
+            if len(dictBasketFibreHit['FibreTime']) == 0:  
+                warnings.warn("No Fibre hit found in event, skipping event %s." % idx)                                
+                return None
             fibrehit = FibreHit(**dictBasketFibreHit)
+
 
         # simulation event serves as container for any additional information
         for tleave in self.leavesTree[0]:
