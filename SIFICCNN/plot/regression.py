@@ -97,6 +97,7 @@ def plot_1dhist_energy_residual_relative(y_pred,
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
+    return popt
 
 
 def plot_2dhist_energy_residual_vs_true(y_pred,
@@ -205,6 +206,7 @@ def plot_1dhist_position_residual(y_pred,
     fit_label = ""
     for i in range(len(popt)):
         fit_label += r"$p{}$ = {:.2f} $\pm$ {:.2f}".format(i, popt[i], np.sqrt(pcov[i, i])) + "\n"
+    
     # plot
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -227,6 +229,7 @@ def plot_1dhist_position_residual(y_pred,
     plt.tight_layout()
     plt.savefig(file_name)
     plt.close()
+    return popt
 
 
 def plot_2dhist_position_residual_vs_true(y_pred,
