@@ -212,7 +212,7 @@ class RootSimulation:
             for tleave in self.leavesTree[2]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
             if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:
-                warnings.warn("No SiPM hit found in event, skipping event %s." % idx)                       
+                warnings.warn("No SiPM hit found in event, skipping event %s." % basket["EventNumber"][idx])                       
                 return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
 
@@ -222,7 +222,7 @@ class RootSimulation:
             for tleave in self.leavesTree[3]:
                 dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
             if len(dictBasketFibreHit['FibreTime']) == 0:  
-                warnings.warn("No Fibre hit found in event, skipping event %s." % idx)                                
+                warnings.warn("No Fibre hit found in event, skipping event %s." % basket["EventNumber"][idx])                                
                 return None
             fibrehit = FibreHit(**dictBasketFibreHit)
 
