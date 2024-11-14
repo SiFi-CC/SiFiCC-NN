@@ -750,14 +750,18 @@ class FibreCluster:
         # Using weighted mean to determine the row position with energy as weights
         return np.average([fibre.x for fibre in self.FibreHit.FibrePosition], weights=self.FibreHit.FibreEnergy)
 
+    def get_y_weighted(self):
+        # Using energy to weight fibres and reconstruct position
+        return np.average([fibre.x for fibre in self.FibreHit.FibrePosition], weights=self.FibreHit.FibreEnergy)
+
     
     def reconstruct_cluster(self, coordinate_system="AACHEN"):
         if coordinate_system == "AACHEN":
             self.ClusterPosition.x = self.get_row_coordinates()
-            self.ClusterPosition.y = self.Elar_y_finder()
+            self.ClusterPosition.y = self.get_y_weighted()
             self.ClusterPosition.z = self.get_first_layer()
         elif coordinate_system == "CRACOW":
             self.ClusterPosition.z = self.get_row_coordinates()
-            self.ClusterPosition.y = -self.Elar_y_finder()
+            self.ClusterPosition.y = -self.get_y_weighted()
             self.ClusterPosition.x = self.get_first_layer()
         return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
