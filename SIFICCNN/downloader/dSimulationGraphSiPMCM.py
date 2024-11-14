@@ -19,7 +19,7 @@ from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 def dSimulation_to_GraphSiPMCM(root_simulation,
                              dataset_name,
                              path="",
-                             n=None,
+                             n_stop=None,
                              coordinate_system="CRACOW",
                              energy_cut=None,
                              neutrons=0,
@@ -36,7 +36,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
         dataset_name (str):                 final name of datasets for storage
         path (str):                         destination path, if not given it will default to
                                             /datasets in parent directory
-        n (int or None):                    Number of events sampled from root file,
+        n_stop (int or None):               Iteration stopped at event n_stop
                                             if None all events are used
         energy_cut (float or None):         Energy cut applied to sum of all cluster energies,
                                             if None, no energy cut is applied
@@ -135,7 +135,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     k_graphs = 0
     n_nodes = 0
     m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
         if event == None:
             continue
         if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
@@ -182,7 +182,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     node_id = 0
     edge_id = 0
 
-    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
         # get number of cluster
         if event == None:
             continue
@@ -240,16 +240,25 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
         NeutronCount=np.array(NeutronCount)
     PrimaryEnergies=np.array(PrimaryEnergies)
 
+    # Name files:
+    name_additions = ""
+    if n_start != 0:
+        name_additions += "{}-".format(n_start)
+    if n_stop is not None:
+        name_additions += "{}".format(n_stop)
+    if name_additions != "":
+        name_additions = name_additions + "_"
+
     # save up all files
-    np.save(path + "/" + "A.npy", ary_A)
-    np.save(path + "/" + "graph_indicator.npy", ary_graph_indicator)
-    np.save(path + "/" + "node_attributes.npy", ary_node_attributes)
-    np.save(path + "/" + "graph_attributes.npy", ary_graph_attributes)
-    np.save(path + "/" + "graph_pe.npy", ary_pe)
-    np.save(path + "/" + "graph_sp.npy", ary_sp)
-    np.save(path + "/" + "posmeans.npy", np.array(ary_posmeans))
-    np.save(path + "/" + "diff.npy", np.array(ary_posmeans)-ary_graph_attributes[:,1])
-    with open(path + "/" + "fibredata.csv", 'w') as f:
+    np.save(path + "/" + name_additions + "A.npy", ary_A)
+    np.save(path + "/" + name_additions + "graph_indicator.npy", ary_graph_indicator)
+    np.save(path + "/" + name_additions + "node_attributes.npy", ary_node_attributes)
+    np.save(path + "/" + name_additions + "graph_attributes.npy", ary_graph_attributes)
+    np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
+    np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
+    np.save(path + "/" + name_additions + "posmeans.npy", np.array(ary_posmeans))
+    np.save(path + "/" + name_additions + "diff.npy", np.array(ary_posmeans)-ary_graph_attributes[:,1])
+    with open(path + "/" + name_additions + "fibredata.csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerows(ary_fibredata)
 
