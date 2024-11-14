@@ -165,7 +165,8 @@ class RootSimulation:
         if self.hasSiPMHit:
             for tleave in self.leavesTree[1]:
                 dictBasketSiPMHit[self.dictSiPMHit[tleave]] = basket[tleave][idx]
-            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:                                   #ADDED
+            if len(dictBasketSiPMHit['SiPMTimeStamp']) == 0:    
+                print("WARNING: No SiPMHit, skipping event ", basket['EventNumber'][idx])
                 return None
             sipmhit = SiPMHit(**dictBasketSiPMHit)
 
@@ -173,6 +174,9 @@ class RootSimulation:
         if self.hasFibreHit:
             for tleave in self.leavesTree[2]:
                 dictBasketFibreHit[self.dictFibreHit[tleave]] = basket[tleave][idx]
+            if len(dictBasketFibreHit['FibreTime']) == 0:
+                print("WARNING: No FibreHit, skipping event ", basket['EventNumber'][idx])
+                return None
             fibrehit = FibreHit(**dictBasketFibreHit)
 
         # simulation event serves as container for any additional information
