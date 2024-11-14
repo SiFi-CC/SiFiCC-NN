@@ -248,7 +248,7 @@ def evaluate(dataset_name,
                                 particle="e",
                                 file_name="1dhist_energy_electron_residual.png",
                                 title="Electron energy residual")
-    fit_E_rel = plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 0],
+    fit_e_E_rel = plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 0],
                                          y_true=y_true[labels, 0],
                                          particle="e",
                                          file_name="1dhist_energy_electron_residual_relative.png",
@@ -266,17 +266,7 @@ def evaluate(dataset_name,
 
 
 
-    # Collect the fit result into a dictionary
-    fit_results = {
-        "fit_E_rel": fit_E_rel
-    }
 
-    # Write the fit results to a CSV file
-    with open('fit_results.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Fit Type", "Parameters"])
-        for key, value in fit_results.items():
-            writer.writerow([key, value])
                                                 
 
     plot_1dhist_energy_residual(y_pred=y_pred[labels, 1],
@@ -285,7 +275,7 @@ def evaluate(dataset_name,
                                 f="gaussian_gaussian",
                                 file_name="1dhist_energy_gamma_residual.png",
                                 title="Energy residual")
-    plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
+    fit_p_E_rel = plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
                                          y_true=y_true[labels, 1],
                                          particle="\gamma",
                                          f="gaussian_gaussian",
@@ -302,6 +292,18 @@ def evaluate(dataset_name,
                                                  file_name="2dhist_energy_gamma_residual_relative_vs_true.png",
                                                  title="Relative photon energy residual")    
 
+    # Collect the fit result into a dictionary
+    fit_results = {
+        "fit_e_E_rel": fit_e_E_rel,
+        "fit_p_E_rel": fit_p_E_rel
+    }
+
+    # Write the fit results to a CSV file
+    with open('fit_results.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Fit Type", "Parameters"])
+        for key, value in fit_results.items():
+            writer.writerow([key, value])
 
 
 
