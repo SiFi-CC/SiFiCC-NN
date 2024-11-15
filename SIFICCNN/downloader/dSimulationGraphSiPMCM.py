@@ -165,7 +165,6 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     # datatypes are chosen for minimal size possible (duh)
     ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
     ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
-    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 4), dtype=np.float32)
     # meta data
