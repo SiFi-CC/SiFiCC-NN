@@ -532,25 +532,28 @@ class SiPMHit:
                  SiPMId,
                  Detector):
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
+        self.SiPMTimeDebug = np.array(SiPMTimeStamp) #DEBUG
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
         self.SiPMPhotonCount = np.array(SiPMPhotonCount)
         self.SiPMPosition = tVector_list(SiPMPosition)
         self.SiPMId = np.array(SiPMId)
         self.detector = Detector
+        self.summary()
 
     def summary(self, debug=False):
         print("\n# SiPM Data: #")
-        print("ID | QDC | Position [mm] | TriggerTime [ns]")
+        print("ID | QDC | Position [mm] | TriggerTime [ns] | DebugTime [ns]")
         for j in range(len(self.SiPMId)):
             print(
-                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:7.5}".format(
+                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:7.5} | {:7.5}".format(
                     self.SiPMId[j],
                     self.SiPMPhotonCount[j],
                     self.SiPMPosition[j].x,
                     self.SiPMPosition[j].y,
                     self.SiPMPosition[j].z,
-                    self.SiPMTimeStamp[j]))
+                    self.SiPMTimeStamp[j],
+                    self.SiPMTimeDebug[j]))
 
     @staticmethod
     def sipm_id_to_position(sipm_id):
