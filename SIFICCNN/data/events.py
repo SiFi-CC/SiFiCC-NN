@@ -546,7 +546,7 @@ class SiPMHit:
         print("ID | QDC | Position [mm] | TriggerTime [ns] | DebugTime [ns]")
         for j in range(len(self.SiPMId)):
             print(
-                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:7.5} | {:7.5}".format(
+                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:20.20} | {:20.20}".format(
                     self.SiPMId[j],
                     self.SiPMPhotonCount[j],
                     self.SiPMPosition[j].x,
@@ -554,6 +554,16 @@ class SiPMHit:
                     self.SiPMPosition[j].z,
                     self.SiPMTimeStamp[j],
                     self.SiPMTimeDebug[j]))
+        print("*"*50)
+        print("Data types:")
+        print("SiPMTimeStamp: ", type(self.SiPMTimeStamp))
+        print("SiPMTimestamp Array type: ", self.SiPMTimeStamp.dtype)
+        print("SiPMPhotonCount: ", type(self.SiPMPhotonCount))
+        print("SiPMPhotonCount Array type: ", self.SiPMPhotonCount.dtype)
+        print("SiPMPosition: ", type(self.SiPMPosition))
+        print("SiPMId: ", type(self.SiPMId))
+        print("SiPMId Array type: ", self.SiPMId.dtype)
+        print("*"*50)
 
     @staticmethod
     def sipm_id_to_position(sipm_id):
