@@ -87,7 +87,7 @@ def GCNConvResNetBlock(x,
                        conv_activation="relu",
                        kernel_initializer="glorot_uniform"):
     r"""
-    ResNetBlock implementation used in the master thesis
+    ResNetBlock implementation used in the master thesis??????????
     'Vertex Reconstruction for Neutrino Events in the Double Chooz Experiment using Graph Neural
     Networks'
     Utilizes graph convolutions (Kipf & Welling) instead of conventional layers.Conv...
