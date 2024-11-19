@@ -201,7 +201,10 @@ def plot_1dhist_position_residual(y_pred,
     # histogram for gaussian fit
     hist, _ = np.histogram(y_pred - y_true, bins=bins)
     # remove bins from fit with zero entries as they break the fitting
-    popt, pcov, x, fx = auto_hist_fitting(f=f, bins=bins_center, hist=hist)
+    p0 = None
+    if coordinate == "y":
+        p0 = [0, 5, np.sum(hist) * width, 0]
+    popt, pcov, x, fx = auto_hist_fitting(f=f, bins=bins_center, hist=hist, p0=p0)
     x = np.linspace(min(bins), max(bins), 1000)
     fit_label = ""
     for i in range(len(popt)):

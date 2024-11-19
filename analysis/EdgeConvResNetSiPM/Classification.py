@@ -17,7 +17,7 @@ from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
-from SIFICCNN.models import SiFiECRNShort, SiFiECRN4, SiFiECRN5
+from SIFICCNN.models import SiFiECRNShort, SiFiECRN4, SiFiECRN5, SiFiECRNShortOld
 from SIFICCNN.utils import parent_directory
 
 from SIFICCNN.analysis import fastROCAUC, print_classifier_summary, write_classifier_summary
@@ -42,7 +42,9 @@ def main(run_name="ECRNSiPM_unnamed",
          activation_out="sigmoid",
          do_training=False,
          do_evaluation=False,
-         model_type="SiFiECRNShort"):
+         model_type="SiFiECRNShort",
+         dataset_name="SimGraphSiPM",
+         ):
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -79,7 +81,7 @@ def main(run_name="ECRNSiPM_unnamed",
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_name=DATASET_CONT,
+        training(dataset_type=DATASET_CONT,
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -87,16 +89,20 @@ def main(run_name="ECRNSiPM_unnamed",
                  nEpochs=epochs,
                  path=path_results,
                  modelParameter=modelParameter,
-                 model_type=model_type)
+                 model_type=model_type,
+                 dataset_name=dataset_name,
+                 )
 
     if do_evaluation:
         for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
-            evaluate(dataset_name=file,
+            evaluate(dataset_type=file,
                      RUN_NAME=run_name,
-                     path=path_results)
+                     path=path_results,
+                     dataset_name=dataset_name,
+                     )
 
 
-def training(dataset_name,
+def training(dataset_type,
              run_name,
              trainsplit,
              valsplit,
@@ -104,12 +110,16 @@ def training(dataset_name,
              nEpochs,
              path,
              modelParameter,
-             model_type):
+             model_type,
+             dataset_name,
+             ):
     # load graph datasets
-    data = DSGraphSiPM(name=dataset_name,
+    data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
                        positives=False,
-                       regression=None)
+                       regression=None,
+                       name=dataset_name,
+                       )
 
     # set class-weights
     class_weights = data.get_classweight_dict()
@@ -119,8 +129,11 @@ def training(dataset_name,
         tf_model = SiFiECRN4(F=5, **modelParameter)
     elif model_type == "SiFiECRN5":
         tf_model = SiFiECRN5(F=5, **modelParameter)
+    elif model_type == "SiFiECRNShortOld":
+        tf_model = SiFiECRNShortOld(F=5, **modelParameter)
     else:
         tf_model = SiFiECRNShort(F=5, **modelParameter)
+
     print(tf_model.summary())
 
     # generate disjoint loader from datasets
@@ -167,9 +180,11 @@ def training(dataset_name,
     plot_history_classifier(history.history, run_name + "_history_classifier")
 
 
-def evaluate(dataset_name,
+def evaluate(dataset_type,
              RUN_NAME,
-             path):
+             path,
+             dataset_name,
+             ):
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
 
@@ -200,13 +215,15 @@ def evaluate(dataset_name,
     plot_history_classifier(history, RUN_NAME + "_history_classifier")
 
     # predict test datasets
-    os.chdir(path + dataset_name + "/")
+    os.chdir(path + dataset_type + "/")
 
     # load datasets
-    data = DSGraphSiPM(name=dataset_name,
+    data = DSGraphSiPM(type=dataset_type,
                        norm_x=norm_x,
                        positives=False,
-                       regression=None)
+                       regression=None,
+                       name=dataset_name,
+                       )
 
     # Create disjoint loader for test datasets
     loader_test = DisjointLoader(data,
@@ -229,11 +246,11 @@ def evaluate(dataset_name,
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
-    np.savetxt(fname=dataset_name + "_clas_pred.txt",
+    np.savetxt(fname=dataset_type + "_clas_pred.txt",
                X=y_scores,
                delimiter=",",
                newline="\n")
-    np.savetxt(fname=dataset_name + "_clas_true.txt",
+    np.savetxt(fname=dataset_type + "_clas_true.txt",
                X=y_true,
                delimiter=",",
                newline="\n")
@@ -288,6 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("--training", type=bool, help="If true, do training process")
     parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
     parser.add_argument("--model_type", type=str, help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
+    parser.add_argument("--dataset_name", type=str, help="Name of the dataset")
     args = parser.parse_args()
 
     # base settings if no parameters are given
@@ -303,6 +321,7 @@ if __name__ == "__main__":
     base_do_training = False
     base_do_evaluation = False
     base_model_type = "SiFiECRNShort"
+    base_dataset_name = "SimGraphSiPM"
 
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
@@ -317,6 +336,7 @@ if __name__ == "__main__":
     do_training = args.training if args.training is not None else base_do_training
     do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
     model_type = args.model_type if args.model_type is not None else base_model_type
+    dataset_name = args.dataset_name if args.dataset_name is not None else base_dataset_name
 
     main(run_name=run_name,
          epochs=epochs,
@@ -328,4 +348,6 @@ if __name__ == "__main__":
          activation_out=activation_out,
          do_training=do_training,
          do_evaluation=do_evaluation,
-         model_type=model_type)
+         model_type=model_type,
+         dataset_name=dataset_name,
+         )
