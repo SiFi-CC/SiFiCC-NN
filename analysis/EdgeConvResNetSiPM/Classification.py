@@ -17,7 +17,7 @@ from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
-from SIFICCNN.models import SiFiECRNShort, SiFiECRN4, SiFiECRN5, SiFiECRNShortOld
+from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
 
 from SIFICCNN.analysis import fastROCAUC, print_classifier_summary, write_classifier_summary
@@ -124,18 +124,13 @@ def training(dataset_type,
     # set class-weights
     class_weights = data.get_classweight_dict()
 
-    # select the model class based on model_type
-    if model_type == "SiFiECRN4":
-        tf_model = SiFiECRN4(F=5, **modelParameter)
-    elif model_type == "SiFiECRN5":
-        tf_model = SiFiECRN5(F=5, **modelParameter)
-    elif model_type == "SiFiECRNShortOld":
-        tf_model = SiFiECRNShortOld(F=5, **modelParameter)
-    else:
-        tf_model = SiFiECRNShort(F=5, **modelParameter)
-
+    # set model
+    modelDict = get_models()
+    tf_model = modelDict[model_type](F=5, **modelParameter)
+    
     print(tf_model.summary())
 
+    
     # generate disjoint loader from datasets
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
