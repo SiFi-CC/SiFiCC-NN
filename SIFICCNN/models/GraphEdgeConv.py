@@ -6,6 +6,10 @@ from spektral.layers import EdgeConv, GlobalMaxPool
 
 from SIFICCNN.utils.layers import EdgeConvResNetBlockV2, EdgeConvResNetBlock
 
+import inspect
+import types
+
+
 
 def SiFiECRNShort(F=10,
                   nFilter=32,
@@ -238,3 +242,12 @@ def SiFiECRN5(F=10,
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
+
+
+
+def get_models():
+    current_module = inspect.getmodule(inspect.currentframe())
+    functions = {name: obj for name, obj in globals().items() 
+                 if isinstance(obj, types.FunctionType) and inspect.getmodule(obj) == current_module and name != 'get_models'}
+    return functions
+
