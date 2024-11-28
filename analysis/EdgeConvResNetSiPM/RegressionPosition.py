@@ -45,7 +45,8 @@ def main(run_name="ECRNSiPM_unnamed",
          do_training=False,
          do_evaluation=False,
          model_type="SiFiECRNShort",
-         dataset_name="SimGraphSiPM"):##################################################################
+         dataset_name="SimGraphSiPM"
+         ):
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -68,17 +69,17 @@ def main(run_name="ECRNSiPM_unnamed",
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
-    # go backwards in directory tree until the main repo directory is matched
+    # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
-    path_results = path_main + "/results/" + run_name + "/"
+    path_results = os.path.join(path_main, "results", run_name)
 
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
-        if not os.path.isdir(path_results + "/" + file + "/"):
-            os.mkdir(path_results + "/" + file + "/")
+    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        dataset_path = os.path.join(path_results, dataset)
+        os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
@@ -200,7 +201,7 @@ def evaluate(dataset_type,
     plot_history_regression(history, RUN_NAME + "_history_regression_position")
 
     # predict test datasets
-    os.chdir(path + dataset_type + "/")
+    os.chdir(os.path.join(path, dataset_type))
 
     # load datasets
     # Here all events are loaded and evaluated,
@@ -209,8 +210,10 @@ def evaluate(dataset_type,
         E_prim_path = parent_directory()
         E_prim_path = os.path.join(E_prim_path, "datasets", "SimGraphSiPM", dataset_type, "ComptonPrimaryEnergies.npy")
         E_prim = np.load(E_prim_path)
-    except:
+    except FileNotFoundError:
         print("No primary energies found!")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=norm_x,
@@ -223,22 +226,22 @@ def evaluate(dataset_type,
                                  batch_size=64,
                                  epochs=1,
                                  shuffle=False)
-
-    # evaluation of test datasets (looks weird cause of bad tensorflow output format)
-    y_true = []
-    y_pred = []
+    y_true = np.zeros((len(data), 6), dtype=np.float32)
+    y_pred = np.zeros((len(data), 6), dtype=np.float32)
+    index = 0
     for batch in loader_test:
         inputs, target = batch
         p = tf_model(inputs, training=False)
-        y_true.append(target)
-        y_pred.append(p.numpy())
-    y_true = np.vstack(y_true)
-    y_pred = np.vstack(y_pred)
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 6))
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 6))
+        batch_size = target.shape[0]
+        y_true[index:index + batch_size] = target
+        y_pred[index:index + batch_size] = p.numpy()
+        index += batch_size
+    #y_true = np.reshape(y_true, newshape=(y_true.shape[0], 6))#######################################################################################3
+    #y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 6))
 
     # export the classification results to a readable .txt file
-    # .txt is used as it allowed to be accessible outside a python environment
+    # export the classification results to a readable .txt file
+    # .txt is used because it allows the results to be accessible outside a Python environment
     np.savetxt(fname=dataset_type + "_regP_pred.txt",
                X=y_pred,
                delimiter=",",
@@ -287,7 +290,7 @@ def evaluate(dataset_type,
                                   particle="\gamma",
                                   coordinate="z",
                                   file_name="1dhist_gamma_position_{}_residual.png".format("z"))
-    plot_position_error(y_pred=y_pred[labels],y_true=y_true[labels],figure_name="position_error_using_plotter")
+    #plot_position_error(y_pred=y_pred[labels],y_true=y_true[labels],figure_name="position_error_using_plotter")
     
     # Collect all fit results into a dictionary
     fit_results = {
@@ -299,12 +302,13 @@ def evaluate(dataset_type,
         "fit_p_z": fit_p_z
     }
 
-    # Write the fit results to a CSV file
+    # Write the fit results to a CSV file using DictWriter
     with open('pos_fit_results.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Fit Type", "Parameters"])
+        fieldnames = ["Fit Type", "Parameters"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
         for key, value in fit_results.items():
-            writer.writerow([key, value])
+            writer.writerow({"Fit Type": key, "Parameters": value})
                                   
 
 
@@ -327,60 +331,29 @@ def evaluate(dataset_type,
 if __name__ == "__main__":
     # configure argument parser
     parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
-    parser.add_argument("--name", type=str, help="Run name")
-    parser.add_argument("--epochs", type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", type=int, help="Batch size")
-    parser.add_argument("--dropout", type=float, help="Dropout")
-    parser.add_argument("--nFilter", type=int, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, help="Number of output nodes")
-    parser.add_argument("--activation", type=str, help="Activation function of layers")
-    parser.add_argument("--activation_out", type=str, help="Activation function of output node")
-    parser.add_argument("--training", type=bool, help="If true, do training process")
-    parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
-    parser.add_argument("--model_type", type=str, help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
-    parser.add_argument("--dataset_name", type=str, help="Name of the dataset")
+    parser.add_argument("--name", type=str, default="SimGraphSiPM_default", help="Run name")
+    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
+    parser.add_argument("--dropout", type=float, default=0.0, help="Dropout")
+    parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
+    parser.add_argument("--nOut", type=int, default=6, help="Number of output nodes")
+    parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
+    parser.add_argument("--activation_out", type=str, default="linear", help="Activation function of output node")
+    parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
+    parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
+    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: {}".format(get_models().keys()))
+    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Name of the dataset")
     args = parser.parse_args()
 
-    # base settings if no parameters are given
-    # can also be used to execute this script without console parameter
-    base_run_name = "SimGraphSiPM_default"
-    base_epochs = 20
-    base_batch_size = 64
-    base_dropout = 0.0
-    base_nfilter = 32
-    base_nOut = 6
-    base_activation = "relu"
-    base_activation_out = "linear"
-    base_do_training = False
-    base_do_evaluation = False
-    base_model_type = "SiFiECRNShort"
-    base_dataset_name = "SimGraphSiPM"
-
-    # this bunch is to set standard configuration if argument parser is not configured
-    # looks ugly but works
-    run_name = args.name if args.name is not None else base_run_name
-    epochs = args.epochs if args.epochs is not None else base_epochs
-    batch_size = args.batch_size if args.batch_size is not None else base_batch_size
-    dropout = args.dropout if args.dropout is not None else base_dropout
-    nFilter = args.nFilter if args.nFilter is not None else base_nfilter
-    nOut = args.nOut if args.nOut is not None else base_nOut
-    activation = args.activation if args.activation is not None else base_activation
-    activation_out = args.activation_out if args.activation_out is not None else base_activation_out
-    do_training = args.training if args.training is not None else base_do_training
-    do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
-    model_type = args.model_type if args.model_type is not None else base_model_type
-    dataset_name = args.dataset_name if args.dataset_name is not None else base_dataset_name
-
-    main(run_name=run_name,
-         epochs=epochs,
-         batch_size=batch_size,
-         dropout=dropout,
-         nFilter=nFilter,
-         nOut=nOut,
-         activation=activation,
-         activation_out=activation_out,
-         do_training=do_training,
-         do_evaluation=do_evaluation,
-         model_type=model_type,
-         dataset_name=dataset_name,
-         )
+    main(run_name=args.name,
+         epochs=args.epochs,
+         batch_size=args.batch_size,
+         dropout=args.dropout,
+         nFilter=args.nFilter,
+         nOut=args.nOut,
+         activation=args.activation,
+         activation_out=args.activation_out,
+         do_training=args.training,
+         do_evaluation=args.evaluation,
+         model_type=args.model_type,
+         dataset_name=args.dataset_name)
