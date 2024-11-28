@@ -66,17 +66,17 @@ def main(run_name="ECRNSiPM_unnamed",
     DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
-    # go backwards in directory tree until the main repo directory is matched
+    # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
-    path_results = path_main + "/results/" + run_name + "/"
+    path_results = os.path.join(path_main, "results", run_name)
 
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
-        if not os.path.isdir(path_results + "/" + file + "/"):
-            os.mkdir(path_results + "/" + file + "/")
+    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        dataset_path = os.path.join(path_results, dataset)
+        os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
@@ -113,6 +113,21 @@ def training(dataset_type,
              model_type,
              dataset_name="SimGraphSiPM"
              ):
+    """
+    Train the model on the given dataset.
+
+    Parameters:
+    dataset_type (str): Type of the dataset to be used for training.
+    run_name (str): Name of the run for saving results.
+    trainsplit (float): Fraction of the data to be used for training.
+    valsplit (float): Fraction of the data to be used for validation.
+    batch_size (int): Number of samples per batch.
+    nEpochs (int): Number of epochs for training.
+    path (str): Path to save the results.
+    modelParameter (dict): Dictionary of model parameters.
+    model_type (str): Type of the model to be used.
+    dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
+    """
     
     # load graph datasets
     data = DSGraphSiPM(type=dataset_type,
@@ -324,60 +339,29 @@ def evaluate(dataset_type,
 if __name__ == "__main__":
     # configure argument parser
     parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
-    parser.add_argument("--name", type=str, help="Run name")
-    parser.add_argument("--epochs", type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", type=int, help="Batch size")
-    parser.add_argument("--dropout", type=float, help="Dropout")
-    parser.add_argument("--nFilter", type=int, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, help="Number of output nodes")
-    parser.add_argument("--activation", type=str, help="Activation function of layers")
-    parser.add_argument("--activation_out", type=str, help="Activation function of output node")
-    parser.add_argument("--training", type=bool, help="If true, do training process")
-    parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
-    parser.add_argument("--model_type", type=str, help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
-    parser.add_argument("--dataset_name", type=str, help="Dataset name")
+    parser.add_argument("--name", type=str, default="SimGraphSiPM_default", help="Run name")
+    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
+    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout")
+    parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
+    parser.add_argument("--nOut", type=int, default=2, help="Number of output nodes")
+    parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
+    parser.add_argument("--activation_out", type=str, default="relu", help="Activation function of output node")
+    parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
+    parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
+    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
+    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Dataset name")
     args = parser.parse_args()
 
-    # base settings if no parameters are given
-    # can also be used to execute this script without console parameter
-    base_run_name = "SimGraphSiPM_default"
-    base_epochs = 20
-    base_batch_size = 64
-    base_dropout = 0.1
-    base_nfilter = 32
-    base_nOut = 2
-    base_activation = "relu"
-    base_activation_out = "relu"
-    base_do_training = False
-    base_do_evaluation = False
-    base_model_type = "SiFiECRNShort"
-    base_dataset_name = "SimGraphSiPM"
-
-    # this bunch is to set standard configuration if argument parser is not configured
-    # looks ugly but works
-    run_name = args.name if args.name is not None else base_run_name
-    epochs = args.epochs if args.epochs is not None else base_epochs
-    batch_size = args.batch_size if args.batch_size is not None else base_batch_size
-    dropout = args.dropout if args.dropout is not None else base_dropout
-    nFilter = args.nFilter if args.nFilter is not None else base_nfilter
-    nOut = args.nOut if args.nOut is not None else base_nOut
-    activation = args.activation if args.activation is not None else base_activation
-    activation_out = args.activation_out if args.activation_out is not None else base_activation_out
-    do_training = args.training if args.training is not None else base_do_training
-    do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
-    model_type = args.model_type if args.model_type is not None else base_model_type
-    dataset_name = args.dataset_name if args.dataset_name is not None else base_dataset_name
-
-    main(run_name=run_name,
-         epochs=epochs,
-         batch_size=batch_size,
-         dropout=dropout,
-         nFilter=nFilter,
-         nOut=nOut,
-         activation=activation,
-         activation_out=activation_out,
-         do_training=do_training,
-         do_evaluation=do_evaluation,
-         model_type=model_type,
-         dataset_name=dataset_name,
-         )
+    main(run_name=args.name,
+         epochs=args.epochs,
+         batch_size=args.batch_size,
+         dropout=args.dropout,
+         nFilter=args.nFilter,
+         nOut=args.nOut,
+         activation=args.activation,
+         activation_out=args.activation_out,
+         do_training=args.training,
+         do_evaluation=args.evaluation,
+         model_type=args.model_type,
+         dataset_name=args.dataset_name)
