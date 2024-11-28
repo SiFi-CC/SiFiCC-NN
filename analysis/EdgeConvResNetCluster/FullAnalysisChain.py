@@ -18,7 +18,7 @@ from SIFICCNN.analysis import read_resolution_file
 def main(run_name,
          exp_name,
          threshold,
-         fponly):
+         fp_only):
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
@@ -108,7 +108,7 @@ def main(run_name,
                   verbose=1,
                   veto=True)
 
-    if fponly:
+    if fp_only:
         os.chdir(path_results + DATASET_0MM + "/")
         # gather all network predictions
         y_score_pred = np.loadtxt(DATASET_0MM + "_clas_pred.txt", delimiter=",")
@@ -144,11 +144,11 @@ if __name__ == "__main__":
     parser.add_argument('--run_name', type=str, default="ECRNCluster_PostTraining", help='Name of the run')
     parser.add_argument('--exp_name', type=str, default="ECRNCluster_PostTraining", help='Name of the experiment')
     parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for classification')
-    parser.add_argument('--fponly', action='store_true', help='Flag to indicate if only false positives should be considered', default=False)
+    parser.add_argument('--fp_only', action='store_true', help='Flag to indicate if only false positives should be considered', default=False)
 
     args = parser.parse_args()
 
     main(run_name=args.run_name,
          exp_name=args.exp_name,
          threshold=args.threshold,
-         fponly=args.fponly)
+         fponly=args.fp_only)
