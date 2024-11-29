@@ -21,8 +21,6 @@ path = parent_directory()
 # Simulation GraphCluster
 ####################################################################################################
 
-# Number of events to process
-n = 10000
 
 def main(n_stop, file, coordinate_system, n_start, neutrons):
     # Initialize RootSimulation with the specified file

@@ -82,6 +82,42 @@ class EventSimulation:
         self.ph_method      = 1
         self.ph_acceptance  = 1e-1
         self.ph_tag         = False
+        self.n_SiPM_clusters     = len(self.inspect_SiPM_clusters())
+        self.SiPM_clusters       = self.inspect_SiPM_clusters()
+        self.summary()  
+    
+    def inspect_SiPM_clusters(self):
+        clusters = []
+        visited = set()
+
+        def get_neighbors(sipm_idx):
+            distance_thresholds = {"x": 4, "y": 102, "z": 4}
+            neighbors = []
+            for i, pos in enumerate(self.SiPMHit.SiPMPosition):
+                if i != sipm_idx and i not in visited:
+                    dx = abs(pos.x - self.SiPMHit.SiPMPosition[sipm_idx].x)
+                    dy = abs(pos.y - self.SiPMHit.SiPMPosition[sipm_idx].y)
+                    dz = abs(pos.z - self.SiPMHit.SiPMPosition[sipm_idx].z)
+                    if distance_thresholds["x"] >= dx and distance_thresholds["y"] >= dy and distance_thresholds["z"] >= dz:
+                        neighbors.append(i)
+            return neighbors
+
+        for i in range(len(self.SiPMHit.SiPMPosition)):
+            if i not in visited:
+                cluster = [i]
+                visited.add(i)
+                queue = [i]
+                while queue:
+                    current = queue.pop(0)
+                    neighbors = get_neighbors(current)
+                    for neighbor in neighbors:
+                        if neighbor not in visited:
+                            visited.add(neighbor)
+                            cluster.append(neighbor)
+                            queue.append(neighbor)
+                clusters.append(cluster)
+
+        return clusters
 
     def summary(self, verbose=0):
         """
@@ -103,79 +139,14 @@ class EventSimulation:
         print("##################################################\n")
         print("Event class      : {}".format(self.__class__.__name__))
         print("Event number (ID): {}".format(self.EventNumber))
-        print("Event type       : {}".format(self.MCSimulatedEventType))
+        
+        print("\n# SiPM Clusters #")
+        print("Number of SiPM clusters: ", self.n_SiPM_clusters)
+        for cluster in self.SiPM_clusters:
+            print("Cluster: ", cluster)
+            print("Cluster size: ", len(cluster))
+            print("Cluster SiPM Positions: ", [self.SiPMHit.SiPMPosition[i] for i in cluster])
 
-        # Neural network targets + additional tagging
-        print("\n### Event tagging: ###")
-        target_energy_e, target_energy_p = self.get_target_energy()
-        target_position_e, target_position_p = self.get_target_position()
-        print("Target Energy Electron: {:.3f} [MeV]".format(target_energy_e))
-        print("Target Position Electron: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            target_position_e.x, target_position_e.y, target_position_e.z))
-        print("Target Energy Photon: {:.3f} [MeV]".format(target_energy_p))
-        print("Target Position Photon: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            target_position_p.x, target_position_p.y, target_position_p.z))
-        print("Distributed Compton (PH: {}) : {}".format(self.ph_method,
-                                                         self.get_distcompton_tag()))
-        # print("Distributed Compton (legacy)  : {}".format(self.get_distcompton_tag_legacy()))
-
-        # primary gamma track information
-        print("\n### Primary Gamma track: ###")
-        print("EnergyPrimary: {:.3f} [MeV]".format(self.MCEnergy_Primary))
-        print("RealEnergy_e: {:.3f} [MeV]".format(self.MCEnergy_e))
-        print("RealEnergy_p: {:.3f} [MeV]".format(self.MCEnergy_p))
-        print("RealPosition_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCPosition_source.x, self.MCPosition_source.y, self.MCPosition_source.z))
-        print("RealDirection_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCDirection_source.x, self.MCDirection_source.y, self.MCDirection_source.z))
-        print("RealComptonPosition: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCComptonPosition.x, self.MCComptonPosition.y, self.MCComptonPosition.z))
-        print("RealDirection_scatter: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCDirection_scatter.x, self.MCDirection_scatter.y, self.MCDirection_scatter.z))
-
-        # Interaction list electron
-        print("\n# Electron interaction chain #")
-        print("Position [mm] | Interaction: (type, level)")
-        for i in range(self.MCInteractions_e_full.shape[0]):
-            print("({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}) ".format(
-                self.MCPosition_e[i].x,
-                self.MCPosition_e[i].y,
-                self.MCPosition_e[i].z,
-                int(str(self.MCInteractions_e[i])[0]),
-                int(str(self.MCInteractions_e[i])[1])))
-
-        # Interaction list photon
-        print("\n# Photon interaction chain #")
-        if self.MCEnergyDeps_e is not None:
-            print(
-                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff. | Energy dep.")
-        else:
-            print("Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff.")
-
-        for i in range(self.MCInteractions_p_full.shape[0]):
-            tmp_vec = self.MCPosition_p[i] - self.MCComptonPosition
-            r = tmp_vec.mag
-            tmp_angle = vector_angle(tmp_vec, self.MCDirection_scatter)
-
-            list_params = [self.MCPosition_p[i].x,
-                           self.MCPosition_p[i].y,
-                           self.MCPosition_p[i].z,
-                           self.MCInteractions_p_full[i, 3],
-                           self.MCInteractions_p_full[i, 0] * 10 +
-                           self.MCInteractions_p_full[i, 1],
-                           self.MCInteractions_p_full[i, 2],
-                           tmp_angle,
-                           np.sin(tmp_angle) * r]
-
-            if self.MCEnergyDeps_p is not None:
-                list_params.append(self.MCEnergyDeps_p[i] > 0.0)
-                print(
-                    "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}, {:3}) | {:.5f} [rad] ({:7.5f} [mm]) | {}".format(
-                        *list_params))
-            else:
-                print(
-                    "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}, {:3}) | {:.5f} [rad] ({:7.5f} [mm])".format(
-                        *list_params))
 
         # print added information for container classes
         if self.RecoCluster is not None:
