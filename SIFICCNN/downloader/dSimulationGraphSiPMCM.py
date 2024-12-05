@@ -12,8 +12,12 @@ import argparse
 import sys
 import matplotlib.pyplot as plt
 import csv
+from collections import defaultdict
 
 from SIFICCNN.utils import TVector3, tVector_list, parent_directory
+
+
+
 
 
 def dSimulation_to_GraphSiPMCM(root_simulation,
@@ -145,9 +149,10 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
                 if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
                     continue
             """
-            k_graphs += 1
-            n_nodes += len(event.SiPMHit.SiPMId)
-            m_edges += len(event.SiPMHit.SiPMId) ** 2
+            
+            k_graphs += event.nClusters
+            n_nodes += event.SiPMHit.nSiPMs
+            m_edges += event.SiPMHit.nSiPMs ** 2
             if not photon_set:
                 NeutronCount.append(event.MCNPrimaryNeutrons)
             PrimaryEnergies.append(event.MCEnergy_Primary)
@@ -167,11 +172,11 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 4), dtype=np.float32)
+    ary_event_idx_of_graphs = np.zeros(shape=(k_graphs), dtype=np.int32)
     # meta data
     ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
     ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_fibredata = list() # only for debugging
-    ary_posmeans = list() # only for debugging
+
 
     # main iteration over root file, containing beta coincidence check
     # NOTE:
@@ -185,8 +190,10 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
         # get number of cluster
         if event == None:
             continue
-        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
-            n_sipm = int(len(event.SiPMHit.SiPMId))
+        n_clusters = event.nClusters
+        cluster_id = 0
+        for sipm_cluster in event.SiPMClusters:
+            n_sipm = int(sipm_cluster.nSiPMs)
 
             """
             # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS   
@@ -201,18 +208,18 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
                     ary_A[edge_id, :] = [node_id, node_id - j + k]
                     edge_id += 1
                 if coordinate_system == "CRACOW":
-                    attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
-                                        -event.SiPMHit.SiPMPosition[j].y,
-                                        event.SiPMHit.SiPMPosition[j].x,
-                                        event.SiPMHit.SiPMTimeStamp[j],
-                                        event.SiPMHit.SiPMPhotonCount[j]])
+                    attributes = np.array([sipm_cluster.SiPMs[j].SiPMPosition.z,
+                                        -sipm_cluster.SiPMs[j].SiPMPosition.y,
+                                        sipm_cluster.SiPMs[j].SiPMPosition.x,
+                                        sipm_cluster.SiPMs[j].SiPMTimeStamp,
+                                        sipm_cluster.SiPMs[j].SiPMPhotonCount])
                     ary_node_attributes[node_id, :] = attributes
                 if coordinate_system == "AACHEN":
-                    attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
-                                        event.SiPMHit.SiPMPosition[j].y,
-                                        event.SiPMHit.SiPMPosition[j].z,
-                                        event.SiPMHit.SiPMTimeStamp[j],
-                                        event.SiPMHit.SiPMPhotonCount[j]])
+                    attributes = np.array([sipm_cluster.SiPMs[j].SiPMPosition.x,
+                                        sipm_cluster.SiPMs[j].SiPMPosition.y,
+                                        sipm_cluster.SiPMs[j].SiPMPosition.z,
+                                        sipm_cluster.SiPMs[j].SiPMTimeStamp,
+                                        sipm_cluster.SiPMs[j].SiPMPhotonCount])
                     ary_node_attributes[node_id, :] = attributes
 
                 # Graph indicator counts up which node belongs to which graph
@@ -223,17 +230,19 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
 
             # grab target labels and attributes
             event.ph_method = 2
-############################################################################################
+    ############################################################################################
 
             ary_pe[graph_id] = event.MCEnergy_Primary
 
-            ary_graph_attributes[graph_id, :] = event.FibreCluster.reconstruct_cluster(coordinate_system)
-            ary_fibredata.append([pos.y for pos in event.FibreHit.FibrePosition])
-            ary_posmeans.append(np.average([pos.y for pos in event.FibreHit.FibrePosition],weights=[energy for energy in event.FibreHit.FibreEnergy]))
+            ary_graph_attributes[graph_id, :] = event.FibreClusters[cluster_id].reconstruct_cluster(coordinate_system)
             ary_sp[graph_id] = event.MCPosition_source.x
+
+            ary_event_idx_of_graphs[graph_id] = i
 
             # count up graph indexing
             graph_id += 1
+            # resetting cluster_id if all clusters in event have been visited
+            cluster_id = cluster_id + 1 if cluster_id < n_clusters-1 else 0
 
     if not photon_set:
         NeutronCount=np.array(NeutronCount)
@@ -255,11 +264,8 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     np.save(path + "/" + name_additions + "graph_attributes.npy", ary_graph_attributes)
     np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
     np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
-    np.save(path + "/" + name_additions + "posmeans.npy", np.array(ary_posmeans))
-    np.save(path + "/" + name_additions + "diff.npy", np.array(ary_posmeans)-ary_graph_attributes[:,1])
-    with open(path + "/" + name_additions + "fibredata.csv", 'w') as f:
-        writer = csv.writer(f)
-        writer.writerows(ary_fibredata)
+    np.save(path + "/" + name_additions + "event_idx_of_graphs.npy", ary_event_idx_of_graphs)
+
 
 
 if __name__ == "__main__":

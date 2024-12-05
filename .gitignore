@@ -21,3 +21,6 @@ datasets_old
 *.log
 results
 .vscode/settings.json
+number_of_clusters.npy
+sipm_positions.npy
+sipms_per_cluster.npy
