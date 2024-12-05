@@ -1,7 +1,21 @@
 import numpy as np
 
-from SIFICCNN.utils import TVector3, tVector_list, vector_angle
+from SIFICCNN.utils import TVector3, tVector_list
 
+def get_Fibre_SiPM_connections():
+    # Initialize fibres with -1
+    fibres = np.full((385,2), -1, dtype = np.int16)
+
+    for i in range(7):
+        bottom_offset   = ((i+1)//2)*28
+        top_offset      = (i//2)*28+112
+        
+        for j in range(55):
+            fibres[j+i*55] = np.array([(j+1)//2+bottom_offset, j//2+top_offset])
+
+    return fibres
+
+Fibre_connections = get_Fibre_SiPM_connections()
 
 class EventSimulation:
     """
@@ -65,11 +79,8 @@ class EventSimulation:
             self.MCEnergyDeps_p = None
 
         # Container objects for additional information
-        self.RecoCluster    = RecoCluster
         self.SiPMHit        = SiPMHit
         self.FibreHit       = FibreHit
-        if type(self.FibreHit) is not None:
-            self.FibreCluster = FibreCluster(self.FibreHit)
         # set flags for phantom-hit methods
         # Phantom-hits describe events where the primary prompt gamma undergoes pair-production,
         # resulting in a missing interaction in the absorber module. The phantom hit tag is only
@@ -79,13 +90,15 @@ class EventSimulation:
         #   - 1: Phantom hits are scanned by the pair-production tag of the simulation
         #   - 2: Phantom hits are scanned by proximity of secondary interactions
         #        (USE THIS IF THE SIMULATION DOES NOT CONTAIN PAIR-PRODUCTION TAGS)
-        self.ph_method      = 1
-        self.ph_acceptance  = 1e-1
-        self.ph_tag         = False
-        self.n_SiPM_clusters     = len(self.inspect_SiPM_clusters())
-        self.SiPM_clusters       = self.inspect_SiPM_clusters()
-        self.summary()  
-    
+        self.ph_method          = 1
+        self.ph_acceptance      = 1e-1
+        self.ph_tag             = False
+
+        # Process clusters
+        self.SiPMClusters = self.inspect_SiPM_clusters()
+        self.FibreClusters = self.assign_fibres_to_clusters()
+        self.nClusters = len(self.SiPMClusters)
+
     def inspect_SiPM_clusters(self):
         clusters = []
         visited = set()
@@ -93,18 +106,19 @@ class EventSimulation:
         def get_neighbors(sipm_idx):
             distance_thresholds = {"x": 4, "y": 102, "z": 4}
             neighbors = []
-            for i, pos in enumerate(self.SiPMHit.SiPMPosition):
+            for i in range(len(self.SiPMHit.SiPMs)):
+                sipm = self.SiPMHit.SiPMs[i]
                 if i != sipm_idx and i not in visited:
-                    dx = abs(pos.x - self.SiPMHit.SiPMPosition[sipm_idx].x)
-                    dy = abs(pos.y - self.SiPMHit.SiPMPosition[sipm_idx].y)
-                    dz = abs(pos.z - self.SiPMHit.SiPMPosition[sipm_idx].z)
-                    if distance_thresholds["x"] >= dx and distance_thresholds["y"] >= dy and distance_thresholds["z"] >= dz:
+                    dx = abs(sipm.SiPMPosition.x - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.x)
+                    dy = abs(sipm.SiPMPosition.y - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.y)
+                    dz = abs(sipm.SiPMPosition.z - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.z)
+                    if dx <= distance_thresholds["x"] and dy <= distance_thresholds["y"] and dz <= distance_thresholds["z"]:
                         neighbors.append(i)
             return neighbors
 
-        for i in range(len(self.SiPMHit.SiPMPosition)):
+        for i in range(len(self.SiPMHit.SiPMs)):
             if i not in visited:
-                cluster = [i]
+                cluster_indices = [i]
                 visited.add(i)
                 queue = [i]
                 while queue:
@@ -113,559 +127,127 @@ class EventSimulation:
                     for neighbor in neighbors:
                         if neighbor not in visited:
                             visited.add(neighbor)
-                            cluster.append(neighbor)
+                            cluster_indices.append(neighbor)
                             queue.append(neighbor)
-                clusters.append(cluster)
-
+                cluster_sipms = [self.SiPMHit.SiPMs[idx] for idx in cluster_indices]
+                clusters.append(SiPMCluster(cluster_sipms, Fibre_connections, self.FibreHit.Fibres))
         return clusters
 
-    def summary(self, verbose=0):
-        """
-        Called by method "summary". Prints out primary gamma track information of event as well as
-        Simulation settings/parameter. This method is called first for a global event summary as it
-        prints out the main information first.
+    def assign_fibres_to_clusters(self):
+        fibre_clusters = []
+        for sipm_cluster in self.SiPMClusters:
+            associated_fibres = sipm_cluster.associatedFibres
+            fibre_cluster = FibreCluster(associated_fibres)
+            fibre_clusters.append(fibre_cluster)
+        return fibre_clusters
 
-        Args:
-            verbose (int):  If 0, method prints standard information
-                            If 1, method prints advanced information
-
-        Return:
-             None
-        """
-
-        # start of print
-        print("\n##################################################")
-        print("##### Event Summary (ID: {:18}) #####".format(self.EventNumber))
-        print("##################################################\n")
-        print("Event class      : {}".format(self.__class__.__name__))
-        print("Event number (ID): {}".format(self.EventNumber))
-        
-        print("\n# SiPM Clusters #")
-        print("Number of SiPM clusters: ", self.n_SiPM_clusters)
-        for cluster in self.SiPM_clusters:
-            print("Cluster: ", cluster)
-            print("Cluster size: ", len(cluster))
-            print("Cluster SiPM Positions: ", [self.SiPMHit.SiPMPosition[i] for i in cluster])
+    def summary(self):
+        print(f"Event {self.EventNumber} Summary")
+        print(f"Number of SiPM Clusters: {len(self.SiPMClusters)}")
+        print(f"Number of Fibre Clusters: {len(self.FibreClusters)}")
+        for i, cluster in enumerate(self.SiPMClusters):
+            print(f"\nSiPM Cluster {i+1}:")
+            print(f"Number of SiPMs: {len(cluster.sipms)}")
+            print(f"Associated Fibres: {len(cluster.associatedFibres)}")
+        for i, cluster in enumerate(self.FibreClusters):
+            print(f"\nFibre Cluster {i+1}:")
+            cluster.ClusterPosition.summary()
 
 
-        # print added information for container classes
-        if self.RecoCluster is not None:
-            self.RecoCluster.summary()
-        if self.FibreHit is not None:
-            self.FibreHit.summary()
-        if self.SiPMHit is not None:
-            self.SiPMHit.summary()
-
-
-class RecoCluster:
+class SiPM:
     """
-    A Container to represent the low level fibre reconstruction. All SiPM hits are reconstructed to
-    Fibre hits with a clustering algorithm applied afterwards. For more information consult the
-    PhD thesis of Jonas Kasper.
-
-    This implementation was constructed for the 1-to-1 setup. In theory, it can be applied to the
-    4-to-1 coupling if a LLR is developed.
-
-        Attributes:
-            Identified (int):                                   Internal integer describing the
-                                                                success of the LLR classification
-                                                                algorithm. Everything != 0
-                                                                identifies the event as distributed
-                                                                Compton event.
-            RecoClusterPosition (array<TVector3>):              List of Cluster positions.
-            RecoClusterPosition_uncertainty (array<TVector3>):  List of Cluster positions
-                                                                uncertainties.
-            RecoClusterEnergies_values (array<float>):          List of Cluster energies.
-            RecoClusterEnergies_uncertainty (array<float>):     List of Cluster energies
-                                                                uncertainties.
-            RecoClusterEntries (array<int>):                    List of hit fibres per cluster.
-            RecoClusterTimestamps (array(<float>):              List of cluster times in [ns].
-            Scatterer (Detector):               Object containing scatterer module dimensions
-            Absorber (Detector):                Object containing absorber module dimensions
-
-    INFO:
-    The RecoCluster container class contains the Scatterer abs Absorber modules as the methods of
-    the Detector class are needed. It is practically available multiple times in the EventSimulation
-    class but there is no better option
+    Represents a single SiPM detector.
+    Holds all information about the SiPM, including its position, ID, timestamps, and photon counts.
     """
 
-    def __init__(self,
-                 Identified,
-                 RecoClusterPosition,
-                 RecoClusterPosition_uncertainty,
-                 RecoClusterEnergies_values,
-                 RecoClusterEnergies_uncertainty,
-                 RecoClusterEntries,
-                 RecoClusterTimestamps,
-                 Scatterer,
-                 Absorber):
-        # Reco information (Cut-Based Reconstruction)
-        self.Identified = Identified
-        self.RecoClusterPosition = tVector_list(RecoClusterPosition)
-        self.RecoClusterPosition_uncertainty = tVector_list(RecoClusterPosition_uncertainty)
-        self.RecoClusterEnergies_values = np.array(RecoClusterEnergies_values)
-        self.RecoClusterEnergies_uncertainty = np.array(RecoClusterEnergies_uncertainty)
-        self.RecoClusterEntries = np.array(RecoClusterEntries)
-        self.RecoClusterTimestamps = np.array(RecoClusterTimestamps)
-        self.RecoClusterTimeStart = min(RecoClusterTimestamps)
-        self.RecoClusterTimestamps -= self.RecoClusterTimeStart
+    def __init__(self, SiPMId, SiPMPosition, SiPMPhotonCount, SiPMTimeStamp, Detector):
+        self.SiPMId = SiPMId
+        self.SiPMPosition = SiPMPosition  # Should be of type TVector3
+        self.SiPMPhotonCount = SiPMPhotonCount
+        self.SiPMTimeStamp = SiPMTimeStamp
+        self.Detector = Detector
 
-        self.scatterer = Scatterer
-        self.absorber = Absorber
-
-    def summary(self, debug=False):
-        # add Cluster reconstruction print out
-        print("\n# Cluster Entries: #")
-        print("Energy [MeV] | Position [mm] | Entries | Timestamp [ns]")
-        for i, cluster in enumerate(self.RecoClusterPosition):
-            print(
-                "{:.3f} | {:.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:3} | {:7.5}".format(
-                    i,
-                    self.RecoClusterEnergies_values[i],
-                    cluster.x,
-                    cluster.y,
-                    cluster.z,
-                    self.RecoClusterEntries[i],
-                    self.RecoClusterTimestamps[i]))
-
-        RecoCluster_idx_scatterer, RecoCluster_idx_absorber = self.sort_clusters_by_module(
-            use_energy=True)
-        print("Cluster in Scatterer: {} | Cluster idx: {}".format(
-            len(RecoCluster_idx_scatterer), RecoCluster_idx_scatterer))
-        print("Cluster in Absorber: {} | Cluster idx: {}".format(
-            len(RecoCluster_idx_absorber), RecoCluster_idx_absorber))
-
-        print("\n# Cut-Based Reconstruction: #")
-        print("Identification: {}".format(self.Identified))
-        reco_energy_e, reco_energy_p = self.get_reco_energy()
-        reco_position_e, reco_position_p = self.get_reco_position()
-        print("Electron Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            reco_energy_e, reco_position_e.x, reco_position_e.y, reco_position_e.z))
-        print("Photon   Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            reco_energy_p, reco_position_p.x, reco_position_p.y, reco_position_p.z))
-
-    def get_electron_energy(self):
+    def summary(self):
         """
-        Get electron energy based on cut-based reconstruction. Energy and uncertainty are chosen
-        from the highest energy cluster in the scatterer.
-
-        Returns:
-            electron energy, electron energy uncertainty
+        Prints a summary of the SiPM's information.
         """
-        idx_scatterer, _ = self.sort_clusters_by_module(use_energy=True)
-        energy = self.RecoClusterEnergies_values[idx_scatterer[0]]
-        uncertainty = self.RecoClusterEnergies_uncertainty[idx_scatterer[0]]
-        return energy, uncertainty
+        print(f"SiPM ID: {self.SiPMId}")
+        print(f"Position [mm]: ({self.SiPMPosition.x:.3f}, {self.SiPMPosition.y:.3f}, {self.SiPMPosition.z:.3f})")
+        print(f"Photon Count: {self.PhotonCount}")
+        print(f"Time Stamp [ns]: {self.SiPMTimeStamp:.3f}")
 
-    def get_photon_energy(self):
+class Fibre:
+    """
+    Represents a single Fibre detector.
+    Holds all information about the Fibre, including its position, ID, FibreEnergy, and timestamp.
+    """
+
+    def __init__(self, FibreId, FibrePosition, FibreEnergy, FibreTime, Detector):
+        self.FibreId = FibreId
+        self.FibrePosition = FibrePosition  # Should be of type TVector3
+        self.FibreEnergy = FibreEnergy
+        self.FibreTime = FibreTime
+        self.Detector = Detector
+
+    def summary(self):
         """
-        Get photon energy based on cut-based reconstruction. Energy and uncertainty are chosen
-        from the sum of all cluster energies in the absorber.
-
-        Returns:
-            photon energy, photon energy uncertainty
+        Prints a summary of the Fibre's information.
         """
-        _, idx_absorber = self.sort_clusters_by_module(use_energy=True)
-        photon_energy_value = np.sum(self.RecoClusterEnergies_values[idx_absorber])
-        photon_energy_uncertainty = np.sqrt(
-            np.sum(self.RecoClusterEnergies_uncertainty[idx_absorber] ** 2))
-        return photon_energy_value, photon_energy_uncertainty
+        print(f"Fibre ID: {self.FibreId}")
+        print(f"Position [mm]: ({self.FibrePosition.x:.3f}, {self.FibrePosition.y:.3f}, {self.FibrePosition.z:.3f})")
+        print(f"FibreEnergy [MeV]: {self.FibreEnergy:.3f}")
+        print(f"Time Stamp [ns]: {self.FibreTime:.3f}")
 
-    def get_electron_position(self):
-        """
-        Get electron position based on cut-based reconstruction. Position and uncertainty are chosen
-        from the highest energy cluster in the scatterer.
-
-        Returns:
-            electron position, electron position uncertainty
-        """
-        idx_scatterer, _ = self.sort_clusters_by_module(use_energy=True)
-        position = self.RecoClusterPosition[idx_scatterer[0]]
-        uncertainty = self.RecoClusterPosition_uncertainty[idx_scatterer[0]]
-        return position, uncertainty
-
-    def get_photon_position(self):
-        """
-        Get photon position based on cut-based reconstruction. Position and uncertainty are chosen
-        from the highest energy cluster in the absorber.
-
-        Returns:
-            photon position, photon position uncertainty
-        """
-        _, idx_absorber = self.sort_clusters_by_module(use_energy=True)
-        position = self.RecoClusterPosition[idx_absorber[0]]
-        uncertainty = self.RecoClusterPosition_uncertainty[idx_absorber[0]]
-        return position, uncertainty
-
-    def get_reco_energy(self):
-        """
-        Collects and returns electron and photon energy. Method is for easier access.
-
-        Returns:
-            reco energy electron, reco energy photon
-        """
-        reco_energy_e, _ = self.get_electron_energy()
-        reco_energy_p, _ = self.get_photon_energy()
-        return reco_energy_e, reco_energy_p
-
-    def get_reco_position(self):
-        """
-        Collect and return electron and photon position. Method is for easier access.
-
-        Returns:
-            reco position electron, reco position photon
-        """
-        reco_position_e, _ = self.get_electron_position()
-        reco_position_p, _ = self.get_photon_position()
-
-        return reco_position_e, reco_position_p
-
-    def sort_clusters_energy(self):
-        """
-        Sort events by highest energy in descending order.
-
-        return:
-            sorted array containing indices of clusters
-
-        """
-        return np.flip(np.argsort(self.RecoClusterEnergies_values))
-
-    def sort_clusters_position(self):
-        """
-        Sort events by lowest x position in ascending order.
-
-        return:
-            sorted array containing indices of clusters
-
-        """
-        list_posx = [vec.x for vec in self.RecoClusterPosition]
-        return np.argsort(list_posx)
-
-    def sort_clusters_by_module(self, use_energy=True):
-        """
-        sort clusters (sorted by energy) by corresponding module only
-        creates list of array indices.
-
-        Args:
-            use_energy (bool): True if clusters are sorted by energy before,
-                               else sorted by position
-
-        return:
-            sorted array idx scatterer, absorber
-
-        """
-        RecoCluster_idx_scatterer = []
-        RecoCluster_idx_absorber = []
-
-        # check energy tag
-        if use_energy:
-            idx_sort = self.sort_clusters_energy()
-        else:
-            idx_sort = np.arange(0, len(self.RecoClusterPosition), 1)
-
-        # sort cluster
-        for idx in idx_sort:
-            if self.scatterer.is_vec_in_module(self.RecoClusterPosition[idx]):
-                RecoCluster_idx_scatterer.append(idx)
-            if self.absorber.is_vec_in_module(self.RecoClusterPosition[idx]):
-                RecoCluster_idx_absorber.append(idx)
-
-        return RecoCluster_idx_scatterer, RecoCluster_idx_absorber
-
-    def get_edge_features(self, idx1, idx2, cartesian=True):
-        """
-        Calculates the euclidean distance, azimuthal angle, polar angle between two vectors.
-
-        Args:
-            idx1: Vector 1 given by index of RecoClusterPosition list
-            idx2: Vector 2 given by index of RecoClusterPosition list
-            cartesian:  bool, if true vector difference is given in cartesian coordinates
-                        otherwise in polar coordinates
-
-        Returns:
-            euclidean distance, azimuthal angle, polar angle
-        """
-        vec = self.RecoClusterPosition[idx2] - self.RecoClusterPosition[idx1]
-
-        if not cartesian:
-            r = vec.mag
-            phi = vec.phi
-            theta = vec.theta
-
-            return r, phi, theta
-
-        else:
-            dx = vec.x
-            dy = vec.y
-            dz = vec.z
-
-            return dx, dy, dz
-
-    def argmatch_cluster(self, tvec3, indexing=None, a=1):
-        """
-        takes a point and finds the first cluster matching the point within
-        the cluster uncertainty.
-
-        Args:
-            tvec3 (TVector3):   vector pointing to the cluster.
-            indexing (list):    list of cluster indices to define an iteration order.
-            a:                  sigma range (factor multiplied to sigma).
-
-        return:
-            idx if cluster is matched, else -1
-
-        """
-        if indexing is None:
-            # iterate all cluster positions + uncertainty
-            for i in range(len(self.RecoClusterPosition)):
-                tcluster = self.RecoClusterPosition[i]
-                tcluster_unc = self.RecoClusterPosition_uncertainty[i]
-                # check if absolute x,y,z difference is smaller than
-                # absolute uncertainty
-                if (abs(tvec3.x - tcluster.x) <= a * abs(tcluster_unc.x)
-                        and abs(tvec3.y - tcluster.y) <= a * abs(tcluster_unc.y)
-                        and abs(tvec3.z - tcluster.z) <= a * abs(
-                            tcluster_unc.z)):
-                    return i
-            else:
-                return -1
-        else:
-            # iterate all cluster positions + uncertainty
-            for i, idx in enumerate(indexing):
-                tcluster = self.RecoClusterPosition[idx]
-                tcluster_unc = self.RecoClusterPosition_uncertainty[idx]
-                # check if absolute x,y,z difference is smaller than
-                # absolute uncertainty
-                if (abs(tvec3.x - tcluster.x) <= abs(tcluster_unc.x)
-                        and abs(tvec3.y - tcluster.y) <= abs(tcluster_unc.y)
-                        and abs(tvec3.z - tcluster.z) <= abs(tcluster_unc.z)):
-                    return i
-            else:
-                return -1
-
-    def get_prime_vector(self):
-        """
-        Get electron interaction vector based on cut-based reconstruction.
-        (Here denoted prime vector)
-
-        Returns:
-            prime vector
-        """
-        idx_scatterer, _ = self.sort_clusters_by_module(use_energy=True)
-        return self.RecoClusterPosition[idx_scatterer[0]]
-
-    def get_relative_vector(self, tvec3, subtract_prime=True):
-        """
-        Get relative vector based on prime vector, so that the prime vector is rotated in a way to
-        align with the x-axis.
-
-        Args:
-            tvec3: Vector to be changed
-            subtract_prime: If true, subtract the prime vector
-
-        Returns:
-
-        """
-        tvec3_prime = self.get_prime_vector()
-        # subtract prime vector
-        if subtract_prime:
-            tvec3 = tvec3 - tvec3_prime
-        # rotate tvec3 so that the prime vector aligns with the x-axis
-        tvec3 = tvec3.rotatez(-tvec3_prime.phi).rotatey(
-            -tvec3_prime.theta + np.pi / 2)
-
-        return tvec3
 
 
 class SiPMHit:
-    """
-    A Container to represent the SiPM hits of a single simulated event.
+    def __init__(self, SiPMTimeStamp, SiPMPhotonCount, SiPMPosition, SiPMId, Detector):
+        self.SiPMs = []
+        SiPMPosition = tVector_list(SiPMPosition)
+        for i in range(len(SiPMId)):
+            self.SiPMs.append(
+                SiPM(
+                    SiPMId=SiPMId[i],
+                    SiPMPosition=SiPMPosition[i],
+                    SiPMPhotonCount=SiPMPhotonCount[i],
+                    SiPMTimeStamp=SiPMTimeStamp[i],
+                    Detector=Detector,
+                )
+            )
+        self.nSiPMs = len(self.SiPMs)
 
-        Attributes:
-            SiPMTimeStamp (array<float>):       List of SiPM trigger times (in [ns]).
-            SiPMPhotonCount (array<int>):       List of SiPM photon counts.
-            SiPMPosition (array<TVector3>):     List of triggered SiPM positions.
-            SiPMId (array<TVector3>):           List of triggered SiPM unique IDs. For mapping of
-                                                SiPM ro unique ID consult the GCCB wiki.
-            Scatterer (Detector):               Object containing scatterer module dimensions
-            Absorber (Detector):                Object containing absorber module dimensions
-
-    INFO:
-    The SiPMHit container class contains the Scatterer abs Absorber modules as the methods of the
-    Detector class are needed. It is practically available multiple times in the EventSimulation
-    class but there is no better option
-    """
-
-    def __init__(self,
-                 SiPMTimeStamp,
-                 SiPMPhotonCount,
-                 SiPMPosition,
-                 SiPMId,
-                 Detector):
-        self.SiPMTimeStamp = np.array(SiPMTimeStamp)
-        self.SiPMTimeDebug = np.array(SiPMTimeStamp) #DEBUG
-        self.SiPMTimeStart = min(SiPMTimeStamp)
-        self.SiPMTimeStamp -= self.SiPMTimeStart
-        self.SiPMPhotonCount = np.array(SiPMPhotonCount)
-        self.SiPMPosition = tVector_list(SiPMPosition)
-        self.SiPMId = np.array(SiPMId)
-        self.detector = Detector
-        self.summary()
-
-    def summary(self, debug=False):
+    def summary(self):
         print("\n# SiPM Data: #")
-        print("ID | QDC | Position [mm] | TriggerTime [ns] | DebugTime [ns]")
-        for j in range(len(self.SiPMId)):
-            print(
-                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:20.20} | {:20.20}".format(
-                    self.SiPMId[j],
-                    self.SiPMPhotonCount[j],
-                    self.SiPMPosition[j].x,
-                    self.SiPMPosition[j].y,
-                    self.SiPMPosition[j].z,
-                    self.SiPMTimeStamp[j],
-                    self.SiPMTimeDebug[j]))
-        print("*"*50)
-        print("Data types:")
-        print("SiPMTimeStamp: ", type(self.SiPMTimeStamp))
-        print("SiPMTimestamp Array type: ", self.SiPMTimeStamp.dtype)
-        print("SiPMPhotonCount: ", type(self.SiPMPhotonCount))
-        print("SiPMPhotonCount Array type: ", self.SiPMPhotonCount.dtype)
-        print("SiPMPosition: ", type(self.SiPMPosition))
-        print("SiPMId: ", type(self.SiPMId))
-        print("SiPMId Array type: ", self.SiPMId.dtype)
-        print("*"*50)
+        for sipm in self.SiPMs:
+            sipm.summary()
 
-    @staticmethod
-    def sipm_id_to_position(sipm_id):
-        # determine y
-        y = sipm_id // 368
-        # remove third dimension
-        sipm_id -= (y * 368)
-        # x and z in scatterer
-        if sipm_id < 112:
-            x = sipm_id // 28
-            z = (sipm_id % 28) + 2
-        # x and z in absorber
-        else:
-            x = (sipm_id + 16) // 32
-            z = (sipm_id + 16) % 32
-        return int(x), int(y), int(z)
-
-    def get_sipm_feature_map(self, padding=2, gap_padding=4):
-        # hardcoded detector size
-        dimx = 12
-        dimy = 2
-        dimz = 32
-
-        ary_feature = np.zeros(shape=(
-            dimx + 2 * padding + gap_padding, dimy + 2 * padding,
-            dimz + 2 * padding, 2))
-
-        for i, sipm_id in enumerate(self.SiPMId):
-            x, y, z = self.sipm_id_to_position(sipm_id=sipm_id)
-            x_final = x + padding if x < 4 else x + padding + gap_padding
-            y_final = y + padding
-            z_final = z + padding
-
-            ary_feature[x_final, y_final, z_final, 0] = self.SiPMPhotonCount[i]
-            ary_feature[x_final, y_final, z_final, 1] = self.SiPMTimeStamp[i]
-
-        return ary_feature
-
-
-    def get_edge_features(self, idx1, idx2, cartesian=True):
-        """
-        Calculates the euclidean distance, azimuthal angle, polar angle between two vectors.
-
-        Args:
-            idx1: Vector 1 given by index of RecoClusterPosition list
-            idx2: Vector 2 given by index of RecoClusterPosition list
-            cartesian:  bool, if true vector difference is given in cartesian coordinates
-                        otherwise in polar coordinates
-
-        Returns:
-            euclidean distance, azimuthal angle, polar angle
-        """
-        vec = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
-        dt  = self.SiPMTimeStamp[idx2] - self.SiPMTimeStamp[idx1]
-        dPhotonCount = self.SiPMPhotonCount[idx2] - self.SiPMPhotonCount[idx1]
-
-        if not cartesian:
-            r = vec.mag
-            phi = vec.phi
-            theta = vec.theta
-
-            return r, phi, theta, dt, dPhotonCount
-
-        else:
-            dx = vec.x
-            dy = vec.y
-            dz = vec.z
-
-            return dx, dy, dz, dt, dPhotonCount
 
 
 class FibreHit:
-    """
-    A Container to represent the Fibre hits of a single simulated event.
+    def __init__(self, FibreTime, FibreEnergy, FibrePosition, FibreId, Detector):
+        self.Fibres = []
+        FibrePosition = tVector_list(FibrePosition)
+        for i in range(len(FibreId)):
+            self.Fibres.append(
+                Fibre(
+                    FibreId=FibreId[i],
+                    FibrePosition=FibrePosition[i],
+                    FibreEnergy=FibreEnergy[i],
+                    FibreTime=FibreTime[i],
+                    Detector=Detector,
+                )
+            )
 
-        Attributes:
-            FibreTime (array<float>):           List of Fibre hit times (in [ns]).
-            FibreEnergy (array<int>):           List of Fibre hit energy.
-            FibrePosition (array<TVector3>):    List of hit Fibre positions.
-            FibreId (array<TVector3>):          List of hit Fibre unique IDs. For mapping of
-                                                Fibre ro unique ID consult the GCCB wiki.
-            Scatterer (Detector):               Object containing scatterer module dimensions
-
-    INFO:
-    The FibreHit container class contains the Scatterer abs Absorber modules as the methods of the
-    Detector class are needed. It is practically available multiple times in the EventSimulation
-    class but there is no better option
-    """
-
-    def __init__(self,
-                 FibreTime,
-                 FibreEnergy,
-                 FibrePosition,
-                 FibreId,
-                 Detector):
-        if len(FibreEnergy) == 0:
-            raise ValueError("FibreEnergy is empty: ", FibreEnergy)
-        self.FibreEnergy = np.array(FibreEnergy)
-        self.FibreEnergymin = min(FibreEnergy) #DEBUG
-        self.FibreTime = FibreTime
-        self.FibreTime = np.array(self.FibreTime)
-        self.FibreTimeStart = min(FibreTime)
-        self.FibreTime -= self.FibreTimeStart
-        self.FibrePosition = tVector_list(FibrePosition)
-        self.FibreId = np.array(FibreId)
-        self.detector = Detector
-        
-
-
-    def summary(self, debug=False):
-        # add Cluster reconstruction print out
+    def summary(self):
         print("\n# Fibre Data: #")
-        print("ID | Energy [MeV] | Position [mm] | TriggerTime [ns]")
-        for j in range(len(self.FibreId)):
-            print(
-                "{:3.3f} | {:5.3f} | ({:7.3f}, {:7.3f}, {:7.3f}) | {:7.5}".format(
-                    self.FibreId[j],
-                    self.FibreEnergy[j],
-                    self.FibrePosition[j].x,
-                    self.FibrePosition[j].y,
-                    self.FibrePosition[j].z,
-                    self.FibreTime[j]))
+        for fibre in self.Fibres:
+            fibre.summary()
+
             
 class FibreCluster:
-    def __init__(self, fibreHit):
-        self.FibreHit = fibreHit
-        #self.SiPMHit = sipmHit
-        #self.PhotonCount_r = np.sum(np.array([self.SiPMHit.SiPMPhotonCount[i] for i in range(len(self.SiPMHit.SiPMId)) if self.SiPMHit.SiPMPosition.y[i] > 0]))
-        #self.PhotonCount_l = np.sum(np.array([self.SiPMHit.SiPMPhotonCount[i] for i in range(len(self.SiPMHit.SiPMId)) if self.SiPMHit.SiPMPosition.y[i] < 0]))
-        self.ClusterEnergy = np.sum(self.FibreHit.FibreEnergy)
-        self.ClusterTime = self.FibreHit.FibreTimeStart
+    def __init__(self, fibres):
+        self.FibreHit = fibres
+        self.ClusterEnergy = np.sum([f.FibreEnergy for f in self.FibreHit])
         self.ClusterPosition = TVector3.zeros()
         self.ElarPar = {
             "lambda" : 124,
@@ -725,18 +307,18 @@ class FibreCluster:
 
     def get_first_layer(self):
         # get the first layer that participates in the interaction
-        min_layer = np.min([pos.z for pos in self.FibreHit.FibrePosition])
+        min_layer = np.min([fibre.FibrePosition.z for fibre in self.FibreHit])
         if min_layer > 239 or min_layer < 227 or min_layer%2==0:
             raise ValueError("First layer %s index is out of range 227 to 239" % (min_layer,))
         return min_layer
     
     def get_row_coordinates(self):
         # Using weighted mean to determine the row position with energy as weights
-        return np.average([fibre.x for fibre in self.FibreHit.FibrePosition], weights=self.FibreHit.FibreEnergy)
+        return np.average([fibre.FibrePosition.x for fibre in self.FibreHit], weights=[fibre.FibreEnergy for fibre in self.FibreHit])
 
     def get_y_weighted(self):
         # Using energy to weight fibres and reconstruct position
-        return np.average([fibre.x for fibre in self.FibreHit.FibrePosition], weights=self.FibreHit.FibreEnergy)
+        return np.average([fibre.FibrePosition.y for fibre in self.FibreHit], weights=[fibre.FibreEnergy for fibre in self.FibreHit])
 
     
     def reconstruct_cluster(self, coordinate_system="AACHEN"):
@@ -749,3 +331,41 @@ class FibreCluster:
             self.ClusterPosition.y = -self.get_y_weighted()
             self.ClusterPosition.x = self.get_first_layer()
         return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
+    
+class SiPMCluster:
+    def __init__(self, sipms, Fibre_connections, FibreHit):
+        self.SiPMs = sipms
+        self.nSiPMs = len(sipms)
+        self.initialTime = min([sipm.SiPMTimeStamp for sipm in sipms])
+        self.update_time_stamps()
+        self.connectedFibreIDs = self.find_fibres(Fibre_connections)
+        self.associatedFibres = self.assign_fibres_to_cluster(FibreHit)
+
+    def update_time_stamps(self):
+        for sipm in self.SiPMs:
+            sipm.SiPMTimeStamp -= self.initialTime
+
+    def find_fibres(self, Fibre_connections):
+        def get_fibres_for_SiPM(SiPM, Fibre_connections):
+            # Find all fibers connected to the specific SiPM
+            connected_fibres = []
+            for fibre_idx, (x, y) in enumerate(Fibre_connections):
+                if x == SiPM or y == SiPM:
+                    connected_fibres.append(fibre_idx)
+            return connected_fibres
+        
+        connected_fibres = []
+        for sipm in self.SiPMs:
+            connected_fibres.extend(get_fibres_for_SiPM(sipm.SiPMId, Fibre_connections))
+        
+        # Remove duplicates
+        connected_fibres = np.unique(connected_fibres)
+        return connected_fibres
+
+    def assign_fibres_to_cluster(self, FibreHit):
+        associated_fibres = []
+        for fibre_idx in self.connectedFibreIDs:
+            fibre = next((f for f in FibreHit if f.FibreId == fibre_idx), None)
+            if fibre:
+                associated_fibres.append(fibre)
+        return associated_fibres
