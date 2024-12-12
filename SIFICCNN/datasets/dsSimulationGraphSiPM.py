@@ -13,6 +13,7 @@ from SIFICCNN.utils import parent_directory
 
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse
+from tqdm import tqdm
 
 
 class DSGraphSiPM(Dataset):
@@ -50,7 +51,7 @@ class DSGraphSiPM(Dataset):
         Returns the path to the dataset directory.
         """
         path = parent_directory()
-        path = os.path.join(path, "datasets", "SimGraphSiPM", self.name)
+        path = os.path.join(path, "datasets", "CMSimGraphSiPM", self.name)
 
         return path
 
@@ -91,31 +92,46 @@ class DSGraphSiPM(Dataset):
         # Get node attributes (x_list)
         x_list = self._get_x_list(n_nodes_cum=n_nodes_cum)
         # Get edge attributes (e_list), in this case edge features are disabled
-        e_list = [None] * len(n_nodes)
+        e_list = np.array([None] * len(n_nodes))
+
 
         # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
-        a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
+        a_e_list = []
+        total_matrices = len(n_nodes)
+        print(f"Total number of adjacency matrices to be created: {total_matrices}")
+
+        with tqdm(total=total_matrices, desc="Creating adjacency matrices") as pbar:
+            for el, e, n in zip(el_list, e_list, n_nodes):
+                a = sparse.edge_index_to_matrix(edge_index=el,
+                                                edge_weight=np.ones(el.shape[0]),
+                                                edge_features=e,
+                                                shape=(n, n))
+                a_e_list.append(a)
+                pbar.update(1)
+
+
+        """a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
                                                 edge_weight=np.ones(el.shape[0]),
                                                 edge_features=e,
                                                 shape=(n, n), )
-                    for el, e, n in zip(el_list, e_list, n_nodes)]
+                    for el, e, n in tqdm(zip(el_list, e_list, n_nodes), desc="Creating adjacency matrices")]"""
         a_list = a_e_list
         # If edge features are used, use this: a_list, e_list = list(zip(*a_e_list))
 
         # Set dataset targets (classification / regression)
         y_list = self._get_y_list()
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        labels = np.load(self.path + "/" + "labels.npy")
 
         # At this point the full dataset is loaded and filtered according to the settings
         # Limited to True positives only if needed
         print("Successfully loaded {}.".format(self.name))
         if self.regression is None:
-            return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, labels)]
+            return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, labels), desc="Creating graphs for classification")]
         else:
             if self.positives:
-                return [Graph(x=x, a=a, y=y) for x, a, y, label in zip(x_list, a_list, y_list, labels) if label]
+                return [Graph(x=x, a=a, y=y) for x, a, y, label in tqdm(zip(x_list, a_list, y_list, labels), desc="Creating graphs for regression (positives only)") if label]
             else:
-                return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, y_list)]
+                return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, y_list), desc="Creating graphs for regression")]
 
     def _get_x_list(self, n_nodes_cum):
         """
@@ -171,15 +187,15 @@ class DSGraphSiPM(Dataset):
             # Load graph attributes for regression tasks
             graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
             if self.regression == "Energy":
-                y_list = graph_attributes[:, :2]
+                y_list = graph_attributes[:, 0]
             elif self.regression == "Position":
-                y_list = graph_attributes[:, 2:]
+                y_list = graph_attributes[:, 1:]
             else:
                 print("Warning: Regression type not set correctly")
                 return None
         else:
             # Return class labels for classification tasks
-            y_list = np.load(self.path + "/" + "graph_labels.npy")
+            y_list = np.load(self.path + "/" + "labels.npy")
         return y_list
 
     def get_classweight_dict(self):
@@ -189,7 +205,7 @@ class DSGraphSiPM(Dataset):
         Returns:
             dict: Dictionary with class weights.
         """
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        labels = np.load(self.path + "/" + "labels.npy")
 
         _, counts = np.unique(labels, return_counts=True)
         class_weights = {0: len(labels) / (2 * counts[0]),
@@ -257,5 +273,5 @@ class DSGraphSiPM(Dataset):
         Returns:
             array: Graph labels.
         """
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        labels = np.load(self.path + "/" + "labels.npy")
         return labels

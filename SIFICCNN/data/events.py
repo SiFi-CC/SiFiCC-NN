@@ -99,6 +99,12 @@ class EventSimulation:
         self.FibreClusters = self.assign_fibres_to_clusters()
         self.nClusters = len(self.SiPMClusters)
 
+        #print(f"Event {self.EventNumber} created with {self.nClusters} clusters")
+        #print(f"number of SiPMClusters: {len(self.SiPMClusters)}")
+        #print(f"number of FibreClusters: {len(self.FibreClusters)}")
+        #print(f"number of sipms per cluster: {[cluster.nSiPMs for cluster in self.SiPMClusters]}")
+        #print(f"number of fibres per cluster: {[cluster.nFibres for cluster in self.FibreClusters]}")
+
     def inspect_SiPM_clusters(self):
         clusters = []
         visited = set()
@@ -205,15 +211,19 @@ class SiPMHit:
         self.SiPMs = []
         SiPMPosition = tVector_list(SiPMPosition)
         for i in range(len(SiPMId)):
-            self.SiPMs.append(
-                SiPM(
-                    SiPMId=SiPMId[i],
-                    SiPMPosition=SiPMPosition[i],
-                    SiPMPhotonCount=SiPMPhotonCount[i],
-                    SiPMTimeStamp=SiPMTimeStamp[i],
-                    Detector=Detector,
+            if SiPMPhotonCount[i] <= 0 or SiPMPhotonCount[i] == None:
+                print("SiPM with photon count 0 found, skipping...")
+                continue
+            else:
+                self.SiPMs.append(
+                    SiPM(
+                        SiPMId=SiPMId[i],
+                        SiPMPosition=SiPMPosition[i],
+                        SiPMPhotonCount=SiPMPhotonCount[i],
+                        SiPMTimeStamp=SiPMTimeStamp[i],
+                        Detector=Detector,
+                    )
                 )
-            )
         self.nSiPMs = len(self.SiPMs)
 
     def summary(self):
@@ -228,15 +238,19 @@ class FibreHit:
         self.Fibres = []
         FibrePosition = tVector_list(FibrePosition)
         for i in range(len(FibreId)):
-            self.Fibres.append(
-                Fibre(
-                    FibreId=FibreId[i],
-                    FibrePosition=FibrePosition[i],
-                    FibreEnergy=FibreEnergy[i],
-                    FibreTime=FibreTime[i],
-                    Detector=Detector,
+            if FibreEnergy[i] <= 0 or FibreEnergy[i] == None:
+                print("Fibre with energy 0 found, skipping...")
+                continue
+            else:
+                self.Fibres.append(
+                    Fibre(
+                        FibreId=FibreId[i],
+                        FibrePosition=FibrePosition[i],
+                        FibreEnergy=FibreEnergy[i],
+                        FibreTime=FibreTime[i],
+                        Detector=Detector,
+                    )
                 )
-            )
 
     def summary(self):
         print("\n# Fibre Data: #")
@@ -246,9 +260,11 @@ class FibreHit:
             
 class FibreCluster:
     def __init__(self, fibres):
-        self.FibreHit = fibres
-        self.ClusterEnergy = np.sum([f.FibreEnergy for f in self.FibreHit])
+        self.Fibres = fibres
+        self.nFibres = len(fibres)
+        self.ClusterEnergy = np.sum([f.FibreEnergy for f in self.Fibres])
         self.ClusterPosition = TVector3.zeros()
+        self.hasFibres = self.nFibres > 0
         self.ElarPar = {
             "lambda" : 124,
             "L" : 100,
@@ -307,31 +323,35 @@ class FibreCluster:
 
     def get_first_layer(self):
         # get the first layer that participates in the interaction
-        min_layer = np.min([fibre.FibrePosition.z for fibre in self.FibreHit])
+        min_layer = np.min([fibre.FibrePosition.z for fibre in self.Fibres])
         if min_layer > 239 or min_layer < 227 or min_layer%2==0:
             raise ValueError("First layer %s index is out of range 227 to 239" % (min_layer,))
         return min_layer
-    
-    def get_row_coordinates(self):
+    #############################################################################################################################
+    def get_x_weigthed(self, weights=None):
         # Using weighted mean to determine the row position with energy as weights
-        return np.average([fibre.FibrePosition.x for fibre in self.FibreHit], weights=[fibre.FibreEnergy for fibre in self.FibreHit])
+        return np.average([fibre.FibrePosition.x for fibre in self.Fibres], weights=weights)
 
-    def get_y_weighted(self):
+    def get_y_weighted(self, weights=None):
         # Using energy to weight fibres and reconstruct position
-        return np.average([fibre.FibrePosition.y for fibre in self.FibreHit], weights=[fibre.FibreEnergy for fibre in self.FibreHit])
-
+        return np.average([fibre.FibrePosition.y for fibre in self.Fibres], weights=weights)
+    #############################################################################################################################
     
     def reconstruct_cluster(self, coordinate_system="AACHEN"):
-        if coordinate_system == "AACHEN":
-            self.ClusterPosition.x = self.get_row_coordinates()
-            self.ClusterPosition.y = self.get_y_weighted()
-            self.ClusterPosition.z = self.get_first_layer()
-        elif coordinate_system == "CRACOW":
-            self.ClusterPosition.z = self.get_row_coordinates()
-            self.ClusterPosition.y = -self.get_y_weighted()
-            self.ClusterPosition.x = self.get_first_layer()
-        return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
-    
+        if self.hasFibres:
+            weights = [fibre.FibreEnergy for fibre in self.Fibres] if self.ClusterEnergy > 0 else None
+            if coordinate_system == "AACHEN":
+                self.ClusterPosition.x = self.get_x_weigthed(weights)
+                self.ClusterPosition.y = self.get_y_weighted(weights)
+                self.ClusterPosition.z = self.get_first_layer()
+            elif coordinate_system == "CRACOW":
+                self.ClusterPosition.z = self.get_x_weigthed(weights)
+                self.ClusterPosition.y = -self.get_y_weighted(weights)
+                self.ClusterPosition.x = self.get_first_layer()
+            return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
+        else:
+            return np.array([0, 0, 0, 0])
+        
 class SiPMCluster:
     def __init__(self, sipms, Fibre_connections, FibreHit):
         self.SiPMs = sipms

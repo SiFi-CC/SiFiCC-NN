@@ -54,12 +54,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
+    #DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
+    #DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
+    #DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
+    #DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
+    #DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
+    mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
+
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -69,14 +71,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for file in [mergedTree]:#[DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_name=DATASET_CONT,
+        training(dataset_name=mergedTree,
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -86,7 +88,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in [mergedTree]:#[DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -210,8 +212,8 @@ def evaluate(dataset_name,
         y_pred.append(p.numpy())
     y_true = np.vstack(y_true)
     y_pred = np.vstack(y_pred)
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 2))
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 2))
+    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 1))
+    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 1))
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
@@ -254,29 +256,7 @@ def evaluate(dataset_name,
                                                  particle="e",
                                                  file_name="2dhist_energy_electron_residual_relative_vs_true.png",
                                                  title="Relative electron energy residual")
-
-    plot_1dhist_energy_residual(y_pred=y_pred[labels, 1],
-                                y_true=y_true[labels, 1],
-                                particle="\gamma",
-                                f="gaussian_gaussian",
-                                file_name="1dhist_energy_gamma_residual.png",
-                                title="Energy residual")
-    plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
-                                         y_true=y_true[labels, 1],
-                                         particle="\gamma",
-                                         f="gaussian_gaussian",
-                                         file_name="1dhist_energy_gamma_residual_relative.png",
-                                         title="Relative energy residual")
-    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 1],
-                                        y_true=y_true[labels, 1],
-                                        particle="\gamma",
-                                        file_name="2dhist_energy_gamma_residual_vs_true.png",
-                                        title="Photon energy residual")
-    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[labels, 1],
-                                                 y_true=y_true[labels, 1],
-                                                 particle="\gamma",
-                                                 file_name="2dhist_energy_gamma_residual_relative_vs_true.png",
-                                                 title="Relative photon energy residual")    
+  
 
 
 
