@@ -149,10 +149,11 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
                 if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
                     continue
             """
+            sipms_per_cluster = np.array([cluster.nSiPMs for cluster in event.SiPMClusters])
             
             k_graphs += event.nClusters
-            n_nodes += event.SiPMHit.nSiPMs
-            m_edges += event.SiPMHit.nSiPMs ** 2
+            n_nodes += np.sum(sipms_per_cluster)
+            m_edges += np.sum(sipms_per_cluster**2)
             if not photon_set:
                 NeutronCount.append(event.MCNPrimaryNeutrons)
             PrimaryEnergies.append(event.MCEnergy_Primary)
@@ -176,6 +177,8 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     # meta data
     ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
     ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
+    ary_fibre_multiplicity = np.zeros(shape=(k_graphs,), dtype=np.int16)
+    ary_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
 
 
     # main iteration over root file, containing beta coincidence check
@@ -238,6 +241,8 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
             ary_sp[graph_id] = event.MCPosition_source.x
 
             ary_event_idx_of_graphs[graph_id] = i
+            ary_fibre_multiplicity[graph_id] = event.FibreClusters[cluster_id].nFibres
+            ary_labels[graph_id] = event.FibreClusters[cluster_id].hasFibres
 
             # count up graph indexing
             graph_id += 1
@@ -265,6 +270,8 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
     np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
     np.save(path + "/" + name_additions + "event_idx_of_graphs.npy", ary_event_idx_of_graphs)
+    np.save(path + "/" + name_additions + "fibre_multiplicity.npy", ary_fibre_multiplicity)
+    np.save(path + "/" + name_additions + "labels.npy", ary_labels)
 
 
 

@@ -56,12 +56,13 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
+    #DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
+    #DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
+    #DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
+    #DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
+    #DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
+    mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
 
     # go backwards in directory tree until the main repo directory is matched
     path = parent_directory()
@@ -71,14 +72,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for file in [mergedTree]: #[DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_name=DATASET_CONT,
+        training(dataset_name=mergedTree,
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -88,7 +89,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in [mergedTree]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)

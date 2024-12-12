@@ -57,11 +57,13 @@ def main(run_name="ECRNSiPM_unnamed",
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
+    """DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
     DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
     DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
     DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
     DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
+    """
+    mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
 
@@ -73,14 +75,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for file in [mergedTree]: #[DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_name=DATASET_CONT,
+        training(dataset_name=mergedTree,  #DATASET_CONT,
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -90,7 +92,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  modelParameter=modelParameter)
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in [mergedTree]: #[DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
             evaluate(dataset_name=file,
                      RUN_NAME=run_name,
                      path=path_results)
@@ -220,8 +222,8 @@ def evaluate(dataset_name,
         y_pred.append(p.numpy())
     y_true = np.vstack(y_true)
     y_pred = np.vstack(y_pred)
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 6))
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 6))
+    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 3))
+    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 3))
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
@@ -244,11 +246,7 @@ def evaluate(dataset_name,
                                   particle="e",
                                   coordinate="x",
                                   file_name="1dhist_electron_position_{}_residual.png".format("x"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
-                                  y_true=y_true[labels, 3],
-                                  particle="\gamma",
-                                  coordinate="x",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("x"))
+
 
     plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
                                   y_true=y_true[labels, 1],
@@ -256,23 +254,14 @@ def evaluate(dataset_name,
                                   coordinate="y",
                                   f="lorentzian",
                                   file_name="1dhist_electron_position_{}_residual.png".format("y"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
-                                  y_true=y_true[labels, 4],
-                                  particle="\gamma",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("y"))
+
 
     plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
                                   y_true=y_true[labels, 2],
                                   particle="e",
                                   coordinate="z",
                                   file_name="1dhist_electron_position_{}_residual.png".format("z"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
-                                  y_true=y_true[labels, 5],
-                                  particle="\gamma",
-                                  coordinate="z",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("z"))
+ 
 
 
     for i, r in enumerate(["x", "y", "z"]):
@@ -282,12 +271,7 @@ def evaluate(dataset_name,
                                               coordinate=r,
                                               file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
                                                   r))
-        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i + 3],
-                                              y_true=y_true[labels, i + 3],
-                                              particle="\gamma",
-                                              coordinate=r,
-                                              file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
-                                                  r))
+
 
 
 if __name__ == "__main__":
@@ -312,7 +296,7 @@ if __name__ == "__main__":
     base_batch_size = 64
     base_dropout = 0.0
     base_nfilter = 32
-    base_nOut = 6
+    base_nOut = 3
     base_activation = "relu"
     base_activation_out = "linear"
     base_do_training = False

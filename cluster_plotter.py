@@ -79,7 +79,7 @@ class Event:
     def __repr__(self):
         return f"Event(num_clusters={len(self.clusters)})"
 
-    def plot(self, detector):
+    def plot(self, detector, event_idx):
         """
         Plot a 3D representation of the event with all possible SiPMs and activated SiPMs.
         :param detector: Detector object containing all possible SiPM positions.
@@ -139,7 +139,7 @@ class Event:
                    color='gray', alpha=0.3, label='Inactive SiPMs')
 
         # Set plot labels and title
-        ax.set_title("3D Event Visualization")
+        ax.set_title("3D Event Visualization of Event "+ str(event_idx))
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
@@ -163,7 +163,7 @@ class Event:
         ax.set_zlim(mid_z - max_range, mid_z + max_range)
 
         ax.legend()
-        plt.show()
+        plt.savefig(f"event_{event_idx}.png")
 
 class EventLoader:
     """
@@ -222,7 +222,7 @@ def main():
         for event_idx in event_ids[:3]:
             event = event_loader.load_event(event_idx)
             print(f"Visualizing Event {event_idx}: {event}")
-            event.plot(detector)
+            event.plot(detector, event_idx)
 
 
 if __name__ == "__main__":

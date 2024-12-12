@@ -137,7 +137,7 @@ class RootSimulation:
         progbar = tqdm.tqdm(total=n_stop-n_start, ncols=100, file=sys.stdout,
                             desc="iterating root tree")
         progbar_step = 0
-        progbar_update_size = 1#1000
+        progbar_update_size = 1000
 
         for batch in self.events.iterate(step_size="1000000 kB",
                                          entry_start=n_start,
