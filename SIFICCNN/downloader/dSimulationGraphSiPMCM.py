@@ -173,7 +173,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 4), dtype=np.float32)
-    ary_event_idx_of_graphs = np.zeros(shape=(k_graphs), dtype=np.int32)
+    ary_event_indicator = np.zeros(shape=(k_graphs), dtype=np.int32)
     # meta data
     ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
     ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
@@ -240,7 +240,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
             ary_graph_attributes[graph_id, :] = event.FibreClusters[cluster_id].reconstruct_cluster(coordinate_system)
             ary_sp[graph_id] = event.MCPosition_source.x
 
-            ary_event_idx_of_graphs[graph_id] = i
+            ary_event_indicator[graph_id] = i
             ary_fibre_multiplicity[graph_id] = event.FibreClusters[cluster_id].nFibres
             ary_labels[graph_id] = event.FibreClusters[cluster_id].hasFibres
 
@@ -269,9 +269,9 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     np.save(path + "/" + name_additions + "graph_attributes.npy", ary_graph_attributes)
     np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
     np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
-    np.save(path + "/" + name_additions + "event_idx_of_graphs.npy", ary_event_idx_of_graphs)
+    np.save(path + "/" + name_additions + "event_indicator.npy", ary_event_indicator)
     np.save(path + "/" + name_additions + "fibre_multiplicity.npy", ary_fibre_multiplicity)
-    np.save(path + "/" + name_additions + "labels.npy", ary_labels)
+    np.save(path + "/" + name_additions + "graph_labels.npy", ary_labels)
 
 
 

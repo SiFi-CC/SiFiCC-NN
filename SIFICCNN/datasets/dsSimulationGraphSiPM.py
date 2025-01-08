@@ -120,7 +120,7 @@ class DSGraphSiPM(Dataset):
 
         # Set dataset targets (classification / regression)
         y_list = self._get_y_list()
-        labels = np.load(self.path + "/" + "labels.npy")
+        labels = np.load(self.path + "/" + "graph_labels.npy")
 
         # At this point the full dataset is loaded and filtered according to the settings
         # Limited to True positives only if needed
@@ -195,7 +195,7 @@ class DSGraphSiPM(Dataset):
                 return None
         else:
             # Return class labels for classification tasks
-            y_list = np.load(self.path + "/" + "labels.npy")
+            y_list = np.load(self.path + "/" + "graph_labels.npy")
         return y_list
 
     def get_classweight_dict(self):
@@ -205,7 +205,7 @@ class DSGraphSiPM(Dataset):
         Returns:
             dict: Dictionary with class weights.
         """
-        labels = np.load(self.path + "/" + "labels.npy")
+        labels = np.load(self.path + "/" + "graph_labels.npy")
 
         _, counts = np.unique(labels, return_counts=True)
         class_weights = {0: len(labels) / (2 * counts[0]),
@@ -273,5 +273,5 @@ class DSGraphSiPM(Dataset):
         Returns:
             array: Graph labels.
         """
-        labels = np.load(self.path + "/" + "labels.npy")
+        labels = np.load(self.path + "/" + "graph_labels.npy")
         return labels
