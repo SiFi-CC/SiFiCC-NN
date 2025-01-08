@@ -24,3 +24,7 @@ results
 number_of_clusters.npy
 sipm_positions.npy
 sipms_per_cluster.npy
+condor_tester.py
+verify_shapes.py
+dataset_concatenator.py
+dataset_concatenator1.py
