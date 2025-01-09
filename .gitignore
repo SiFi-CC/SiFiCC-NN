@@ -21,3 +21,10 @@ datasets_old
 *.log
 results
 .vscode/settings.json
+condor_tester.py
+dataset_concatenator.py
+dataset_concatenator1.py
+number_of_clusters.npy
+sipm_positions.npy
+sipms_per_cluster.npy
+verify_shapes.py
