@@ -125,6 +125,7 @@ def training(dataset_type,
     # load graph datasets
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
+					   mode=mode,
                        positives=True,
                        regression="Position",
                        name=dataset_name,
@@ -230,6 +231,7 @@ def evaluate(dataset_type,
 
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=norm_x,
+					   mode=mode,
                        positives=False,
                        regression="Position",
                        name=dataset_name)
