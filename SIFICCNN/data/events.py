@@ -81,6 +81,7 @@ class EventSimulation:
         # Container objects for additional information
         self.SiPMHit        = SiPMHit
         self.FibreHit       = FibreHit
+
         # set flags for phantom-hit methods
         # Phantom-hits describe events where the primary prompt gamma undergoes pair-production,
         # resulting in a missing interaction in the absorber module. The phantom hit tag is only

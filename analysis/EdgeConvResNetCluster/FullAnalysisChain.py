@@ -2,6 +2,7 @@ import numpy as np
 import os
 import json
 import tensorflow as tf
+import argparse
 
 from SIFICCNN.utils import parent_directory
 from SIFICCNN.ComptonCamera6 import exportCC6
@@ -17,7 +18,7 @@ from SIFICCNN.analysis import read_resolution_file
 def main(run_name,
          exp_name,
          threshold,
-         fponly=False):
+         fp_only):
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
@@ -107,7 +108,7 @@ def main(run_name,
                   verbose=1,
                   veto=True)
 
-    if fponly:
+    if fp_only:
         os.chdir(path_results + DATASET_0MM + "/")
         # gather all network predictions
         y_score_pred = np.loadtxt(DATASET_0MM + "_clas_pred.txt", delimiter=",")
@@ -139,11 +140,15 @@ def main(run_name,
 
 
 if __name__ == "__main__":
-    run_name = "ECRNCluster_PostTraining"
-    exp_name = "ECRNCluster_PostTraining"
-    threshold = 0.5
+    parser = argparse.ArgumentParser(description="Run the full analysis chain.")
+    parser.add_argument('--run_name', type=str, default="ECRNCluster_PostTraining", help='Name of the run')
+    parser.add_argument('--exp_name', type=str, default="ECRNCluster_PostTraining", help='Name of the experiment')
+    parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for classification')
+    parser.add_argument('--fp_only', action='store_true', help='Flag to indicate if only false positives should be considered', default=False)
 
-    main(run_name=run_name,
-         exp_name=exp_name,
-         threshold=threshold,
-         fponly=False)
+    args = parser.parse_args()
+
+    main(run_name=args.run_name,
+         exp_name=args.exp_name,
+         threshold=args.threshold,
+         fponly=args.fp_only)
