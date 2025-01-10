@@ -31,13 +31,17 @@ from SIFICCNN.utils.plotter import plot_history_classifier, \
     plot_2dhist_ep_score, \
     plot_2dhist_sp_score
 
+# Import datasets
+from analysis.EdgeConvResNetSiPM.parameters import datasets
+
+
 
 def main(run_name="ECRNSiPM_unnamed",
          epochs=50,
          batch_size=64,
          dropout=0.1,
          nFilter=32,
-         nOut=1,
+         nOut=0,
          activation="relu",
          activation_out="sigmoid",
          do_training=False,
@@ -45,6 +49,13 @@ def main(run_name="ECRNSiPM_unnamed",
          model_type="SiFiECRNShort",
          dataset_name="SimGraphSiPM",
          ):
+
+    datasets, output_dimensions = get_parameters(mode)
+	
+	if nOut == 0:
+		print("Setting output dimensions to default value set in parameters.py")
+		nOut = output_dimensions["classification"]
+
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -56,17 +67,6 @@ def main(run_name="ECRNSiPM_unnamed",
                       "activation_out": activation_out,
                       "dropout": dropout}
 
-    # Datasets used
-    # Training file used for classification and regression training
-    # Generated via an input generator, contain one Bragg-peak position
-    #DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    #DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    #DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    #DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    #DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
-    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
-    mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
-
     # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
@@ -75,14 +75,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for dataset in datasets.values():
         dataset_path = os.path.join(path_results, dataset)
         os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_type=DATASET_CONT,
+        training(dataset_type=datasets["continuous"],
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -95,7 +95,7 @@ def main(run_name="ECRNSiPM_unnamed",
                  )
 
     if do_evaluation:
-        for file in [DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in {k: v for k, v in datasets.items() if k != "continuous"}.values():
             evaluate(dataset_type=file,
                      RUN_NAME=run_name,
                      path=path_results,
@@ -114,6 +114,22 @@ def training(dataset_type,
              model_type,
              dataset_name,
              ):
+    """
+    Train the model on the given dataset.
+
+    Parameters:
+    dataset_type (str): Type of the dataset to be used for training.
+    run_name (str): Name of the run for saving results.
+    trainsplit (float): Fraction of the data to be used for training.
+    valsplit (float): Fraction of the data to be used for validation.
+    batch_size (int): Number of samples per batch.
+    nEpochs (int): Number of epochs for training.
+    path (str): Path to save the results.
+    modelParameter (dict): Dictionary of model parameters.
+    model_type (str): Type of the model to be used.
+    dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
+    """
+    
     # load graph datasets
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
@@ -181,6 +197,7 @@ def evaluate(dataset_type,
              path,
              dataset_name,
              ):
+    
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
 
@@ -194,6 +211,7 @@ def evaluate(dataset_type,
                                           custom_objects={"EdgeConv": EdgeConv,
                                                           "GlobalMaxPool": GlobalMaxPool,
                                                           "ReZero": ReZero})
+
     # load norm
     norm_x = np.load(RUN_NAME + "_classifier_norm_x.npy")
 
@@ -228,22 +246,23 @@ def evaluate(dataset_type,
                                  shuffle=False)
 
     # evaluation of test datasets (looks weird cause of bad tensorflow output format)
-    y_true = []
-    y_scores = []
+
+    y_true = np.zeros((len(data),), dtype=bool)
+    y_pred = np.zeros((len(data),), dtype=np.float32)
+
+    index = 0
     for batch in loader_test:
         inputs, target = batch
         p = tf_model(inputs, training=False)
-        y_true.append(target)
-        y_scores.append(p.numpy())
-    y_true = np.vstack(y_true)
-    y_scores = np.vstack(y_scores)
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0],)) * 1
-    y_scores = np.reshape(y_scores, newshape=(y_scores.shape[0],))
+        batch_size = target.shape[0]
+        y_true[index:index + batch_size] = target[:, 0]  # Flatten the target array
+        y_pred[index:index + batch_size] = p.numpy().reshape(-1).astype(np.float32)  # Flatten the prediction array
+        index += batch_size
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
     np.savetxt(fname=dataset_type + "_clas_pred.txt",
-               X=y_scores,
+               X=y_pred,
                delimiter=",",
                newline="\n")
     np.savetxt(fname=dataset_type + "_clas_true.txt",
@@ -253,8 +272,8 @@ def evaluate(dataset_type,
 
     # evaluate model:
     # write metrics to file
-    print_classifier_summary(y_scores, y_true, run_name=RUN_NAME)
-    write_classifier_summary(y_scores, y_true, run_name=RUN_NAME)
+    print_classifier_summary(y_pred, y_true, run_name=RUN_NAME)
+    write_classifier_summary(y_pred, y_true, run_name=RUN_NAME)
 
     # ROC analysis
     _, theta_opt, (list_fpr, list_tpr) = fastROCAUC(y_scores,
@@ -295,13 +314,14 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout")
     parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, default=1, help="Number of output nodes")
+    parser.add_argument("--nOut", type=int, default=0, help="Number of output nodes")
     parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
     parser.add_argument("--activation_out", type=str, default="sigmoid", help="Activation function of output node")
     parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
     parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
     parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: {}".format(get_models().keys()))
     parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Name of the dataset")
+    parser.add_argument("--mode", type=str, choices=["CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
     args = parser.parse_args()
 
     main(run_name=args.name,
@@ -315,4 +335,6 @@ if __name__ == "__main__":
          do_training=args.training,
          do_evaluation=args.evaluation,
          model_type=args.model_type,
-         dataset_name=args.dataset_name)
+         dataset_name=args.dataset_name,
+		 mode=args.mode,
+		 )
