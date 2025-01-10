@@ -187,12 +187,14 @@ def plot_evaluation_position(mode, y_pred, y_true, labels):
         for i, r in enumerate(["x", "y", "z"]):
             plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
                                                 y_true=y_true[labels, i],
+												mode=mode,
                                                 particle="e",
                                                 coordinate=r,
                                                 file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
                                                     r))
             plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i + 3],
                                                 y_true=y_true[labels, i + 3],
+												mode=mode,
                                                 particle="\gamma",
                                                 coordinate=r,
                                                 file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
@@ -233,6 +235,7 @@ def plot_evaluation_position(mode, y_pred, y_true, labels):
         for i, r in enumerate(["x", "y", "z"]):
             plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
                                                 y_true=y_true[labels, i],
+												mode=mode,
                                                 particle="e",
                                                 coordinate=r,
                                                 file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
