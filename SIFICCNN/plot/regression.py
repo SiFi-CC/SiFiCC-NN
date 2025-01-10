@@ -238,6 +238,7 @@ def plot_1dhist_position_residual(y_pred,
 def plot_2dhist_position_residual_vs_true(y_pred,
                                           y_true,
                                           file_name,
+										  mode,
                                           coordinate="x",
                                           particle="electron",
                                           title=""):
@@ -256,11 +257,16 @@ def plot_2dhist_position_residual_vs_true(y_pred,
         bins_x = np.arange(-100.0 / 2.0, 100.0 / 2.0, width)
         bins_y = np.arange(-60.5, 60.5, width)
     if coordinate == "z":
-        bins_y = np.arange(-5.5, 5.5, width)
-        if particle == "e":
-            bins_x = np.arange(150.0 - 20.8 / 2.0, 150.0 + 20.8 / 2.0, width)
-        if particle == "\gamma":
-            bins_x = np.arange(270.0 - 46.8 / 2.0, 270.0 + 46.8 / 2.0, width)
+		if mode == "CM-4to1":
+		    bins_y = np.arange(-8.5, 8.5, width)####################################################
+		    bins_x = np.arange(233 - 20 / 2.0, 233 + 20 / 2.0, 2)
+		elif mode == "CC-4to1":
+	        bins_y = np.arange(-5.5, 5.5, width)
+		    if particle == "e":
+		        bins_x = np.arange(150.0 - 20.8 / 2.0, 150.0 + 20.8 / 2.0, width)
+		    if particle == "\gamma":
+		        bins_x = np.arange(270.0 - 46.8 / 2.0, 270.0 + 46.8 / 2.0, width)
+
 
     # plot
     fig, ax = plt.subplots(figsize=(8, 5))

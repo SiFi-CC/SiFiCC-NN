@@ -9,9 +9,10 @@ from .detector import Detector
 
 
 class RootSimulation:
-    def __init__(self, file):
+    def __init__(self, file, mode):
 
         self.file = file
+		self.mode = mode
         self.file_base = os.path.basename(self.file)
         self.file_name = os.path.splitext(self.file_base)[0]
 
@@ -20,16 +21,23 @@ class RootSimulation:
         self.setup = root_file["Setup"]
         self.events_entries = self.events.num_entries
         self.events_keys = self.events.keys()
+		if self.mode == "CM-4to1":
+		    # create SIFICC-Module objects for detector (=scatterer)
+		    self.detector = Detector.from_root(self.setup["DetectorPosition"].array()[0],
+		                                        self.setup["DetectorThickness_x"].array()[0],
+		                                        self.setup["DetectorThickness_y"].array()[0],
+		                                        self.setup["DetectorThickness_z"].array()[0])
+		elif self.mode == "CC-4to1":
+		    # create SIFICC-Module objects for scatterer and absorber
+		    self.scatterer = Detector.from_root(self.setup["ScattererPosition"].array()[0],
+		                                        self.setup["ScattererThickness_x"].array()[0],
+		                                        self.setup["ScattererThickness_y"].array()[0],
+		                                        self.setup["ScattererThickness_z"].array()[0])
+		    self.absorber = Detector.from_root(self.setup["AbsorberPosition"].array()[0],
+		                                       self.setup["AbsorberThickness_x"].array()[0],
+		                                       self.setup["AbsorberThickness_y"].array()[0],
+		                                       self.setup["AbsorberThickness_z"].array()[0])
 
-        # create SIFICC-Module objects for scatterer and absorber
-        self.scatterer = Detector.from_root(self.setup["ScattererPosition"].array()[0],
-                                            self.setup["ScattererThickness_x"].array()[0],
-                                            self.setup["ScattererThickness_y"].array()[0],
-                                            self.setup["ScattererThickness_z"].array()[0])
-        self.absorber = Detector.from_root(self.setup["AbsorberPosition"].array()[0],
-                                           self.setup["AbsorberThickness_x"].array()[0],
-                                           self.setup["AbsorberThickness_y"].array()[0],
-                                           self.setup["AbsorberThickness_z"].array()[0])
 
         # create a list of all leaves contained in the root file
         # used to determine the amount of information stored inside the root file
@@ -99,7 +107,14 @@ class RootSimulation:
         :return:
             dict
         """
-        dictSimulation = {"EventNumber": "EventNumber",
+		if self.mode == "CM-4to1":
+		    dictSimulation = {"EventNumber": "EventNumber",
+		                      "MCPosition_source": "MCPosition_source",
+		                      "MCDirection_source": "MCDirection_source",
+		                      "MCEnergyPrimary": "MCEnergy_Primary",}
+
+		elif self.mode == "CC-4to1":
+		        dictSimulation = {"EventNumber": "EventNumber",
                           "MCSimulatedEventType": "MCSimulatedEventType",
                           "MCEnergy_Primary": "MCEnergy_Primary",
                           "MCEnergy_e": "MCEnergy_e",
@@ -116,7 +131,7 @@ class RootSimulation:
                           "MCEnergyDeps_p": "MCEnergyDeps_p",
                           "MCEnergyPrimary": "MCEnergy_Primary",
                           "MCNPrimaryNeutrons": "MCNPrimaryNeutrons"}
-        return dictSimulation
+		return dictSimulation
 
     @property
     def dictRecoCluster(self):
@@ -191,14 +206,19 @@ class RootSimulation:
         progbar.close()
 
     def __event_at_basket(self, basket, idx):
-        dictBasketSimulation = {"Scatterer": self.scatterer,
-                                "Absorber": self.absorber}
-        dictBasketRecoCluster = {"Scatterer": self.scatterer,
-                                 "Absorber": self.absorber}
-        dictBasketSiPMHit = {"Scatterer": self.scatterer,
-                             "Absorber": self.absorber}
-        dictBasketFibreHit = {"Scatterer": self.scatterer,
-                              "Absorber": self.absorber}
+		if self.mode == "CM-4to1":
+		    dictBasketSimulation = {"Detector": self.detector}
+		    dictBasketSiPMHit = {"Detector": self.detector}
+		    dictBasketFibreHit = {"Detector": self.detector}
+		elif self.mode == "CC-4to1":
+		    dictBasketSimulation = {"Scatterer": self.scatterer,
+		                            "Absorber": self.absorber}
+		    dictBasketRecoCluster = {"Scatterer": self.scatterer,
+		                             "Absorber": self.absorber}
+		    dictBasketSiPMHit = {"Scatterer": self.scatterer,
+		                         "Absorber": self.absorber}
+		    dictBasketFibreHit = {"Scatterer": self.scatterer,
+		                          "Absorber": self.absorber}
 
         # initialize subclasses for the EventSimulation object if needed
         recocluster = None

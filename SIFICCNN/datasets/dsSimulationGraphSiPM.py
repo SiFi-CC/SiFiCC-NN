@@ -11,6 +11,8 @@ import numpy as np
 
 from SIFICCNN.utils import parent_directory
 
+from SIFICCNN.datasets.parameters import get_parameters
+
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse
 from tqdm import tqdm
@@ -20,6 +22,7 @@ class DSGraphSiPM(Dataset):
 
     def __init__(self,
                  type,
+				 mode,
                  norm_x=None,
                  norm_e=None,
                  positives=False,
@@ -46,6 +49,7 @@ class DSGraphSiPM(Dataset):
         self.norm_e = norm_e
 
         self.name = name
+        self.graph_attribute_slice_edge = get_parameters()
 
         super().__init__(**kwargs)
 
@@ -186,9 +190,9 @@ class DSGraphSiPM(Dataset):
             # Load graph attributes for regression tasks
             graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
             if self.regression == "Energy":
-                y_list = graph_attributes[:, :2]
+                y_list = graph_attributes[:, :self.graph_attribute_slice_edge]
             elif self.regression == "Position":
-                y_list = graph_attributes[:, 2:]
+                y_list = graph_attributes[:, self.graph_attribute_slice_edge:]
             else:
                 print("Warning: Regression type not set correctly")
                 return None
