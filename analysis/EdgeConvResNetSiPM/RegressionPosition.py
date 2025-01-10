@@ -1,7 +1,7 @@
 ####################################################################################################
 # ### ClassificationEdgeConvResNetCluster.py
 #
-# Example script for classifier training on the SiFi-CC data in graph configuration
+# Example script for position training on the SiFi-CC data in graph configuration
 #
 ####################################################################################################
 
@@ -21,17 +21,10 @@ from SIFICCNN.datasets import DSGraphSiPM
 from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
 
-from SIFICCNN.plot import plot_1dhist_energy_residual, \
-    plot_1dhist_energy_residual_relative, \
-    plot_1dhist_position_residual, \
-    plot_2dhist_energy_residual_vs_true, \
-    plot_2dhist_energy_residual_relative_vs_true, \
-    plot_2dhist_position_residual_vs_true, \
-    plot_position_resolution, \
-    plot_2dhist_position_residual_vs_true
 
-from SIFICCNN.utils.plotter import plot_history_regression, \
-    plot_position_error
+# Import datasets
+from analysis.EdgeConvResNetSiPM.parameters import *
+from analysis.EdgeConvResNetSiPM.helper import *
 
 
 def main(run_name="ECRNSiPM_unnamed",
@@ -39,14 +32,22 @@ def main(run_name="ECRNSiPM_unnamed",
          batch_size=64,
          dropout=0.1,
          nFilter=32,
-         nOut=6,
+         nOut=0,
          activation="relu",
          activation_out="linear",
          do_training=False,
          do_evaluation=False,
          model_type="SiFiECRNShort",
-         dataset_name="SimGraphSiPM"
+         dataset_name="SimGraphSiPM",
+		 mode="CC-4to1",
          ):
+
+    datasets, output_dimensions = get_parameters(mode)
+	
+	if nOut == 0:
+		print("Setting output dimensions to default value set in parameters.py")
+		nOut = output_dimensions["position"]
+
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -58,19 +59,6 @@ def main(run_name="ECRNSiPM_unnamed",
                       "activation_out": activation_out,
                       "dropout": dropout}
 
-    # Datasets used
-    # Training file used for classification and regression training
-    # Generated via an input generator, contain one Bragg-peak position
-    """DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
-    """
-    mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
-    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
-    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons_aachen"
-
     # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
@@ -79,14 +67,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for dataset in datasets.values():
         dataset_path = os.path.join(path_results, dataset)
         os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_type=DATASET_CONT,
+        training(dataset_type=datasets["continuous"],
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -95,14 +83,16 @@ def main(run_name="ECRNSiPM_unnamed",
                  path=path_results,
                  modelParameter=modelParameter,
                  model_type=model_type,
-                 dataset_name=dataset_name)
+                 dataset_name=dataset_name,
+                 )
 
     if do_evaluation:
-        for file in [DATASET_0MM]:#, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in {k: v for k, v in datasets.items() if k != "continuous"}.values():
             evaluate(dataset_type=file,
                      RUN_NAME=run_name,
                      path=path_results,
-                     dataset_name=dataset_name)
+                     dataset_name=dataset_name,
+                     )
 
 
 def training(dataset_type,
@@ -113,15 +103,32 @@ def training(dataset_type,
              nEpochs,
              path,
              modelParameter,
-             model_type="SiFiECRNShort",
-             dataset_name="SimGraphSiPM"
+             model_type,
+             dataset_name,
              ):
+    """
+    Train the model on the given dataset.
+
+    Parameters:
+    dataset_type (str): Type of the dataset to be used for training.
+    run_name (str): Name of the run for saving results.
+    trainsplit (float): Fraction of the data to be used for training.
+    valsplit (float): Fraction of the data to be used for validation.
+    batch_size (int): Number of samples per batch.
+    nEpochs (int): Number of epochs for training.
+    path (str): Path to save the results.
+    modelParameter (dict): Dictionary of model parameters.
+    model_type (str): Type of the model to be used.
+    dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
+    """
+    
     # load graph datasets
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
                        positives=True,
                        regression="Position",
-                       name=dataset_name)
+                       name=dataset_name,
+                       )
 
     # set model
     modelDict = get_models()
@@ -129,6 +136,7 @@ def training(dataset_type,
     
     print(tf_model.summary())
 
+    
     # generate disjoint loader from datasets
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
@@ -172,8 +180,9 @@ def training(dataset_type,
 def evaluate(dataset_type,
              RUN_NAME,
              path,
-             dataset_name="SimGraphSiPM"
+             dataset_name,
              ):
+    
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
 
@@ -187,6 +196,7 @@ def evaluate(dataset_type,
                                           custom_objects={"EdgeConv": EdgeConv,
                                                           "GlobalMaxPool": GlobalMaxPool,
                                                           "ReZero": ReZero})
+
     # load norm
     norm_x = np.load(RUN_NAME + "_regressionPosition_norm_x.npy")
 
@@ -231,8 +241,8 @@ def evaluate(dataset_type,
                                  shuffle=False)
 
     # evaluation of test datasets (looks weird cause of bad tensorflow output format)
-    y_true = np.zeros((len(data), 6), dtype=np.float32)
-    y_pred = np.zeros((len(data), 6), dtype=np.float32)
+    y_true = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
+    y_pred = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
     index = 0
     for batch in loader_test:
         inputs, target = batch
@@ -241,11 +251,11 @@ def evaluate(dataset_type,
         y_true[index:index + batch_size] = target
         y_pred[index:index + batch_size] = p.numpy()
         index += batch_size
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 3))
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 3))
+    y_true = np.reshape(y_true, newshape=(y_true.shape[0], output_dimensions["position"]))
+    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], output_dimensions["position"]))
 
     # export the classification results to a readable .txt file
-    # .txt is used because it allows the results to be accessible outside a Python environment
+    # .txt is used as it allowed to be accessible outside a python environment
     np.savetxt(fname=dataset_type + "_regP_pred.txt",
                X=y_pred,
                delimiter=",",
@@ -254,42 +264,12 @@ def evaluate(dataset_type,
                X=y_true,
                delimiter=",",
                newline="\n")
+
     labels = data.labels
 
-    #plot_position_error(y_pred=y_pred[labels],
-    #                    y_true=y_true[labels],
-    #                    figure_name="position_error_new_function")
+    # evaluate model:
+    plot_evaluation_position(mode, y_pred, y_true, labels)
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
-                                  y_true=y_true[labels, 0],
-                                  particle="e",
-                                  coordinate="x",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("x"))
-
-
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
-                                  y_true=y_true[labels, 1],
-                                  particle="e",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("y"))
-
-
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
-                                  y_true=y_true[labels, 2],
-                                  particle="e",
-                                  coordinate="z",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("z"))
- 
-
-
-    for i, r in enumerate(["x", "y", "z"]):
-        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
-                                              y_true=y_true[labels, i],
-                                              particle="e",
-                                              coordinate=r,
-                                              file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
-                                                  r))
 
 
 
@@ -301,13 +281,14 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout")
     parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, default=6, help="Number of output nodes")
+    parser.add_argument("--nOut", type=int, default=0, help="Number of output nodes")
     parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
     parser.add_argument("--activation_out", type=str, default="linear", help="Activation function of output node")
     parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
     parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
     parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: {}".format(get_models().keys()))
     parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Name of the dataset")
+    parser.add_argument("--mode", type=str, choices=["CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
     args = parser.parse_args()
 
     main(run_name=args.name,
@@ -321,4 +302,6 @@ if __name__ == "__main__":
          do_training=args.training,
          do_evaluation=args.evaluation,
          model_type=args.model_type,
-         dataset_name=args.dataset_name)
+         dataset_name=args.dataset_name,
+		 mode=args.mode,
+		 )
