@@ -131,7 +131,7 @@ class DatasetViewer(QMainWindow):
         # State
         self.current_block = []
         self.current_page = 0
-        self.block_size = 10000
+        self.block_size = 100
 
         # UI Elements
         self.central_widget = QWidget()

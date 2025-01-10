@@ -19,29 +19,33 @@ from tqdm import tqdm
 class DSGraphSiPM(Dataset):
 
     def __init__(self,
-                 name,
+                 type,
                  norm_x=None,
                  norm_e=None,
                  positives=False,
                  regression=None,
+                 name="SimGraphSiPM",
                  **kwargs):
         """
         Initializes the DSGraphSiPM dataset.
 
         Args:
-            name (str): Name of the dataset.
+            type (str): Continouous, 0mm, ...
             norm_x (array, optional): Normalization parameters for node features.
             norm_e (array, optional): Normalization parameters for edge features.
             positives (bool, optional): If True, only positive samples are used.
             regression (str, optional): Type of regression ('Energy' or 'Position').
+            name (str, optional): Name of the dataset.
             **kwargs: Additional arguments for the Dataset class.
         """
-        self.name = name
+        self.type = type
         self.positives = positives
         self.regression = regression
 
         self.norm_x = norm_x
         self.norm_e = norm_e
+
+        self.name = name
 
         super().__init__(**kwargs)
 
@@ -51,7 +55,7 @@ class DSGraphSiPM(Dataset):
         Returns the path to the dataset directory.
         """
         path = parent_directory()
-        path = os.path.join(path, "datasets", "CMSimGraphSiPM", self.name)
+        path = os.path.join(path, "datasets", self.name, self.type)
 
         return path
 
@@ -110,11 +114,6 @@ class DSGraphSiPM(Dataset):
                 pbar.update(1)
 
 
-        """a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
-                                                edge_weight=np.ones(el.shape[0]),
-                                                edge_features=e,
-                                                shape=(n, n), )
-                    for el, e, n in tqdm(zip(el_list, e_list, n_nodes), desc="Creating adjacency matrices")]"""
         a_list = a_e_list
         # If edge features are used, use this: a_list, e_list = list(zip(*a_e_list))
 
@@ -124,7 +123,7 @@ class DSGraphSiPM(Dataset):
 
         # At this point the full dataset is loaded and filtered according to the settings
         # Limited to True positives only if needed
-        print("Successfully loaded {}.".format(self.name))
+        print("Successfully loaded {}.".format(self.type))
         if self.regression is None:
             return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, labels), desc="Creating graphs for classification")]
         else:

@@ -11,13 +11,14 @@ import pickle as pkl
 import json
 import tensorflow as tf
 import argparse
+import csv
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
-from SIFICCNN.models import SiFiECRNShort
+from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
 
 from SIFICCNN.plot import plot_1dhist_energy_residual, \
@@ -39,7 +40,11 @@ def main(run_name="ECRNSiPM_unnamed",
          activation="relu",
          activation_out="relu",
          do_training=False,
-         do_evaluation=False):
+         do_evaluation=False,
+         model_type="SiFiECRNShort",
+         dataset_name="SimGraphSiPM"
+         ):
+    
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -62,54 +67,81 @@ def main(run_name="ECRNSiPM_unnamed",
     #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
     mergedTree = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
 
-
-    # go backwards in directory tree until the main repo directory is matched
+    # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
-    path_results = path_main + "/results/" + run_name + "/"
+    path_results = os.path.join(path_main, "results", run_name)
 
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for file in [mergedTree]:#[DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
-        if not os.path.isdir(path_results + "/" + file + "/"):
-            os.mkdir(path_results + "/" + file + "/")
+    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        dataset_path = os.path.join(path_results, dataset)
+        os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_name=mergedTree,
+        training(dataset_type=mergedTree,
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
                  batch_size=batch_size,
                  nEpochs=epochs,
                  path=path_results,
-                 modelParameter=modelParameter)
+                 modelParameter=modelParameter,
+                 model_type=model_type,
+                 dataset_name=dataset_name
+                 )
 
     if do_evaluation:
         for file in [mergedTree]:#[DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
-            evaluate(dataset_name=file,
+            evaluate(dataset_type=file,
                      RUN_NAME=run_name,
-                     path=path_results)
+                     path=path_results,
+                     dataset_name=dataset_name
+                     )
 
 
-def training(dataset_name,
+def training(dataset_type,
              run_name,
              trainsplit,
              valsplit,
              batch_size,
              nEpochs,
              path,
-             modelParameter):
+             modelParameter,
+             model_type,
+             dataset_name="SimGraphSiPM"
+             ):
+    """
+    Train the model on the given dataset.
+
+    Parameters:
+    dataset_type (str): Type of the dataset to be used for training.
+    run_name (str): Name of the run for saving results.
+    trainsplit (float): Fraction of the data to be used for training.
+    valsplit (float): Fraction of the data to be used for validation.
+    batch_size (int): Number of samples per batch.
+    nEpochs (int): Number of epochs for training.
+    path (str): Path to save the results.
+    modelParameter (dict): Dictionary of model parameters.
+    model_type (str): Type of the model to be used.
+    dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
+    """
+    
     # load graph datasets
-    data = DSGraphSiPM(name=dataset_name,
+    data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
                        positives=True,
-                       regression="Energy")
+                       regression="Energy",
+                       name=dataset_name
+                       )
 
-    # build tensorflow model
-    tf_model = SiFiECRNShort(F=5, **modelParameter)
+    # set model
+    modelDict = get_models()
+    tf_model = modelDict[model_type](F=5, **modelParameter)
+    
     print(tf_model.summary())
 
     # generate disjoint loader from datasets
@@ -152,9 +184,12 @@ def training(dataset_name,
         json.dump(modelParameter, json_file)
 
 
-def evaluate(dataset_name,
+def evaluate(dataset_type,
              RUN_NAME,
-             path):
+             path,
+             dataset_name="SimGraphSiPM",
+             ):
+    
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
 
@@ -186,15 +221,17 @@ def evaluate(dataset_name,
     plot_history_regression(history, RUN_NAME + "_history_regression_energy")
 
     # predict test datasets
-    os.chdir(path + dataset_name + "/")
+    os.chdir(path + dataset_type + "/")
 
     # load datasets
     # Here all events are loaded and evaluated,
     # the true compton events are filtered later for plot
-    data = DSGraphSiPM(name=dataset_name,
+    data = DSGraphSiPM(type=dataset_type,
                        norm_x=norm_x,
                        positives=False,
-                       regression="Energy")
+                       regression="Energy",
+                       name=dataset_name,
+                       )
 
     # Create disjoint loader for test datasets
     loader_test = DisjointLoader(data,
@@ -217,11 +254,11 @@ def evaluate(dataset_name,
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
-    np.savetxt(fname=dataset_name + "_regE_pred.txt",
+    np.savetxt(fname=dataset_type + "_regE_pred.txt",
                X=y_pred,
                delimiter=",",
                newline="\n")
-    np.savetxt(fname=dataset_name + "_regE_true.txt",
+    np.savetxt(fname=dataset_type + "_regE_true.txt",
                X=y_true,
                delimiter=",",
                newline="\n")
@@ -264,51 +301,29 @@ def evaluate(dataset_name,
 if __name__ == "__main__":
     # configure argument parser
     parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
-    parser.add_argument("--name", type=str, help="Run name")
-    parser.add_argument("--epochs", type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", type=int, help="Batch size")
-    parser.add_argument("--dropout", type=float, help="Dropout")
-    parser.add_argument("--nFilter", type=int, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, help="Number of output nodes")
-    parser.add_argument("--activation", type=str, help="Activation function of layers")
-    parser.add_argument("--activation_out", type=str, help="Activation function of output node")
-    parser.add_argument("--training", type=bool, help="If true, do training process")
-    parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
+    parser.add_argument("--name", type=str, default="SimGraphSiPM_default", help="Run name")
+    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
+    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout")
+    parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
+    parser.add_argument("--nOut", type=int, default=2, help="Number of output nodes")
+    parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
+    parser.add_argument("--activation_out", type=str, default="relu", help="Activation function of output node")
+    parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
+    parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
+    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
+    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Dataset name")
     args = parser.parse_args()
 
-    # base settings if no parameters are given
-    # can also be used to execute this script without console parameter
-    base_run_name = "SimGraphSiPM_default"
-    base_epochs = 20
-    base_batch_size = 64
-    base_dropout = 0.1
-    base_nfilter = 32
-    base_nOut = 2
-    base_activation = "relu"
-    base_activation_out = "relu"
-    base_do_training = False
-    base_do_evaluation = False
-
-    # this bunch is to set standard configuration if argument parser is not configured
-    # looks ugly but works
-    run_name = args.name if args.name is not None else base_run_name
-    epochs = args.epochs if args.epochs is not None else base_epochs
-    batch_size = args.batch_size if args.batch_size is not None else base_batch_size
-    dropout = args.dropout if args.dropout is not None else base_dropout
-    nFilter = args.nFilter if args.nFilter is not None else base_nfilter
-    nOut = args.nOut if args.nOut is not None else base_nOut
-    activation = args.activation if args.activation is not None else base_activation
-    activation_out = args.activation_out if args.activation_out is not None else base_activation_out
-    do_training = args.training if args.training is not None else base_do_training
-    do_evaluation = args.evaluation if args.evaluation is not None else base_do_evaluation
-
-    main(run_name=run_name,
-         epochs=epochs,
-         batch_size=batch_size,
-         dropout=dropout,
-         nFilter=nFilter,
-         nOut=nOut,
-         activation=activation,
-         activation_out=activation_out,
-         do_training=do_training,
-         do_evaluation=do_evaluation)
+    main(run_name=args.name,
+         epochs=args.epochs,
+         batch_size=args.batch_size,
+         dropout=args.dropout,
+         nFilter=args.nFilter,
+         nOut=args.nOut,
+         activation=args.activation,
+         activation_out=args.activation_out,
+         do_training=args.training,
+         do_evaluation=args.evaluation,
+         model_type=args.model_type,
+         dataset_name=args.dataset_name)

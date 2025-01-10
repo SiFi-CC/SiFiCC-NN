@@ -184,6 +184,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
     distcompton_tags=list()
     for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+        # get number of cluster
         if event == None:
             continue
         if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
