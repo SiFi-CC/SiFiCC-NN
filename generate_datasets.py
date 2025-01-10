@@ -12,7 +12,7 @@ import argparse
 
 from SIFICCNN.data import RootSimulation
 from SIFICCNN.utils import parent_directory
-from SIFICCNN.downloader import dSimulation_to_GraphSiPMCM
+from SIFICCNN.downloader import dSimulation_to_GraphSiPM, dSimulation_to_GraphSiPMCM
 
 # Get current path, go two subdirectories higher
 path = parent_directory()
@@ -22,21 +22,34 @@ path = parent_directory()
 ####################################################################################################
 
 
-def main(n_stop, file, coordinate_system, n_start, neutrons):
+def main(n_stop, file, coordinate_system, n_start, neutrons, mode):
     # Initialize RootSimulation with the specified file
-    root_simulation = RootSimulation(file)
-    
-    # Convert simulation data to GraphSiPM format
-    dSimulation_to_GraphSiPMCM(
-        root_simulation    = root_simulation,
-        dataset_name       = root_simulation.file_name,
-        path               = "",
-        n_stop             = n_stop,
-        coordinate_system  = coordinate_system,
-        energy_cut         = None,
-        neutrons           = neutrons,
-        n_start            = n_start
-    )
+    root_simulation = RootSimulation(file, mode)
+    if mode == "CC-4to1":
+        # Convert simulation data to GraphSiPM format
+        dSimulation_to_GraphSiPM(
+            root_simulation    = root_simulation,
+            dataset_name       = root_simulation.file_name,
+            path               = "",
+            n_stop             = n_stop,
+            coordinate_system  = coordinate_system,
+            energy_cut         = None,
+            neutrons           = neutrons,
+            n_start            = n_start
+        )
+
+    elif mode == "CM-4to1":
+        # Convert simulation data to GraphSiPM format
+        dSimulation_to_GraphSiPMCM(
+            root_simulation    = root_simulation,
+            dataset_name       = root_simulation.file_name,
+            path               = "",
+            n_stop             = n_stop,
+            coordinate_system  = coordinate_system,
+            energy_cut         = None,
+            neutrons           = neutrons,
+            n_start            = n_start
+        )
 
     
 
@@ -50,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument("--file", type=str, required=True, help="File name")
     parser.add_argument("--n_start", type=int, help="Start at Event")
     parser.add_argument("--neutrons", type=int, default=0, help="Set neutron parameters: 1 = on, 2 = filter for neutrons only, 3 = filter for photons only from neutron dataset")
-    
+    parser.add_argument("--mode", type=str, choices=["CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
     # Parse arguments
     args = parser.parse_args()
 
@@ -60,6 +73,7 @@ if __name__ == "__main__":
     n_start = args.n_start
     neutrons = args.neutrons
     file = args.file
+    mode = args.mode
 
     # Call the main function with parsed arguments
-    main(n_stop, file, coordinate_system, n_start, neutrons)
+    main(n_stop, file, coordinate_system, n_start, neutrons, mode)
