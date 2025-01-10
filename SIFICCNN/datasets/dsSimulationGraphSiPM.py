@@ -13,6 +13,7 @@ from SIFICCNN.utils import parent_directory
 
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse
+from tqdm import tqdm
 
 
 class DSGraphSiPM(Dataset):
@@ -95,14 +96,24 @@ class DSGraphSiPM(Dataset):
         # Get node attributes (x_list)
         x_list = self._get_x_list(n_nodes_cum=n_nodes_cum)
         # Get edge attributes (e_list), in this case edge features are disabled
-        e_list = [None] * len(n_nodes)
+        e_list = np.array([None] * len(n_nodes))
+
 
         # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
-        a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
+        a_e_list = []
+        total_matrices = len(n_nodes)
+        print(f"Total number of adjacency matrices to be created: {total_matrices}")
+
+        with tqdm(total=total_matrices, desc="Creating adjacency matrices") as pbar:
+            for el, e, n in zip(el_list, e_list, n_nodes):
+                a = sparse.edge_index_to_matrix(edge_index=el,
                                                 edge_weight=np.ones(el.shape[0]),
                                                 edge_features=e,
-                                                shape=(n, n), )
-                    for el, e, n in zip(el_list, e_list, n_nodes)]
+                                                shape=(n, n))
+                a_e_list.append(a)
+                pbar.update(1)
+
+
         a_list = a_e_list
         # If edge features are used, use this: a_list, e_list = list(zip(*a_e_list))
 
@@ -114,12 +125,12 @@ class DSGraphSiPM(Dataset):
         # Limited to True positives only if needed
         print("Successfully loaded {}.".format(self.type))
         if self.regression is None:
-            return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, labels)]
+            return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, labels), desc="Creating graphs for classification")]
         else:
             if self.positives:
-                return [Graph(x=x, a=a, y=y) for x, a, y, label in zip(x_list, a_list, y_list, labels) if label]
+                return [Graph(x=x, a=a, y=y) for x, a, y, label in tqdm(zip(x_list, a_list, y_list, labels), desc="Creating graphs for regression (positives only)") if label]
             else:
-                return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, y_list)]
+                return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, y_list), desc="Creating graphs for regression")]
 
     def _get_x_list(self, n_nodes_cum):
         """

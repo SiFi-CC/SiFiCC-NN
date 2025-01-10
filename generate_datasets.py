@@ -21,10 +21,8 @@ path = parent_directory()
 # Simulation GraphCluster
 ####################################################################################################
 
-# Number of events to process
-n = 10000
 
-def main(n, file, coordinate_system, n_start, neutrons):
+def main(n_stop, file, coordinate_system, n_start, neutrons):
     # Initialize RootSimulation with the specified file
     root_simulation = RootSimulation(file)
     
@@ -33,19 +31,21 @@ def main(n, file, coordinate_system, n_start, neutrons):
         root_simulation    = root_simulation,
         dataset_name       = root_simulation.file_name,
         path               = "",
-        n                  = n,
+        n_stop             = n_stop,
         coordinate_system  = coordinate_system,
         energy_cut         = None,
         neutrons           = neutrons,
         n_start            = n_start
     )
 
+    
+
 if __name__ == "__main__":
     # Configure argument parser
     parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
     
     # Add arguments to the parser
-    parser.add_argument("--n", type=int, help="Number of Events")
+    parser.add_argument("--n_stop", type=int, help="Stop at Event")
     parser.add_argument("--coordinates", type=str, default="AACHEN", help="Coordinate system")
     parser.add_argument("--file", type=str, required=True, help="File name")
     parser.add_argument("--n_start", type=int, help="Start at Event")
@@ -55,11 +55,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Assign parsed arguments to variables
-    n = args.n
+    n_stop = args.n_stop
     coordinate_system = args.coordinates
     n_start = args.n_start
     neutrons = args.neutrons
     file = args.file
 
     # Call the main function with parsed arguments
-    main(n, file, coordinate_system, n_start, neutrons)
+    main(n_stop, file, coordinate_system, n_start, neutrons)

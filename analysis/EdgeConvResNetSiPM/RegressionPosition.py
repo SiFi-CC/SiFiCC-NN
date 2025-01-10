@@ -149,7 +149,8 @@ def training(dataset_type,
                                                                            factor=1. / 3.,
                                                                            patience=4,
                                                                            min_delta=1e-2,
-                                                                           )])
+                                                                           min_lr=1e-6,
+                                                                           verbose=0)])
 
     # Save everything after training process
     os.chdir(path)
@@ -226,6 +227,8 @@ def evaluate(dataset_type,
                                  batch_size=64,
                                  epochs=1,
                                  shuffle=False)
+
+    # evaluation of test datasets (looks weird cause of bad tensorflow output format)
     y_true = np.zeros((len(data), 6), dtype=np.float32)
     y_pred = np.zeros((len(data), 6), dtype=np.float32)
     index = 0
@@ -239,7 +242,6 @@ def evaluate(dataset_type,
     #y_true = np.reshape(y_true, newshape=(y_true.shape[0], 6))#######################################################################################3
     #y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 6))
 
-    # export the classification results to a readable .txt file
     # export the classification results to a readable .txt file
     # .txt is used because it allows the results to be accessible outside a Python environment
     np.savetxt(fname=dataset_type + "_regP_pred.txt",
