@@ -21,14 +21,11 @@ from SIFICCNN.datasets import DSGraphSiPM
 from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
 
-from SIFICCNN.plot import plot_1dhist_energy_residual, \
-    plot_1dhist_energy_residual_relative, \
-    plot_2dhist_energy_residual_vs_true, \
-    plot_2dhist_energy_residual_relative_vs_true
 
-from SIFICCNN.utils.plotter import plot_history_regression, \
-    plot_energy_error, \
-    plot_energy_resolution
+
+# Import datasets
+from analysis.EdgeConvResNetSiPM.parameters import *
+from analysis.EdgeConvResNetSiPM.helper import *
 
 
 def main(run_name="ECRNSiPM_unnamed",
@@ -36,15 +33,22 @@ def main(run_name="ECRNSiPM_unnamed",
          batch_size=64,
          dropout=0.1,
          nFilter=32,
-         nOut=2,
+         nOut=0,
          activation="relu",
          activation_out="relu",
          do_training=False,
          do_evaluation=False,
          model_type="SiFiECRNShort",
-         dataset_name="SimGraphSiPM"
+         dataset_name="SimGraphSiPM",
+		 mode="CC-4to1",
          ):
-    
+
+    datasets, output_dimensions = get_parameters(mode)
+	
+	if nOut == 0:
+		print("Setting output dimensions to default value set in parameters.py")
+		nOut = output_dimensions["energy"]
+
     # Train-Test-Split configuration
     trainsplit = 0.8
     valsplit = 0.2
@@ -56,16 +60,6 @@ def main(run_name="ECRNSiPM_unnamed",
                       "activation_out": activation_out,
                       "dropout": dropout}
 
-    # Datasets used
-    # Training file used for classification and regression training
-    # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
-    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
-
     # Navigate to the main repository directory
     path = parent_directory()
     path_main = path
@@ -74,14 +68,14 @@ def main(run_name="ECRNSiPM_unnamed",
     # create subdirectory for run output
     if not os.path.isdir(path_results):
         os.mkdir(path_results)
-    for dataset in [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+    for dataset in datasets.values():
         dataset_path = os.path.join(path_results, dataset)
         os.makedirs(dataset_path, exist_ok=True)
 
     # Both training and evaluation script are wrapped in methods to reduce memory usage
     # This guarantees that only one datasets is loaded into memory at the time
     if do_training:
-        training(dataset_type=DATASET_CONT,
+        training(dataset_type=datasets["continuous"],
                  run_name=run_name,
                  trainsplit=trainsplit,
                  valsplit=valsplit,
@@ -90,15 +84,15 @@ def main(run_name="ECRNSiPM_unnamed",
                  path=path_results,
                  modelParameter=modelParameter,
                  model_type=model_type,
-                 dataset_name=dataset_name
+                 dataset_name=dataset_name,
                  )
 
     if do_evaluation:
-        for file in [DATASET_0MM]:#, DATASET_5MM, DATASET_m5MM, DATASET_10MM]:
+        for file in {k: v for k, v in datasets.items() if k != "continuous"}.values():
             evaluate(dataset_type=file,
                      RUN_NAME=run_name,
                      path=path_results,
-                     dataset_name=dataset_name
+                     dataset_name=dataset_name,
                      )
 
 
@@ -111,7 +105,7 @@ def training(dataset_type,
              path,
              modelParameter,
              model_type,
-             dataset_name="SimGraphSiPM"
+             dataset_name,
              ):
     """
     Train the model on the given dataset.
@@ -134,7 +128,7 @@ def training(dataset_type,
                        norm_x=None,
                        positives=True,
                        regression="Energy",
-                       name=dataset_name
+                       name=dataset_name,
                        )
 
     # set model
@@ -143,6 +137,7 @@ def training(dataset_type,
     
     print(tf_model.summary())
 
+    
     # generate disjoint loader from datasets
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
@@ -186,7 +181,7 @@ def training(dataset_type,
 def evaluate(dataset_type,
              RUN_NAME,
              path,
-             dataset_name="SimGraphSiPM",
+             dataset_name,
              ):
     
     # Change path to results directory to make sure the right model is loaded
@@ -220,7 +215,7 @@ def evaluate(dataset_type,
     plot_history_regression(history, RUN_NAME + "_history_regression_energy")
 
     # predict test datasets
-    os.chdir(path + dataset_type + "/")
+    os.chdir(os.path.join(path, dataset_type))
 
     # load datasets
     # Here all events are loaded and evaluated,
@@ -239,17 +234,18 @@ def evaluate(dataset_type,
                                  shuffle=False)
 
     # evaluation of test datasets (looks weird cause of bad tensorflow output format)
-    y_true = []
-    y_pred = []
+    y_true = np.zeros((len(data), output_dimensions["energy"]), dtype=np.float32)
+    y_pred = np.zeros((len(data), output_dimensions["energy"]), dtype=np.float32)
+    index = 0
     for batch in loader_test:
         inputs, target = batch
         p = tf_model(inputs, training=False)
-        y_true.append(target)
-        y_pred.append(p.numpy())
-    y_true = np.vstack(y_true)
-    y_pred = np.vstack(y_pred)
-    y_true = np.reshape(y_true, newshape=(y_true.shape[0], 2))
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], 2))
+        batch_size = target.shape[0]
+        y_true[index:index + batch_size] = target
+        y_pred[index:index + batch_size] = p.numpy()
+        index += batch_size
+    y_true = np.reshape(y_true, newshape=(y_true.shape[0], output_dimensions["energy"]))
+    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], output_dimensions["energy"]))
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
@@ -265,75 +261,8 @@ def evaluate(dataset_type,
     labels = data.labels
 
     # evaluate model:
-    plot_energy_error(y_pred=y_pred[labels],
-                      y_true=y_true[labels],
-                      figure_name="energy_error_new_function")
-    plot_energy_resolution(y_pred=y_pred[labels],
-                           y_true=y_true[labels],
-                           figure_name="energy_resolution_new_function")
+    plot_evaluation_energy(mode, y_pred, y_true, labels)
 
-    plot_1dhist_energy_residual(y_pred=y_pred[labels, 0],
-                                y_true=y_true[labels, 0],
-                                particle="e",
-                                file_name="1dhist_energy_electron_residual.png",
-                                title="Electron energy residual")
-    fit_e_E_rel = plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 0],
-                                         y_true=y_true[labels, 0],
-                                         particle="e",
-                                         file_name="1dhist_energy_electron_residual_relative.png",
-                                         title="Relative electron energy residual")
-    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 0],
-                                        y_true=y_true[labels, 0],
-                                        particle="e",
-                                        file_name="2dhist_energy_electron_residual_vs_true.png",
-                                         title="Relative electron energy residual")
-    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[labels, 0],
-                                                 y_true=y_true[labels, 0],
-                                                 particle="e",
-                                                 file_name="2dhist_energy_electron_residual_relative_vs_true.png",
-                                                 title="Relative electron energy residual")
-  
-
-
-
-
-                                                
-
-    plot_1dhist_energy_residual(y_pred=y_pred[labels, 1],
-                                y_true=y_true[labels, 1],
-                                particle="\gamma",
-                                f="gaussian_gaussian",
-                                file_name="1dhist_energy_gamma_residual.png",
-                                title="Energy residual")
-    fit_p_E_rel = plot_1dhist_energy_residual_relative(y_pred=y_pred[labels, 1],
-                                         y_true=y_true[labels, 1],
-                                         particle="\gamma",
-                                         f="gaussian_gaussian",
-                                         file_name="1dhist_energy_gamma_residual_relative.png",
-                                         title="Relative energy residual")
-    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[labels, 1],
-                                        y_true=y_true[labels, 1],
-                                        particle="\gamma",
-                                        file_name="2dhist_energy_gamma_residual_vs_true.png",
-                                        title="Photon energy residual")
-    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[labels, 1],
-                                                 y_true=y_true[labels, 1],
-                                                 particle="\gamma",
-                                                 file_name="2dhist_energy_gamma_residual_relative_vs_true.png",
-                                                 title="Relative photon energy residual")    
-
-    # Collect the fit result into a dictionary
-    fit_results = {
-        "fit_e_E_rel": fit_e_E_rel,
-        "fit_p_E_rel": fit_p_E_rel
-    }
-
-    # Write the fit results to a CSV file
-    with open('fit_results.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Fit Type", "Parameters"])
-        for key, value in fit_results.items():
-            writer.writerow([key, value])
 
 
 
@@ -343,15 +272,16 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, default="SimGraphSiPM_default", help="Run name")
     parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
-    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout")
+    parser.add_argument("--dropout", type=float, default=0.0, help="Dropout")
     parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, default=2, help="Number of output nodes")
+    parser.add_argument("--nOut", type=int, default=0, help="Number of output nodes")
     parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
     parser.add_argument("--activation_out", type=str, default="relu", help="Activation function of output node")
     parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
     parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
-    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5")
-    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Dataset name")
+    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: {}".format(get_models().keys()))
+    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Name of the dataset")
+    parser.add_argument("--mode", type=str, choices=["CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
     args = parser.parse_args()
 
     main(run_name=args.name,
@@ -365,4 +295,6 @@ if __name__ == "__main__":
          do_training=args.training,
          do_evaluation=args.evaluation,
          model_type=args.model_type,
-         dataset_name=args.dataset_name)
+         dataset_name=args.dataset_name,
+		 mode=args.mode,
+		 )
