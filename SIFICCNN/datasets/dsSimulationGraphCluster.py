@@ -1,10 +1,10 @@
-####################################################################################################
+##########################################################################
 #
 # This script converts a stored version of a SiFiCC Simulation datasets to a container used for
 # easier read access and direct compatibility for Tensorflow training
 # The container holds each event in graph structure
 #
-####################################################################################################
+##########################################################################
 
 import os
 import numpy as np
@@ -80,7 +80,8 @@ class DSGraphCluster(Dataset):
         # get edge attributes (e_list), in this case edge features are disabled
         e_list = [None] * len(n_nodes)
 
-        # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
+        # Create sparse adjacency matrices and re-sort edge attributes in
+        # lexicographic order
         a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
                                                 edge_weight=np.ones(
                                                     el.shape[0]),
@@ -99,13 +100,17 @@ class DSGraphCluster(Dataset):
         # limited to True positives only if needed
         print("Successfully loaded {}.".format(self.name))
         if self.regression is None:
-            return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, labels)]
+            return [Graph(x=x, a=a, y=y)
+                    for x, a, y in zip(x_list, a_list, labels)]
         else:
             if self.positives:
-                return [Graph(x=x, a=a, y=y) for x, a, y, label in zip(x_list, a_list, y_list,
-                                                                       labels) if label]
+                return [
+                    Graph(
+                        x=x, a=a, y=y) for x, a, y, label in zip(
+                        x_list, a_list, y_list, labels) if label]
             else:
-                return [Graph(x=x, a=a, y=y) for x, a, y in zip(x_list, a_list, y_list)]
+                return [Graph(x=x, a=a, y=y)
+                        for x, a, y in zip(x_list, a_list, y_list)]
 
     def _get_x_list(self, n_nodes_cum):
         """

@@ -8,12 +8,13 @@ def get_Fibre_SiPM_connections():
     fibres = np.full((385, 2), -1, dtype=np.int16)
 
     for i in range(7):
-        bottom_offset = ((i+1)//2)*28
-        top_offset = (i//2)*28+112
+        bottom_offset = ((i + 1) // 2) * 28
+        top_offset = (i // 2) * 28 + 112
 
         for j in range(55):
-            fibres[j+i*55] = np.array([(j+1)//2 +
-                                      bottom_offset, j//2+top_offset])
+            fibres[j + i * 55] = np.array(
+                [(j + 1) // 2 + bottom_offset, j // 2 + top_offset]
+            )
 
     return fibres
 
@@ -52,18 +53,20 @@ class EventSimulation:
         FibreHit (class FibreHit):              Container for Fibre detector response
     """
 
-    def __init__(self,
-                 EventNumber,
-                 MCEnergy_Primary,
-                 MCPosition_source,
-                 MCDirection_source,
-                 Detector,
-                 MCNPrimaryNeutrons=None,
-                 MCEnergyDeps_e=None,
-                 MCEnergyDeps_p=None,
-                 RecoCluster=None,
-                 SiPMHit=None,
-                 FibreHit=None):
+    def __init__(
+        self,
+        EventNumber,
+        MCEnergy_Primary,
+        MCPosition_source,
+        MCDirection_source,
+        Detector,
+        MCNPrimaryNeutrons=None,
+        MCEnergyDeps_e=None,
+        MCEnergyDeps_p=None,
+        RecoCluster=None,
+        SiPMHit=None,
+        FibreHit=None,
+    ):
         # Global information
         self.EventNumber = EventNumber
         self.MCEnergy_Primary = MCEnergy_Primary
@@ -74,7 +77,8 @@ class EventSimulation:
         # Detector modules
         self.detector = Detector
 
-        # additional attributes. May not be present in every file, if so filled with None
+        # additional attributes. May not be present in every file, if so filled
+        # with None
         if MCEnergyDeps_e is not None:
             self.MCEnergyDeps_e = np.array(MCEnergyDeps_e)
             self.MCEnergyDeps_p = np.array(MCEnergyDeps_p)
@@ -120,13 +124,23 @@ class EventSimulation:
             for i in range(len(self.SiPMHit.SiPMs)):
                 sipm = self.SiPMHit.SiPMs[i]
                 if i != sipm_idx and i not in visited:
-                    dx = abs(sipm.SiPMPosition.x -
-                             self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.x)
-                    dy = abs(sipm.SiPMPosition.y -
-                             self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.y)
-                    dz = abs(sipm.SiPMPosition.z -
-                             self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.z)
-                    if dx <= distance_thresholds["x"] and dy <= distance_thresholds["y"] and dz <= distance_thresholds["z"]:
+                    dx = abs(
+                        sipm.SiPMPosition.x
+                        - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.x
+                    )
+                    dy = abs(
+                        sipm.SiPMPosition.y
+                        - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.y
+                    )
+                    dz = abs(
+                        sipm.SiPMPosition.z
+                        - self.SiPMHit.SiPMs[sipm_idx].SiPMPosition.z
+                    )
+                    if (
+                        dx <= distance_thresholds["x"]
+                        and dy <= distance_thresholds["y"]
+                        and dz <= distance_thresholds["z"]
+                    ):
                         neighbors.append(i)
             return neighbors
 
@@ -143,10 +157,10 @@ class EventSimulation:
                             visited.add(neighbor)
                             cluster_indices.append(neighbor)
                             queue.append(neighbor)
-                cluster_sipms = [self.SiPMHit.SiPMs[idx]
-                                 for idx in cluster_indices]
-                clusters.append(SiPMCluster(
-                    cluster_sipms, Fibre_connections, self.FibreHit.Fibres))
+                cluster_sipms = [self.SiPMHit.SiPMs[idx] for idx in cluster_indices]
+                clusters.append(
+                    SiPMCluster(cluster_sipms, Fibre_connections, self.FibreHit.Fibres)
+                )
         return clusters
 
     def assign_fibres_to_clusters(self):
@@ -189,7 +203,8 @@ class SiPM:
         """
         print(f"SiPM ID: {self.SiPMId}")
         print(
-            f"Position [mm]: ({self.SiPMPosition.x:.3f}, {self.SiPMPosition.y:.3f}, {self.SiPMPosition.z:.3f})")
+            f"Position [mm]: ({self.SiPMPosition.x:.3f}, {self.SiPMPosition.y:.3f}, {self.SiPMPosition.z:.3f})"
+        )
         print(f"Photon Count: {self.PhotonCount}")
         print(f"Time Stamp [ns]: {self.SiPMTimeStamp:.3f}")
 
@@ -213,7 +228,8 @@ class Fibre:
         """
         print(f"Fibre ID: {self.FibreId}")
         print(
-            f"Position [mm]: ({self.FibrePosition.x:.3f}, {self.FibrePosition.y:.3f}, {self.FibrePosition.z:.3f})")
+            f"Position [mm]: ({self.FibrePosition.x:.3f}, {self.FibrePosition.y:.3f}, {self.FibrePosition.z:.3f})"
+        )
         print(f"FibreEnergy [MeV]: {self.FibreEnergy:.3f}")
         print(f"Time Stamp [ns]: {self.FibreTime:.3f}")
 
@@ -223,7 +239,7 @@ class SiPMHit:
         self.SiPMs = []
         SiPMPosition = tVector_list(SiPMPosition)
         for i in range(len(SiPMId)):
-            if SiPMPhotonCount[i] <= 0 or SiPMPhotonCount[i] == None:
+            if SiPMPhotonCount[i] <= 0 or SiPMPhotonCount[i] is None:
                 print("SiPM with photon count 0 found, skipping...")
                 continue
             else:
@@ -249,7 +265,7 @@ class FibreHit:
         self.Fibres = []
         FibrePosition = tVector_list(FibrePosition)
         for i in range(len(FibreId)):
-            if FibreEnergy[i] <= 0 or FibreEnergy[i] == None:
+            if FibreEnergy[i] <= 0 or FibreEnergy[i] is None:
                 print("Fibre with energy 0 found, skipping...")
                 continue
             else:
@@ -290,28 +306,48 @@ class FibreCluster:
         exp_2L_lambda = np.exp(2 * self.ElarPar["L"] / self.ElarPar["lambda"])
 
         def LElar(self):
-            upper = exp_L_lambda*(exp_L_lambda*self.ElarPar["xi"] *
-                                  self.PhotonCount_l-self.PhotonCount_r*self.ElarPar["eta_prime_r"])
-            lower = self.ElarPar["xi"]*exp_2L_lambda - \
-                self.ElarPar["eta_prime_l"]*self.ElarPar["eta_prime_r"]
-            return upper/lower
+            upper = exp_L_lambda * (
+                exp_L_lambda * self.ElarPar["xi"] * self.PhotonCount_l
+                - self.PhotonCount_r * self.ElarPar["eta_prime_r"]
+            )
+            lower = (
+                self.ElarPar["xi"] * exp_2L_lambda
+                - self.ElarPar["eta_prime_l"] * self.ElarPar["eta_prime_r"]
+            )
+            return upper / lower
 
         def RElar(self):
-            upper = exp_L_lambda*(-exp_L_lambda*self.PhotonCount_r +
-                                  self.ElarPar["xi"]*self.PhotonCount_l*self.ElarPar["eta_prime_l"])
-            lower = self.ElarPar["xi"]*(exp_2L_lambda -
-                                        self.ElarPar["eta_prime_r"]*self.ElarPar["eta_prime_l"])
-            return -upper/lower
+            upper = exp_L_lambda * (
+                -exp_L_lambda * self.PhotonCount_r
+                + self.ElarPar["xi"] * self.PhotonCount_l * self.ElarPar["eta_prime_l"]
+            )
+            lower = self.ElarPar["xi"] * (
+                exp_2L_lambda
+                - self.ElarPar["eta_prime_r"] * self.ElarPar["eta_prime_l"]
+            )
+            return -upper / lower
 
-        return LElar+RElar
+        return LElar + RElar
 
     def Elar_y_finder(self):
 
         def leftSignal(y):
-            return self.ElarPar["S0_prime"]*(np.exp(-y/self.ElarPar["lambda"])+self.ElarPar["eta_prime_r"]*np.exp(-(2*self.ElarPar["L"]-y)/self.ElarPar["lambda"]))
+            return self.ElarPar["S0_prime"] * (
+                np.exp(-y / self.ElarPar["lambda"])
+                + self.ElarPar["eta_prime_r"]
+                * np.exp(-(2 * self.ElarPar["L"] - y) / self.ElarPar["lambda"])
+            )
 
         def rightSignal(y):
-            return self.ElarPar["S0_prime"]*self.ElarPar["xi"]*(np.exp(-self.ElarPar["L"]+y/self.ElarPar["lambda"])+self.ElarPar["eta_prime_l"]*np.exp((-self.ElarPar["L"]-y)/self.ElarPar["lambda"]))
+            return (
+                self.ElarPar["S0_prime"]
+                * self.ElarPar["xi"]
+                * (
+                    np.exp(-self.ElarPar["L"] + y / self.ElarPar["lambda"])
+                    + self.ElarPar["eta_prime_l"]
+                    * np.exp((-self.ElarPar["L"] - y) / self.ElarPar["lambda"])
+                )
+            )
 
         def intersect_signals(max_iterations=1000):
             best_y = 0
@@ -341,23 +377,34 @@ class FibreCluster:
         min_layer = np.min([fibre.FibrePosition.z for fibre in self.Fibres])
         if min_layer > 239 or min_layer < 227 or min_layer % 2 == 0:
             raise ValueError(
-                "First layer %s index is out of range 227 to 239" % (min_layer,))
+                "First layer %s index is out of range 227 to 239" % (min_layer,)
+            )
         return min_layer
-    #############################################################################################################################
+
+    ##########################################################################
 
     def get_x_weigthed(self, weights=None):
-        # Using weighted mean to determine the row position with energy as weights
-        return np.average([fibre.FibrePosition.x for fibre in self.Fibres], weights=weights)
+        # Using weighted mean to determine the row position with energy as
+        # weights
+        return np.average(
+            [fibre.FibrePosition.x for fibre in self.Fibres], weights=weights
+        )
 
     def get_y_weighted(self, weights=None):
         # Using energy to weight fibres and reconstruct position
-        return np.average([fibre.FibrePosition.y for fibre in self.Fibres], weights=weights)
-    #############################################################################################################################
+        return np.average(
+            [fibre.FibrePosition.y for fibre in self.Fibres], weights=weights
+        )
+
+    ##########################################################################
 
     def reconstruct_cluster(self, coordinate_system="AACHEN"):
         if self.hasFibres:
-            weights = [
-                fibre.FibreEnergy for fibre in self.Fibres] if self.ClusterEnergy > 0 else None
+            weights = (
+                [fibre.FibreEnergy for fibre in self.Fibres]
+                if self.ClusterEnergy > 0
+                else None
+            )
             if coordinate_system == "AACHEN":
                 self.ClusterPosition.x = self.get_x_weigthed(weights)
                 self.ClusterPosition.y = self.get_y_weighted(weights)
@@ -366,7 +413,14 @@ class FibreCluster:
                 self.ClusterPosition.z = self.get_x_weigthed(weights)
                 self.ClusterPosition.y = -self.get_y_weighted(weights)
                 self.ClusterPosition.x = self.get_first_layer()
-            return np.array([self.ClusterEnergy, self.ClusterPosition.x, self.ClusterPosition.y, self.ClusterPosition.z])
+            return np.array(
+                [
+                    self.ClusterEnergy,
+                    self.ClusterPosition.x,
+                    self.ClusterPosition.y,
+                    self.ClusterPosition.z,
+                ]
+            )
         else:
             return np.array([0, 0, 0, 0])
 
@@ -395,8 +449,7 @@ class SiPMCluster:
 
         connected_fibres = []
         for sipm in self.SiPMs:
-            connected_fibres.extend(get_fibres_for_SiPM(
-                sipm.SiPMId, Fibre_connections))
+            connected_fibres.extend(get_fibres_for_SiPM(sipm.SiPMId, Fibre_connections))
 
         # Remove duplicates
         connected_fibres = np.unique(connected_fibres)

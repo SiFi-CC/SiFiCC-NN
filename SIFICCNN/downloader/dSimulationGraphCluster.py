@@ -1,9 +1,9 @@
-####################################################################################################
+##########################################################################
 #
 # This script converts a SiFi-CC simulation root file to a python readable datasets ready to be
 # used for Neural Network training.
 #
-####################################################################################################
+##########################################################################
 
 
 import numpy as np
@@ -14,12 +14,14 @@ import sys
 from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 
 
-def dSimulation_to_GraphCluster(root_simulation,
-                                dataset_name,
-                                path="",
-                                n=None,
-                                coordinate_system="CRACOW",
-                                energy_cut=None):
+def dSimulation_to_GraphCluster(
+    root_simulation,
+    dataset_name,
+    path="",
+    n=None,
+    coordinate_system="CRACOW",
+    energy_cut=None,
+):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
@@ -91,7 +93,8 @@ def dSimulation_to_GraphCluster(root_simulation,
     # main iteration over root file, containing beta coincidence check
     # NOTE:
     # "id" are here used for indexing instead of using the iteration variables i,j,k since some
-    # events are skipped due to cuts or filters, therefore more controlled indexing is needed
+    # events are skipped due to cuts or filters, therefore more controlled
+    # indexing is needed
     graph_id = 0
     node_id = 0
     edge_id = 0
@@ -108,7 +111,8 @@ def dSimulation_to_GraphCluster(root_simulation,
             if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
                 continue
 
-        # double iteration over every cluster to determine adjacency and edge features
+        # double iteration over every cluster to determine adjacency and edge
+        # features
         for j in range(n_cluster):
             for k in range(n_cluster):
                 """
@@ -120,7 +124,8 @@ def dSimulation_to_GraphCluster(root_simulation,
                 if j != k:
                     # grab edge features in polar and cartesian representation
                     r, phi, theta = event.RecoCluster.get_edge_features(
-                        j, k, cartesian=False)
+                        j, k, cartesian=False
+                    )
                 else:
                     r, phi, theta = 0, 0, 0
                 ary_edge_attributes[edge_id, :] = [r, phi, theta]
@@ -134,28 +139,36 @@ def dSimulation_to_GraphCluster(root_simulation,
             # collect node attributes for each node
             # exception for different coordinate systems
             if coordinate_system == "CRACOW":
-                attributes = np.array([event.RecoCluster.RecoClusterEntries[j],
-                                       event.RecoCluster.RecoClusterTimestamps[j],
-                                       event.RecoCluster.RecoClusterEnergies_values[j],
-                                       event.RecoCluster.RecoClusterEnergies_uncertainty[j],
-                                       event.RecoCluster.RecoClusterPosition[j].z,
-                                       -event.RecoCluster.RecoClusterPosition[j].y,
-                                       event.RecoCluster.RecoClusterPosition[j].x,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].z,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].y,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].x])
+                attributes = np.array(
+                    [
+                        event.RecoCluster.RecoClusterEntries[j],
+                        event.RecoCluster.RecoClusterTimestamps[j],
+                        event.RecoCluster.RecoClusterEnergies_values[j],
+                        event.RecoCluster.RecoClusterEnergies_uncertainty[j],
+                        event.RecoCluster.RecoClusterPosition[j].z,
+                        -event.RecoCluster.RecoClusterPosition[j].y,
+                        event.RecoCluster.RecoClusterPosition[j].x,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].z,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].y,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].x,
+                    ]
+                )
                 ary_node_attributes[node_id, :] = attributes
             if coordinate_system == "AACHEN":
-                attributes = np.array([event.RecoCluster.RecoClusterEntries[j],
-                                       event.RecoCluster.RecoClusterTimestamps[j],
-                                       event.RecoCluster.RecoClusterEnergies_values[j],
-                                       event.RecoCluster.RecoClusterEnergies_uncertainty[j],
-                                       event.RecoCluster.RecoClusterPosition[j].x,
-                                       event.RecoCluster.RecoClusterPosition[j].y,
-                                       event.RecoCluster.RecoClusterPosition[j].z,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].x,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].y,
-                                       event.RecoCluster.RecoClusterPosition_uncertainty[j].z])
+                attributes = np.array(
+                    [
+                        event.RecoCluster.RecoClusterEntries[j],
+                        event.RecoCluster.RecoClusterTimestamps[j],
+                        event.RecoCluster.RecoClusterEnergies_values[j],
+                        event.RecoCluster.RecoClusterEnergies_uncertainty[j],
+                        event.RecoCluster.RecoClusterPosition[j].x,
+                        event.RecoCluster.RecoClusterPosition[j].y,
+                        event.RecoCluster.RecoClusterPosition[j].z,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].x,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].y,
+                        event.RecoCluster.RecoClusterPosition_uncertainty[j].z,
+                    ]
+                )
                 ary_node_attributes[node_id, :] = attributes
 
             # count up node indexing
@@ -169,24 +182,28 @@ def dSimulation_to_GraphCluster(root_simulation,
         ary_graph_labels[graph_id] = distcompton_tag * 1
         ary_pe[graph_id] = event.MCEnergy_Primary
         if coordinate_system == "CRACOW":
-            ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                 target_energy_p,
-                                                 target_position_e.z,
-                                                 -target_position_e.y,
-                                                 target_position_e.x,
-                                                 target_position_p.z,
-                                                 -target_position_p.y,
-                                                 target_position_p.x]
+            ary_graph_attributes[graph_id, :] = [
+                target_energy_e,
+                target_energy_p,
+                target_position_e.z,
+                -target_position_e.y,
+                target_position_e.x,
+                target_position_p.z,
+                -target_position_p.y,
+                target_position_p.x,
+            ]
             ary_sp[graph_id] = event.MCPosition_source.z
         if coordinate_system == "AACHEN":
-            ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                 target_energy_p,
-                                                 target_position_e.x,
-                                                 target_position_e.y,
-                                                 target_position_e.z,
-                                                 target_position_p.x,
-                                                 target_position_p.y,
-                                                 target_position_p.z]
+            ary_graph_attributes[graph_id, :] = [
+                target_energy_e,
+                target_energy_p,
+                target_position_e.x,
+                target_position_e.y,
+                target_position_e.z,
+                target_position_p.x,
+                target_position_p.y,
+                target_position_p.z,
+            ]
             ary_sp[graph_id] = event.MCPosition_source.x
 
         # count up graph indexing
@@ -206,19 +223,23 @@ def dSimulation_to_GraphCluster(root_simulation,
 if __name__ == "__main__":
     # configure argument parser
     parser = argparse.ArgumentParser(
-        description='Simulation to GraphCluster downloader')
+        description="Simulation to GraphCluster downloader"
+    )
     parser.add_argument("--rf", type=str, help="Target root file")
     parser.add_argument("--name", type=str, help="Name of final datasets")
     parser.add_argument("-path", type=str, help="Path to final datasets")
     parser.add_argument("-n", type=int, help="Number of events used")
     parser.add_argument("-cs", type=str, help="Coordinate system of root file")
     parser.add_argument(
-        "-ec", type=float, help="Energy cut applied to sum of all cluster energies")
+        "-ec", type=float, help="Energy cut applied to sum of all cluster energies"
+    )
     args = parser.parse_args()
 
-    dSimulation_to_GraphCluster(root_simulation=args.rf,
-                                dataset_name=args.name,
-                                path=args.path if args.path is not None else "",
-                                n=args.n if args.n is not None else None,
-                                coordinate_system=args.cs if args.cs is not None else "CRACOW",
-                                energy_cut=args.ec if args.ec is not None else None)
+    dSimulation_to_GraphCluster(
+        root_simulation=args.rf,
+        dataset_name=args.name,
+        path=args.path if args.path is not None else "",
+        n=args.n if args.n is not None else None,
+        coordinate_system=args.cs if args.cs is not None else "CRACOW",
+        energy_cut=args.ec if args.ec is not None else None,
+    )

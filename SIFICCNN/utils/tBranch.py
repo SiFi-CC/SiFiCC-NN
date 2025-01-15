@@ -23,7 +23,8 @@ class TVector3:
     def __mul__(self, other):
         if isinstance(other, float) or isinstance(other, int):
             return TVector3(self.x * other, self.y * other, self.z * other)
-        # additional exception for vector multiplication to include dot products
+        # additional exception for vector multiplication to include dot
+        # products
         elif isinstance(other, TVector3):
             return (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
 
@@ -46,7 +47,7 @@ class TVector3:
     # vector properties
     @property
     def mag(self):
-        return np.sqrt(self.x ** 2 + self.y ** 2 + self.z ** 2)
+        return np.sqrt(self.x**2 + self.y**2 + self.z**2)
 
     @property
     def M(self):
@@ -54,7 +55,7 @@ class TVector3:
 
     @property
     def perp2(self):
-        return self.x ** 2 + self.y ** 2
+        return self.x**2 + self.y**2
 
     @property
     def perp(self):

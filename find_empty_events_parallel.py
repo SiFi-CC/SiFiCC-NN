@@ -4,7 +4,7 @@ import tqdm
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from SIFICCNN.data.events import EventSimulation, SiPMHit, FibreHit
+from SIFICCNN.data.CMevents import EventSimulation, SiPMHit, FibreHit
 from SIFICCNN.data.roots import RootSimulation
 
 
@@ -21,10 +21,8 @@ def count_event_data(event):
     if event is None:
         return 0, 0, 0
 
-    has_sipm_data = event.SiPMHit is not None and len(
-        event.SiPMHit.SiPMPhotonCount) > 0
-    has_fibre_data = event.FibreHit is not None and len(
-        event.FibreHit.FibreEnergy) > 0
+    has_sipm_data = event.SiPMHit is not None and len(event.SiPMHit.SiPMPhotonCount) > 0
+    has_fibre_data = event.FibreHit is not None and len(event.FibreHit.FibreEnergy) > 0
 
     no_sipm_count = 0
     no_fibre_count = 0
@@ -40,7 +38,9 @@ def count_event_data(event):
     return no_fibre_count, no_sipm_count, no_either_count
 
 
-def count_events_without_data(root_file_path, num_workers=None, use_multithreading=True):
+def count_events_without_data(
+    root_file_path, num_workers=None, use_multithreading=True
+):
     """
     Counts events that have no SiPMPhotonCount, no FibreEnergy, or both.
 
@@ -71,8 +71,9 @@ def count_events_without_data(root_file_path, num_workers=None, use_multithreadi
             for i in range(num_chunks):
                 n_start = i * chunk_size
                 n = chunk_size if i < num_chunks - 1 else total_events - n_start
-                futures.append(executor.submit(
-                    process_chunk, root_file_path, n, n_start))
+                futures.append(
+                    executor.submit(process_chunk, root_file_path, n, n_start)
+                )
 
             for future in as_completed(futures):
                 no_fibre, no_sipm, no_either = future.result()
@@ -125,11 +126,13 @@ def main():
         print("Error: ROOT file does not exist.")
         return
 
-    use_multithreading = str(
-        input("Use multithreading? (yes/no): ")).strip().lower() == 'yes'
+    use_multithreading = (
+        str(input("Use multithreading? (yes/no): ")).strip().lower() == "yes"
+    )
 
     no_fibre_count, no_sipm_count, no_either_count = count_events_without_data(
-        root_file_path, use_multithreading=use_multithreading)
+        root_file_path, use_multithreading=use_multithreading
+    )
 
     print(f"Total events with no fibre energy: {no_fibre_count}")
     print(f"Total events with no SiPM photon count: {no_sipm_count}")

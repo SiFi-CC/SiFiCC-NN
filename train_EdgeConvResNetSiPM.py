@@ -60,16 +60,25 @@ def do_task(args, specific_task=None):
     nFilter = args.nFilter if args.nFilter is not None else base_nfilter
     nOut = args.nOut if args.nOut is not None else base_nOut
     activation = args.activation if args.activation is not None else base_activation
-    activation_out = args.activation_out if args.activation_out is not None else base_activation_out
+    activation_out = (
+        args.activation_out if args.activation_out is not None else base_activation_out
+    )
     do_training = args.do_training if args.do_training is not None else base_do_training
-    do_evaluation = args.do_evaluation if args.do_evaluation is not None else base_do_evaluation
+    do_evaluation = (
+        args.do_evaluation if args.do_evaluation is not None else base_do_evaluation
+    )
     model_type = args.model_type if args.model_type is not None else base_model_type
-    dataset_name = args.dataset_name if args.dataset_name is not None else base_dataset_name
-    evaluate_0mm = args.evaluate_0mm if args.evaluate_0mm is not None else base_evaluate_0mm
+    dataset_name = (
+        args.dataset_name if args.dataset_name is not None else base_dataset_name
+    )
+    evaluate_0mm = (
+        args.evaluate_0mm if args.evaluate_0mm is not None else base_evaluate_0mm
+    )
 
     if do_evaluation and evaluate_0mm:
         raise ValueError(
-            "Cannot perform short evaluation and full evaluation at the same time")
+            "Cannot perform short evaluation and full evaluation at the same time"
+        )
 
     # Datasets used
     # Training file used for classification and regression training
@@ -82,7 +91,8 @@ def do_task(args, specific_task=None):
     # DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
     DATASETS = np.array(
-        [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_10MM, DATASET_m5MM])
+        [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_10MM, DATASET_m5MM]
+    )
     if evaluate_0mm:
         DATASETS = np.array([DATASET_CONT, DATASET_0MM])
     print("Datasets: ", DATASETS)
@@ -101,75 +111,90 @@ def do_task(args, specific_task=None):
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
-    modelParameter = {"nFilter": nFilter,
-                      "activation": activation,
-                      "n_out": nOut,
-                      "activation_out": activation_out,
-                      "dropout": dropout}
+    modelParameter = {
+        "nFilter": nFilter,
+        "activation": activation,
+        "n_out": nOut,
+        "activation_out": activation_out,
+        "dropout": dropout,
+    }
 
     tf_model = set_model(model_type, modelParameter)
 
     print("Task: ", task)
 
     if task == "classification":
-        classification_handler(run_name, epochs, batch_size, do_training, do_evaluation,
-                               tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        classification_handler(
+            run_name,
+            epochs,
+            batch_size,
+            do_training,
+            do_evaluation,
+            tf_model,
+            dataset_name,
+            DATASETS=DATASETS,
+            path_results=path_results,
+        )
     elif task == "regression_energy":
-        regression_energy_handler(run_name, epochs, batch_size, do_training, do_evaluation,
-                                  tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        regression_energy_handler(
+            run_name,
+            epochs,
+            batch_size,
+            do_training,
+            do_evaluation,
+            tf_model,
+            dataset_name,
+            DATASETS=DATASETS,
+            path_results=path_results,
+        )
     elif task == "regression_position":
-        regression_position_handler(run_name, epochs, batch_size, do_training, do_evaluation,
-                                    tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        regression_position_handler(
+            run_name,
+            epochs,
+            batch_size,
+            do_training,
+            do_evaluation,
+            tf_model,
+            dataset_name,
+            DATASETS=DATASETS,
+            path_results=path_results,
+        )
 
 
 def get_arguments():
     parser = argparse.ArgumentParser(
-        description="Run classification and regression scripts")
-    parser.add_argument('--task',
-                        type=str,
-                        required=True,
-                        choices=['classification', 'regression_energy',
-                                 'regression_position', 'all'],
-                        help="Task to run: classification, regression_energy, or regression_position")
-    parser.add_argument('--run_name',
-                        type=str,
-                        help="Run name")
-    parser.add_argument('--epochs',
-                        type=int,
-                        help="Number of epochs")
-    parser.add_argument('--batch_size',
-                        type=int,
-                        help="Batch size")
-    parser.add_argument('--dropout',
-                        type=float,
-                        help="Dropout rate")
-    parser.add_argument('--nFilter',
-                        type=int,
-                        help="Number of filters")
-    parser.add_argument('--nOut',
-                        type=int,
-                        help="Number of output nodes")
-    parser.add_argument('--activation',
-                        type=str,
-                        help="Activation function")
-    parser.add_argument('--activation_out',
-                        type=str,
-                        help="Output activation function")
-    parser.add_argument('--do_training',
-                        action='store_true',
-                        help="Perform training")
-    parser.add_argument('--do_evaluation',
-                        action='store_true',
-                        help="Perform evaluation")
-    parser.add_argument('--model_type',
-                        type=str,
-                        help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5, SiFiECRNShortOld, SiFiECRNOld4, SiFiECR2N, SiFiECRNX, SiFiECRNXV2, SiFiECR2NV2, SiFiECRN2BN, SiFiECRNXBN, SiFiECR2NBN, SiFiECRNXV2BN, SiFiECR2NV2BN")
-    parser.add_argument('--dataset_name',
-                        type=str,
-                        help="Dataset name")
-    parser.add_argument('--evaluate_0mm',
-                        action='store_true',
-                        help="Perform evaluation only using 0mm dataset")
+        description="Run classification and regression scripts"
+    )
+    parser.add_argument(
+        "--task",
+        type=str,
+        required=True,
+        choices=["classification", "regression_energy", "regression_position", "all"],
+        help="Task to run: classification, regression_energy, or regression_position",
+    )
+    parser.add_argument("--run_name", type=str, help="Run name")
+    parser.add_argument("--epochs", type=int, help="Number of epochs")
+    parser.add_argument("--batch_size", type=int, help="Batch size")
+    parser.add_argument("--dropout", type=float, help="Dropout rate")
+    parser.add_argument("--nFilter", type=int, help="Number of filters")
+    parser.add_argument("--nOut", type=int, help="Number of output nodes")
+    parser.add_argument("--activation", type=str, help="Activation function")
+    parser.add_argument("--activation_out", type=str, help="Output activation function")
+    parser.add_argument("--do_training", action="store_true", help="Perform training")
+    parser.add_argument(
+        "--do_evaluation", action="store_true", help="Perform evaluation"
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5, SiFiECRNShortOld, SiFiECRNOld4, SiFiECR2N, SiFiECRNX, SiFiECRNXV2, SiFiECR2NV2, SiFiECRN2BN, SiFiECRNXBN, SiFiECR2NBN, SiFiECRNXV2BN, SiFiECR2NV2BN",
+    )
+    parser.add_argument("--dataset_name", type=str, help="Dataset name")
+    parser.add_argument(
+        "--evaluate_0mm",
+        action="store_true",
+        help="Perform evaluation only using 0mm dataset",
+    )
 
     args = parser.parse_args()
 

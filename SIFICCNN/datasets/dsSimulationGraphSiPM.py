@@ -1,10 +1,10 @@
-####################################################################################################
+##########################################################################
 #
 # This script converts a stored version of a SiFiCC Simulation datasets to a container used for
 # easier read access and direct compatibility for Tensorflow training
 # The container holds each event in graph structure
 #
-####################################################################################################
+##########################################################################
 
 import os
 import numpy as np
@@ -103,7 +103,8 @@ class DSGraphSiPM(Dataset):
         # Get edge attributes (e_list), in this case edge features are disabled
         e_list = np.array([None] * len(n_nodes))
 
-        # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
+        # Create sparse adjacency matrices and re-sort edge attributes in
+        # lexicographic order
         a_e_list = []
         total_matrices = len(n_nodes)
         print(
@@ -120,7 +121,8 @@ class DSGraphSiPM(Dataset):
                 pbar.update(1)
 
         a_list = a_e_list
-        # If edge features are used, use this: a_list, e_list = list(zip(*a_e_list))
+        # If edge features are used, use this: a_list, e_list =
+        # list(zip(*a_e_list))
 
         # Set dataset targets (classification / regression)
         y_list = self._get_y_list()
@@ -130,12 +132,27 @@ class DSGraphSiPM(Dataset):
         # Limited to True positives only if needed
         print("Successfully loaded {}.".format(self.type))
         if self.regression is None:
-            return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, labels), desc="Creating graphs for classification")]
+            return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(
+                zip(x_list, a_list, labels), desc="Creating graphs for classification")]
         else:
             if self.positives:
-                return [Graph(x=x, a=a, y=y) for x, a, y, label in tqdm(zip(x_list, a_list, y_list, labels), desc="Creating graphs for regression (positives only)") if label]
+                return [
+                    Graph(
+                        x=x,
+                        a=a,
+                        y=y) for x,
+                    a,
+                    y,
+                    label in tqdm(
+                        zip(
+                            x_list,
+                            a_list,
+                            y_list,
+                            labels),
+                        desc="Creating graphs for regression (positives only)") if label]
             else:
-                return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(zip(x_list, a_list, y_list), desc="Creating graphs for regression")]
+                return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(
+                    zip(x_list, a_list, y_list), desc="Creating graphs for regression")]
 
     def _get_x_list(self, n_nodes_cum):
         """

@@ -22,7 +22,14 @@ class Detector:
 
     @classmethod
     def from_root(cls, pos, dimx, dimy, dimz):
-        return cls(posx=pos["fX"], posy=pos["fY"], posz=pos["fZ"], dimx=dimx, dimy=dimy, dimz=dimz)
+        return cls(
+            posx=pos["fX"],
+            posy=pos["fY"],
+            posz=pos["fZ"],
+            dimx=dimx,
+            dimy=dimy,
+            dimz=dimz,
+        )
 
     def is_vec_in_module(self, input_vec, a=0.001):
         """
@@ -46,16 +53,20 @@ class Detector:
         try:
             for vec in input_vec:
                 # check if vector is inside detector boundaries
-                if (abs(self.posx - vec.x) <= self.dimx / 2 + a
-                        and abs(self.posy - vec.y) <= self.dimy / 2 + a
-                        and abs(self.posz - vec.z) <= self.dimz / 2 + a):
+                if (
+                    abs(self.posx - vec.x) <= self.dimx / 2 + a
+                    and abs(self.posy - vec.y) <= self.dimy / 2 + a
+                    and abs(self.posz - vec.z) <= self.dimz / 2 + a
+                ):
                     return True
             return False
         # if input_vec is not iterable
         except TypeError:
-            if (abs(self.posx - input_vec.x) <= self.dimx / 2 + a
-                    and abs(self.posy - input_vec.y) <= self.dimy / 2 + a
-                    and abs(self.posz - input_vec.z) <= self.dimz / 2 + a):
+            if (
+                abs(self.posx - input_vec.x) <= self.dimx / 2 + a
+                and abs(self.posy - input_vec.y) <= self.dimy / 2 + a
+                and abs(self.posz - input_vec.z) <= self.dimz / 2 + a
+            ):
                 return True
             else:
                 return False

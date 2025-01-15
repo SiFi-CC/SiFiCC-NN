@@ -1,9 +1,9 @@
-####################################################################################################
+##########################################################################
 #
 # This script converts a SiFi-CC simulation root file to a python readable datasets ready to be
 # used for Neural Network training.
 #
-####################################################################################################
+##########################################################################
 
 
 import numpy as np
@@ -17,15 +17,16 @@ from collections import defaultdict
 from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 
 
-def dSimulation_to_GraphSiPMCM(root_simulation,
-                               dataset_name,
-                               path="",
-                               n_stop=None,
-                               coordinate_system="CRACOW",
-                               energy_cut=None,
-                               neutrons=0,
-                               n_start=0,
-                               ):
+def dSimulation_to_GraphSiPMCM(
+    root_simulation,
+    dataset_name,
+    path="",
+    n_stop=None,
+    coordinate_system="CRACOW",
+    energy_cut=None,
+    neutrons=0,
+    n_start=0,
+):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
@@ -67,13 +68,13 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
         # Create a histogram
         plt.figure(figsize=(8, 6))
         plt.hist2d(NeutronCount, NeutronPrimaryEnergies, bins=30, cmap="Reds")
-        plt.title(key+' Count vs Primary Energies')
-        plt.xlabel(key+' Count')
-        plt.ylabel(key+' Primary Energies')
-        plt.colorbar(label='Counts')
+        plt.title(key + " Count vs Primary Energies")
+        plt.xlabel(key + " Count")
+        plt.ylabel(key + " Primary Energies")
+        plt.colorbar(label="Counts")
 
         # Show the plot
-        plt.savefig("EnergyNeutronHist_"+neutron_key+".png")
+        plt.savefig("EnergyNeutronHist_" + neutron_key + ".png")
         plt.close()
 
     def plot_primary_energy(NeutronPrimaryEnergies, neutron_key, compton=False):
@@ -84,26 +85,30 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
         # Create a histogram
         plt.figure(figsize=(8, 6))
         plt.hist(NeutronPrimaryEnergies, bins=np.arange(0, 20, 0.2))
-        plt.title('Primary Energies'+' '+neutron_key+' '+end)
-        plt.xlabel('Energies / MeV')
-        plt.ylabel('Primary Energies')
+        plt.title("Primary Energies" + " " + neutron_key + " " + end)
+        plt.xlabel("Energies / MeV")
+        plt.ylabel("Primary Energies")
         plt.grid()
         plt.xlim(left=0, right=20)
 
         # Show the plot
-        plt.savefig("EnergySpectrum_"+neutron_key+end+".png")
+        plt.savefig("EnergySpectrum_" + neutron_key + end + ".png")
         plt.close()
 
     def stacked_primary_energy(compton, not_compton, neutron_key):
         plt.figure(figsize=(8, 6))
 
         # Create the histogram with stacking
-        plt.hist([compton, not_compton], bins=np.arange(0, 20, 0.2),
-                 stacked=True, label=["Compton", "Not Compton"])
+        plt.hist(
+            [compton, not_compton],
+            bins=np.arange(0, 20, 0.2),
+            stacked=True,
+            label=["Compton", "Not Compton"],
+        )
 
-        plt.title('Primary Energies ' + neutron_key)
-        plt.xlabel('Energies / MeV')
-        plt.ylabel('Primary Energies')
+        plt.title("Primary Energies " + neutron_key)
+        plt.xlabel("Energies / MeV")
+        plt.ylabel("Primary Energies")
         plt.grid()
         plt.xlim(left=0, right=20)
         plt.legend()
@@ -138,10 +143,16 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     k_graphs = 0
     n_nodes = 0
     m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
-        if event == None:
+    for i, event in enumerate(
+        root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)
+    ):
+        if event is None:
             continue
-        if (event.MCNPrimaryNeutrons == 0 and not with_neutrons) or (event.MCNPrimaryNeutrons != 0 and with_neutrons) or photon_set:
+        if (
+            (event.MCNPrimaryNeutrons == 0 and not with_neutrons)
+            or (event.MCNPrimaryNeutrons != 0 and with_neutrons)
+            or photon_set
+        ):
             """
             # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS
             if energy_cut is not None:
@@ -149,7 +160,8 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
                     continue
             """
             sipms_per_cluster = np.array(
-                [cluster.nSiPMs for cluster in event.SiPMClusters])
+                [cluster.nSiPMs for cluster in event.SiPMClusters]
+            )
 
             k_graphs += event.nClusters
             n_nodes += np.sum(sipms_per_cluster)
@@ -183,14 +195,17 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
     # main iteration over root file, containing beta coincidence check
     # NOTE:
     # "id" are here used for indexing instead of using the iteration variables i,j,k since some
-    # events are skipped due to cuts or filters, therefore more controlled indexing is needed
+    # events are skipped due to cuts or filters, therefore more controlled
+    # indexing is needed
     graph_id = 0
     node_id = 0
     edge_id = 0
 
-    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
+    for i, event in enumerate(
+        root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)
+    ):
         # get number of cluster
-        if event == None:
+        if event is None:
             continue
         n_clusters = event.nClusters
         cluster_id = 0
@@ -198,7 +213,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
             n_sipm = int(sipm_cluster.nSiPMs)
 
             """
-            # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS   
+            # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS
             # energy cut if applied
             if energy_cut is not None:
                 if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
@@ -210,18 +225,26 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
                     ary_A[edge_id, :] = [node_id, node_id - j + k]
                     edge_id += 1
                 if coordinate_system == "CRACOW":
-                    attributes = np.array([sipm_cluster.SiPMs[j].SiPMPosition.z,
-                                           -sipm_cluster.SiPMs[j].SiPMPosition.y,
-                                           sipm_cluster.SiPMs[j].SiPMPosition.x,
-                                           sipm_cluster.SiPMs[j].SiPMTimeStamp,
-                                           sipm_cluster.SiPMs[j].SiPMPhotonCount])
+                    attributes = np.array(
+                        [
+                            sipm_cluster.SiPMs[j].SiPMPosition.z,
+                            -sipm_cluster.SiPMs[j].SiPMPosition.y,
+                            sipm_cluster.SiPMs[j].SiPMPosition.x,
+                            sipm_cluster.SiPMs[j].SiPMTimeStamp,
+                            sipm_cluster.SiPMs[j].SiPMPhotonCount,
+                        ]
+                    )
                     ary_node_attributes[node_id, :] = attributes
                 if coordinate_system == "AACHEN":
-                    attributes = np.array([sipm_cluster.SiPMs[j].SiPMPosition.x,
-                                           sipm_cluster.SiPMs[j].SiPMPosition.y,
-                                           sipm_cluster.SiPMs[j].SiPMPosition.z,
-                                           sipm_cluster.SiPMs[j].SiPMTimeStamp,
-                                           sipm_cluster.SiPMs[j].SiPMPhotonCount])
+                    attributes = np.array(
+                        [
+                            sipm_cluster.SiPMs[j].SiPMPosition.x,
+                            sipm_cluster.SiPMs[j].SiPMPosition.y,
+                            sipm_cluster.SiPMs[j].SiPMPosition.z,
+                            sipm_cluster.SiPMs[j].SiPMTimeStamp,
+                            sipm_cluster.SiPMs[j].SiPMPhotonCount,
+                        ]
+                    )
                     ary_node_attributes[node_id, :] = attributes
 
                 # Graph indicator counts up which node belongs to which graph
@@ -232,12 +255,13 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
 
             # grab target labels and attributes
             event.ph_method = 2
-    ############################################################################################
+            ##########################################################################
 
             ary_pe[graph_id] = event.MCEnergy_Primary
 
-            ary_graph_attributes[graph_id, :] = event.FibreClusters[cluster_id].reconstruct_cluster(
-                coordinate_system)
+            ary_graph_attributes[graph_id, :] = event.FibreClusters[
+                cluster_id
+            ].reconstruct_cluster(coordinate_system)
             ary_sp[graph_id] = event.MCPosition_source.x
 
             ary_event_indicator[graph_id] = i
@@ -247,7 +271,7 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
             # count up graph indexing
             graph_id += 1
             # resetting cluster_id if all clusters in event have been visited
-            cluster_id = cluster_id + 1 if cluster_id < n_clusters-1 else 0
+            cluster_id = cluster_id + 1 if cluster_id < n_clusters - 1 else 0
 
     if not photon_set:
         NeutronCount = np.array(NeutronCount)
@@ -264,41 +288,39 @@ def dSimulation_to_GraphSiPMCM(root_simulation,
 
     # save up all files
     np.save(path + "/" + name_additions + "A.npy", ary_A)
-    np.save(path + "/" + name_additions +
-            "graph_indicator.npy", ary_graph_indicator)
-    np.save(path + "/" + name_additions +
-            "node_attributes.npy", ary_node_attributes)
-    np.save(path + "/" + name_additions +
-            "graph_attributes.npy", ary_graph_attributes)
+    np.save(path + "/" + name_additions + "graph_indicator.npy", ary_graph_indicator)
+    np.save(path + "/" + name_additions + "node_attributes.npy", ary_node_attributes)
+    np.save(path + "/" + name_additions + "graph_attributes.npy", ary_graph_attributes)
     np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
     np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
-    np.save(path + "/" + name_additions +
-            "event_indicator.npy", ary_event_indicator)
-    np.save(path + "/" + name_additions +
-            "fibre_multiplicity.npy", ary_fibre_multiplicity)
+    np.save(path + "/" + name_additions + "event_indicator.npy", ary_event_indicator)
+    np.save(
+        path + "/" + name_additions + "fibre_multiplicity.npy", ary_fibre_multiplicity
+    )
     np.save(path + "/" + name_additions + "graph_labels.npy", ary_labels)
 
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(
-        description='Simulation to GraphSiPM downloader')
+    parser = argparse.ArgumentParser(description="Simulation to GraphSiPM downloader")
     parser.add_argument("--rf", type=str, help="Target root file")
     parser.add_argument("--name", type=str, help="Name of final datasets")
     parser.add_argument("-path", type=str, help="Path to final datasets")
     parser.add_argument("-n", type=int, help="Number of events used")
     parser.add_argument("-cs", type=str, help="Coordinate system of root file")
-    parser.add_argument("--with_neutrons", action='store_true',
-                        help="Include events with neutrons")
-    parser.add_argument("--photon_set", action='store_true',
-                        help="Include photon set")
+    parser.add_argument(
+        "--with_neutrons", action="store_true", help="Include events with neutrons"
+    )
+    parser.add_argument("--photon_set", action="store_true", help="Include photon set")
     args = parser.parse_args()
 
-    dSimulation_to_GraphSiPMCM(root_simulation=args.rf,
-                               dataset_name=args.name,
-                               path=args.path if args.path is not None else "",
-                               n=args.n if args.n is not None else None,
-                               coordinate_system=args.cs if args.cs is not None else "CRACOW",
-                               energy_cut=args.ec if args.ec is not None else None,
-                               with_neutrons=args.with_neutrons,
-                               photon_set=args.photon_set)
+    dSimulation_to_GraphSiPMCM(
+        root_simulation=args.rf,
+        dataset_name=args.name,
+        path=args.path if args.path is not None else "",
+        n=args.n if args.n is not None else None,
+        coordinate_system=args.cs if args.cs is not None else "CRACOW",
+        energy_cut=args.ec if args.ec is not None else None,
+        with_neutrons=args.with_neutrons,
+        photon_set=args.photon_set,
+    )

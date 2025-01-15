@@ -11,16 +11,12 @@ class Detector:
 
     def __init__(self):
         self.sipm_size = 4
-        self.sipm_bins0_bottom = np.arange(-55,
-                                           53 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_bottom = np.arange(-55, 53 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_bottom = -51
-        self.sipm_bins2_bottom = np.arange(
-            226, 238 + self.sipm_size, self.sipm_size)
-        self.sipm_bins0_top = np.arange(-53,
-                                        55 + self.sipm_size, self.sipm_size)
+        self.sipm_bins2_bottom = np.arange(226, 238 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_top = np.arange(-53, 55 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_top = 51
-        self.sipm_bins2_top = np.arange(
-            228, 240 + self.sipm_size, self.sipm_size)
+        self.sipm_bins2_top = np.arange(228, 240 + self.sipm_size, self.sipm_size)
         self.sipm_positions = self.generate_sipm_positions()
 
     def generate_sipm_positions(self):
@@ -32,11 +28,21 @@ class Detector:
         for i in range(len(self.sipm_bins0_bottom)):
             for j in range(len(self.sipm_bins2_bottom)):
                 sipm_positions.append(
-                    [self.sipm_bins0_bottom[i], self.sipm_bins1_bottom, self.sipm_bins2_bottom[j]])
+                    [
+                        self.sipm_bins0_bottom[i],
+                        self.sipm_bins1_bottom,
+                        self.sipm_bins2_bottom[j],
+                    ]
+                )
         for i in range(len(self.sipm_bins0_top)):
             for j in range(len(self.sipm_bins2_top)):
                 sipm_positions.append(
-                    [self.sipm_bins0_top[i], self.sipm_bins1_top, self.sipm_bins2_top[j]])
+                    [
+                        self.sipm_bins0_top[i],
+                        self.sipm_bins1_top,
+                        self.sipm_bins2_top[j],
+                    ]
+                )
         return np.array(sipm_positions)
 
 
@@ -93,26 +99,32 @@ class Event:
         :param detector: Detector object containing all possible SiPM positions.
         """
         fig = plt.figure(figsize=(10, 7))
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
 
         # Get all positions and activated positions
         all_positions = detector.sipm_positions
         activated_positions = set()
 
         # Define colors for clusters (stronger colors)
-        cluster_colors = plt.cm.get_cmap('plasma', len(
-            self.clusters))  # Using a brighter color map
+        cluster_colors = plt.cm.get_cmap(
+            "plasma", len(self.clusters)
+        )  # Using a brighter color map
 
         # Plot activated SiPMs by cluster and keep track of activated positions
         for idx, cluster in enumerate(self.clusters):
-            cluster_positions = np.array(
-                [sipm.position for sipm in cluster.sipms])
+            cluster_positions = np.array([sipm.position for sipm in cluster.sipms])
             # Color for the current cluster
             cluster_color = cluster_colors(idx)
 
             # Plot SiPMs in the current cluster
-            ax.scatter(cluster_positions[:, 0], cluster_positions[:, 1], cluster_positions[:, 2],
-                       label=f'Cluster {idx}', color=cluster_color, s=100)  # Larger size for activated SiPMs
+            ax.scatter(
+                cluster_positions[:, 0],
+                cluster_positions[:, 1],
+                cluster_positions[:, 2],
+                label=f"Cluster {idx}",
+                color=cluster_color,
+                s=100,
+            )  # Larger size for activated SiPMs
 
             # Store activated positions in a set
             activated_positions.update(map(tuple, cluster_positions))
@@ -127,32 +139,47 @@ class Event:
             z = [min_vals[2], max_vals[2]]
 
             # Create the 8 vertices of the cuboid
-            vertices = np.array([[x[0], y[0], z[0]], [x[0], y[0], z[1]], [x[0], y[1], z[1]], [x[0], y[1], z[0]],
-                                 [x[1], y[0], z[0]], [x[1], y[0], z[1]], [x[1], y[1], z[1]], [x[1], y[1], z[0]]])
+            vertices = np.array(
+                [
+                    [x[0], y[0], z[0]],
+                    [x[0], y[0], z[1]],
+                    [x[0], y[1], z[1]],
+                    [x[0], y[1], z[0]],
+                    [x[1], y[0], z[0]],
+                    [x[1], y[0], z[1]],
+                    [x[1], y[1], z[1]],
+                    [x[1], y[1], z[0]],
+                ]
+            )
 
             # Define the 12 faces of the cuboid
-            faces = [[vertices[0], vertices[1], vertices[2], vertices[3]],  # bottom face
-                     [vertices[4], vertices[5], vertices[6],
-                         vertices[7]],  # top face
-                     [vertices[0], vertices[1], vertices[5],
-                         vertices[4]],  # front face
-                     [vertices[2], vertices[3], vertices[7],
-                         vertices[6]],  # back face
-                     [vertices[0], vertices[3], vertices[7],
-                         vertices[4]],  # left face
-                     [vertices[1], vertices[2], vertices[6], vertices[5]]]  # right face
+            faces = [
+                [vertices[0], vertices[1], vertices[2], vertices[3]],  # bottom face
+                [vertices[4], vertices[5], vertices[6], vertices[7]],  # top face
+                [vertices[0], vertices[1], vertices[5], vertices[4]],  # front face
+                [vertices[2], vertices[3], vertices[7], vertices[6]],  # back face
+                [vertices[0], vertices[3], vertices[7], vertices[4]],  # left face
+                [vertices[1], vertices[2], vertices[6], vertices[5]],
+            ]  # right face
 
             # Create a Poly3DCollection for the cuboid with translucent fill
             poly3d = Poly3DCollection(faces, color=cluster_color, alpha=0.3)
             ax.add_collection3d(poly3d)
 
         # Plot gray inactive SiPMs, but avoid positions that are activated
-        inactive_positions = [pos for pos in all_positions if tuple(
-            pos) not in activated_positions]
+        inactive_positions = [
+            pos for pos in all_positions if tuple(pos) not in activated_positions
+        ]
         inactive_positions = np.array(inactive_positions)
 
-        ax.scatter(inactive_positions[:, 0], inactive_positions[:, 1], inactive_positions[:, 2],
-                   color='gray', alpha=0.3, label='Inactive SiPMs')
+        ax.scatter(
+            inactive_positions[:, 0],
+            inactive_positions[:, 1],
+            inactive_positions[:, 2],
+            color="gray",
+            alpha=0.3,
+            label="Inactive SiPMs",
+        )
 
         # Set plot labels and title
         ax.set_title("3D Event Visualization of Event " + str(event_idx))
@@ -164,11 +191,14 @@ class Event:
         x_limits = ax.get_xlim()
         y_limits = ax.get_ylim()
         z_limits = ax.get_zlim()
-        max_range = max(
-            x_limits[1] - x_limits[0],
-            y_limits[1] - y_limits[0],
-            z_limits[1] - z_limits[0],
-        ) / 2.0
+        max_range = (
+            max(
+                x_limits[1] - x_limits[0],
+                y_limits[1] - y_limits[0],
+                z_limits[1] - z_limits[0],
+            )
+            / 2.0
+        )
 
         mid_x = (x_limits[0] + x_limits[1]) / 2.0
         mid_y = (y_limits[0] + y_limits[1]) / 2.0
@@ -194,10 +224,8 @@ class EventLoader:
         self.num_clusters_per_event = np.load(clusters_file)
         self.num_sipms_per_cluster = np.load(sipms_per_cluster_file)
         self.sipm_positions = np.load(sipm_positions_file)
-        self.cumulative_sipms_per_cluster = np.cumsum(
-            self.num_sipms_per_cluster)
-        self.cumulative_clusters_per_event = np.cumsum(
-            self.num_clusters_per_event)
+        self.cumulative_sipms_per_cluster = np.cumsum(self.num_sipms_per_cluster)
+        self.cumulative_clusters_per_event = np.cumsum(self.num_clusters_per_event)
 
     def load_event(self, event_idx):
         """
@@ -234,7 +262,8 @@ def main():
 
     # Initialize event loader
     event_loader = EventLoader(
-        clusters_file, sipms_per_cluster_file, sipm_positions_file)
+        clusters_file, sipms_per_cluster_file, sipm_positions_file
+    )
 
     # Load and visualize specific events
     for number_of_clusters in np.unique(cluster_multiplicity):
