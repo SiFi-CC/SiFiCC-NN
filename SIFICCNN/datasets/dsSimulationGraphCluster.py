@@ -82,7 +82,8 @@ class DSGraphCluster(Dataset):
 
         # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
         a_e_list = [sparse.edge_index_to_matrix(edge_index=el,
-                                                edge_weight=np.ones(el.shape[0]),
+                                                edge_weight=np.ones(
+                                                    el.shape[0]),
                                                 edge_features=e,
                                                 shape=(n, n), )
                     for el, e, n in zip(el_list, e_list, n_nodes)
@@ -135,7 +136,8 @@ class DSGraphCluster(Dataset):
         Grabs targets from files. Type of targets are set during the initialization of the datasets.
         """
         if self.regression is not None:
-            graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
+            graph_attributes = np.load(
+                self.path + "/" + "graph_attributes.npy")
             if self.regression == "Energy":
                 y_list = graph_attributes[:, :2]
             elif self.regression == "Position":

@@ -7,10 +7,11 @@ from analysis.EdgeConvResNetSiPM.RegressionPosition import regression_position_h
 from SIFICCNN.models import *
 import numpy as np
 
+
 def main(args):
 
     task = args.task
-    if task == "all":  
+    if task == "all":
         tasks = ["classification", "regression_energy", "regression_position"]
         for specific_task in tasks:
             try:
@@ -19,7 +20,7 @@ def main(args):
                 print(f"{specific_task.replace('_', ' ').capitalize()} failed: {e}")
     else:
         do_task(args)
-        
+
 
 def do_task(args, specific_task=None):
     # base settings if no parameters are given
@@ -39,7 +40,6 @@ def do_task(args, specific_task=None):
     base_dataset_name = "SimGraphSiPM"
     base_evaluate_0mm = False
 
-
     # this bunch is to set standard configuration if argument parser is not configured
     # looks ugly but works
     task = args.task if args.task is not None else base_task
@@ -52,7 +52,6 @@ def do_task(args, specific_task=None):
     elif task == "energy":
         base_nOut = 2
         base_activation_out = "linear"
-
 
     run_name = args.run_name if args.run_name is not None else base_run_name
     epochs = args.epochs if args.epochs is not None else base_epochs
@@ -69,19 +68,21 @@ def do_task(args, specific_task=None):
     evaluate_0mm = args.evaluate_0mm if args.evaluate_0mm is not None else base_evaluate_0mm
 
     if do_evaluation and evaluate_0mm:
-        raise ValueError("Cannot perform short evaluation and full evaluation at the same time")
+        raise ValueError(
+            "Cannot perform short evaluation and full evaluation at the same time")
 
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
-    DATASET_CONT    = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
-    DATASET_0MM     = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
-    DATASET_5MM     = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
-    DATASET_10MM    = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
-    DATASET_m5MM    = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
-    #DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
+    DATASET_CONT = "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4"
+    DATASET_0MM = "OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
+    DATASET_5MM = "OptimisedGeometry_4to1_5mm_3.9e9protons_simv4"
+    DATASET_10MM = "OptimisedGeometry_4to1_10mm_3.9e9protons_simv4"
+    DATASET_m5MM = "OptimisedGeometry_4to1_minus5mm_3.9e9protons_simv4"
+    # DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
-    DATASETS = np.array([DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_10MM, DATASET_m5MM])
+    DATASETS = np.array(
+        [DATASET_CONT, DATASET_0MM, DATASET_5MM, DATASET_10MM, DATASET_m5MM])
     if evaluate_0mm:
         DATASETS = np.array([DATASET_CONT, DATASET_0MM])
     print("Datasets: ", DATASETS)
@@ -101,74 +102,79 @@ def do_task(args, specific_task=None):
             os.mkdir(path_results + "/" + file + "/")
 
     modelParameter = {"nFilter": nFilter,
-                "activation": activation,
-                "n_out": nOut,
-                "activation_out": activation_out,
-                "dropout": dropout}
+                      "activation": activation,
+                      "n_out": nOut,
+                      "activation_out": activation_out,
+                      "dropout": dropout}
 
     tf_model = set_model(model_type, modelParameter)
 
     print("Task: ", task)
 
     if task == "classification":
-        classification_handler(run_name, epochs, batch_size, do_training, do_evaluation, tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        classification_handler(run_name, epochs, batch_size, do_training, do_evaluation,
+                               tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
     elif task == "regression_energy":
-        regression_energy_handler(run_name, epochs, batch_size, do_training, do_evaluation, tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        regression_energy_handler(run_name, epochs, batch_size, do_training, do_evaluation,
+                                  tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
     elif task == "regression_position":
-        regression_position_handler(run_name, epochs, batch_size, do_training, do_evaluation, tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+        regression_position_handler(run_name, epochs, batch_size, do_training, do_evaluation,
+                                    tf_model, dataset_name, DATASETS=DATASETS, path_results=path_results)
+
 
 def get_arguments():
-    parser = argparse.ArgumentParser(description="Run classification and regression scripts")
-    parser.add_argument('--task', 
-                        type=str, 
-                        required=True, 
-                        choices=['classification', 'regression_energy', 'regression_position', 'all'],
+    parser = argparse.ArgumentParser(
+        description="Run classification and regression scripts")
+    parser.add_argument('--task',
+                        type=str,
+                        required=True,
+                        choices=['classification', 'regression_energy',
+                                 'regression_position', 'all'],
                         help="Task to run: classification, regression_energy, or regression_position")
-    parser.add_argument('--run_name', 
-                        type=str,  
+    parser.add_argument('--run_name',
+                        type=str,
                         help="Run name")
-    parser.add_argument('--epochs', 
+    parser.add_argument('--epochs',
                         type=int,
                         help="Number of epochs")
-    parser.add_argument('--batch_size', 
+    parser.add_argument('--batch_size',
                         type=int,
                         help="Batch size")
-    parser.add_argument('--dropout', 
-                        type=float, 
+    parser.add_argument('--dropout',
+                        type=float,
                         help="Dropout rate")
-    parser.add_argument('--nFilter', 
-                        type=int, 
+    parser.add_argument('--nFilter',
+                        type=int,
                         help="Number of filters")
-    parser.add_argument('--nOut', 
+    parser.add_argument('--nOut',
                         type=int,
                         help="Number of output nodes")
-    parser.add_argument('--activation', 
-                        type=str, 
+    parser.add_argument('--activation',
+                        type=str,
                         help="Activation function")
     parser.add_argument('--activation_out',
-                        type=str, 
+                        type=str,
                         help="Output activation function")
-    parser.add_argument('--do_training', 
-                        action='store_true', 
+    parser.add_argument('--do_training',
+                        action='store_true',
                         help="Perform training")
-    parser.add_argument('--do_evaluation', 
-                        action='store_true', 
+    parser.add_argument('--do_evaluation',
+                        action='store_true',
                         help="Perform evaluation")
-    parser.add_argument('--model_type', 
-                        type=str, 
+    parser.add_argument('--model_type',
+                        type=str,
                         help="Model type: SiFiECRNShort, SiFiECRN4, SiFiECRN5, SiFiECRNShortOld, SiFiECRNOld4, SiFiECR2N, SiFiECRNX, SiFiECRNXV2, SiFiECR2NV2, SiFiECRN2BN, SiFiECRNXBN, SiFiECR2NBN, SiFiECRNXV2BN, SiFiECR2NV2BN")
-    parser.add_argument('--dataset_name', 
+    parser.add_argument('--dataset_name',
                         type=str,
                         help="Dataset name")
-    parser.add_argument('--evaluate_0mm', 
-                        action='store_true', 
+    parser.add_argument('--evaluate_0mm',
+                        action='store_true',
                         help="Perform evaluation only using 0mm dataset")
-    
+
     args = parser.parse_args()
 
-    
-
     return args
+
 
 def set_model(model_type, modelParameter):
     if model_type == "SiFiECRN4":
@@ -204,6 +210,7 @@ def set_model(model_type, modelParameter):
     print(tf_model.summary())
 
     return tf_model
+
 
 if __name__ == "__main__":
     args = get_arguments()

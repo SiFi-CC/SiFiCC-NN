@@ -35,7 +35,6 @@ from SIFICCNN.utils.plotter import plot_history_classifier, \
 from analysis.EdgeConvResNetSiPM.parameters import datasets
 
 
-
 def main(run_name="ECRNSiPM_unnamed",
          epochs=50,
          batch_size=64,
@@ -51,10 +50,10 @@ def main(run_name="ECRNSiPM_unnamed",
          ):
 
     datasets, output_dimensions = get_parameters(mode)
-	
-	if nOut == 0:
-		print("Setting output dimensions to default value set in parameters.py")
-		nOut = output_dimensions["classification"]
+
+    if nOut == 0:
+        print("Setting output dimensions to default value set in parameters.py")
+        nOut = output_dimensions["classification"]
 
     # Train-Test-Split configuration
     trainsplit = 0.8
@@ -129,11 +128,11 @@ def training(dataset_type,
     model_type (str): Type of the model to be used.
     dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
     """
-    
+
     # load graph datasets
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=None,
-					   mode=mode,
+                       mode=mode,
                        positives=False,
                        regression=None,
                        name=dataset_name,
@@ -145,10 +144,9 @@ def training(dataset_type,
     # set model
     modelDict = get_models()
     tf_model = modelDict[model_type](F=5, **modelParameter)
-    
+
     print(tf_model.summary())
 
-    
     # generate disjoint loader from datasets
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
@@ -198,7 +196,7 @@ def evaluate(dataset_type,
              path,
              dataset_name,
              ):
-    
+
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
 
@@ -235,7 +233,7 @@ def evaluate(dataset_type,
     # load datasets
     data = DSGraphSiPM(type=dataset_type,
                        norm_x=norm_x,
-					   mode=mode,
+                       mode=mode,
                        positives=False,
                        regression=None,
                        name=dataset_name,
@@ -257,8 +255,10 @@ def evaluate(dataset_type,
         inputs, target = batch
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
-        y_true[index:index + batch_size] = target[:, 0]  # Flatten the target array
-        y_pred[index:index + batch_size] = p.numpy().reshape(-1).astype(np.float32)  # Flatten the prediction array
+        # Flatten the target array
+        y_true[index:index + batch_size] = target[:, 0]
+        # Flatten the prediction array
+        y_pred[index:index + batch_size] = p.numpy().reshape(-1).astype(np.float32)
         index += batch_size
 
     # export the classification results to a readable .txt file
@@ -310,20 +310,33 @@ def evaluate(dataset_type,
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
-    parser.add_argument("--name", type=str, default="SimGraphSiPM_default", help="Run name")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs")
-    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
+    parser = argparse.ArgumentParser(
+        description='Trainings script ECRNCluster model')
+    parser.add_argument("--name", type=str,
+                        default="SimGraphSiPM_default", help="Run name")
+    parser.add_argument("--epochs", type=int, default=20,
+                        help="Number of epochs")
+    parser.add_argument("--batch_size", type=int,
+                        default=64, help="Batch size")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout")
-    parser.add_argument("--nFilter", type=int, default=32, help="Number of filters per layer")
-    parser.add_argument("--nOut", type=int, default=0, help="Number of output nodes")
-    parser.add_argument("--activation", type=str, default="relu", help="Activation function of layers")
-    parser.add_argument("--activation_out", type=str, default="sigmoid", help="Activation function of output node")
-    parser.add_argument("--training", type=bool, default=False, help="If true, do training process")
-    parser.add_argument("--evaluation", type=bool, default=False, help="If true, do evaluation process")
-    parser.add_argument("--model_type", type=str, default="SiFiECRNShort", help="Model type: {}".format(get_models().keys()))
-    parser.add_argument("--dataset_name", type=str, default="SimGraphSiPM", help="Name of the dataset")
-    parser.add_argument("--mode", type=str, choices=["CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
+    parser.add_argument("--nFilter", type=int, default=32,
+                        help="Number of filters per layer")
+    parser.add_argument("--nOut", type=int, default=0,
+                        help="Number of output nodes")
+    parser.add_argument("--activation", type=str,
+                        default="relu", help="Activation function of layers")
+    parser.add_argument("--activation_out", type=str,
+                        default="sigmoid", help="Activation function of output node")
+    parser.add_argument("--training", type=bool, default=False,
+                        help="If true, do training process")
+    parser.add_argument("--evaluation", type=bool,
+                        default=False, help="If true, do evaluation process")
+    parser.add_argument("--model_type", type=str, default="SiFiECRNShort",
+                        help="Model type: {}".format(get_models().keys()))
+    parser.add_argument("--dataset_name", type=str,
+                        default="SimGraphSiPM", help="Name of the dataset")
+    parser.add_argument("--mode", type=str, choices=[
+                        "CM-4to1", "CC-4to1"], required=True, help="Select the setup: CM-4to1 or CC-4to1")
     args = parser.parse_args()
 
     main(run_name=args.name,
@@ -338,5 +351,5 @@ if __name__ == "__main__":
          do_evaluation=args.evaluation,
          model_type=args.model_type,
          dataset_name=args.dataset_name,
-		 mode=args.mode,
-		 )
+         mode=args.mode,
+         )

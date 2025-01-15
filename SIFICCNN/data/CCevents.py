@@ -57,20 +57,20 @@ class EventSimulation:
                  SiPMHit=None,
                  FibreHit=None):
         # Global information
-        self.EventNumber            = EventNumber
-        self.MCSimulatedEventType   = MCSimulatedEventType
-        self.MCEnergy_Primary       = MCEnergy_Primary
-        self.MCEnergy_e             = MCEnergy_e
-        self.MCEnergy_p             = MCEnergy_p
-        self.MCPosition_source      = TVector3.from_akw(MCPosition_source)
-        self.MCDirection_source     = TVector3.from_akw(MCDirection_source)
-        self.MCComptonPosition      = TVector3.from_akw(MCComptonPosition)
-        self.MCDirection_scatter    = TVector3.from_akw(MCDirection_scatter)
-        self.MCPosition_e           = tVector_list(MCPosition_e)
-        self.MCInteractions_e       = np.array(MCInteractions_e)
-        self.MCPosition_p           = tVector_list(MCPosition_p)
-        self.MCInteractions_p       = np.array(MCInteractions_p)
-        self.MCNPrimaryNeutrons     = MCNPrimaryNeutrons
+        self.EventNumber = EventNumber
+        self.MCSimulatedEventType = MCSimulatedEventType
+        self.MCEnergy_Primary = MCEnergy_Primary
+        self.MCEnergy_e = MCEnergy_e
+        self.MCEnergy_p = MCEnergy_p
+        self.MCPosition_source = TVector3.from_akw(MCPosition_source)
+        self.MCDirection_source = TVector3.from_akw(MCDirection_source)
+        self.MCComptonPosition = TVector3.from_akw(MCComptonPosition)
+        self.MCDirection_scatter = TVector3.from_akw(MCDirection_scatter)
+        self.MCPosition_e = tVector_list(MCPosition_e)
+        self.MCInteractions_e = np.array(MCInteractions_e)
+        self.MCPosition_p = tVector_list(MCPosition_p)
+        self.MCInteractions_p = np.array(MCInteractions_p)
+        self.MCNPrimaryNeutrons = MCNPrimaryNeutrons
 
         # Detector modules
         self.scatterer = Scatterer
@@ -85,9 +85,9 @@ class EventSimulation:
             self.MCEnergyDeps_p = None
 
         # Container objects for additional information
-        self.RecoCluster    = RecoCluster
-        self.SiPMHit        = SiPMHit
-        self.FibreHit       = FibreHit
+        self.RecoCluster = RecoCluster
+        self.SiPMHit = SiPMHit
+        self.FibreHit = FibreHit
 
         # set flags for phantom-hit methods
         # Phantom-hits describe events where the primary prompt gamma undergoes pair-production,
@@ -98,9 +98,9 @@ class EventSimulation:
         #   - 1: Phantom hits are scanned by the pair-production tag of the simulation
         #   - 2: Phantom hits are scanned by proximity of secondary interactions
         #        (USE THIS IF THE SIMULATION DOES NOT CONTAIN PAIR-PRODUCTION TAGS)
-        self.ph_method      = 1
-        self.ph_acceptance  = 1e-1
-        self.ph_tag         = False
+        self.ph_method = 1
+        self.ph_acceptance = 1e-1
+        self.ph_tag = False
 
         # Define new interaction lists
         # During the development of this code the template for interaction id encoding changed
@@ -110,8 +110,10 @@ class EventSimulation:
         #   - type: describes the interaction type of particle interaction
         #   - level: describes the secondary level of the interacting particle
         #   - energy: boolean encoding if the interaction deposited energy
-        self.MCInteractions_e_full = np.zeros(shape=(len(self.MCInteractions_e), 4))
-        self.MCInteractions_p_full = np.zeros(shape=(len(self.MCInteractions_p), 4))
+        self.MCInteractions_e_full = np.zeros(
+            shape=(len(self.MCInteractions_e), 4))
+        self.MCInteractions_p_full = np.zeros(
+            shape=(len(self.MCInteractions_p), 4))
         self.set_interaction_list()
 
     def set_interaction_list(self):
@@ -163,23 +165,27 @@ class EventSimulation:
             elif len(str(self.MCInteractions_e[0])) == 5:
                 for i, interact in enumerate(self.MCInteractions_e):
                     self.MCInteractions_e_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 * (interact // 10 ** 3 % 10),
+                        interact // 10 ** 2 % 10 + 10 *
+                        (interact // 10 ** 3 % 10),
                         interact // 10 ** 1 % 10,
                         interact // 10 ** 0 % 10]
 
                     if self.MCEnergyDeps_e is not None:
-                        self.MCInteractions_e_full[i, 3] = (self.MCEnergyDeps_e[i] > 0.0) * 1
+                        self.MCInteractions_e_full[i, 3] = (
+                            self.MCEnergyDeps_e[i] > 0.0) * 1
                     else:
                         self.MCInteractions_e_full[i, 3] = 1
 
                 for i, interact in enumerate(self.MCInteractions_p):
                     self.MCInteractions_p_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 * (interact // 10 ** 3 % 10),
+                        interact // 10 ** 2 % 10 + 10 *
+                        (interact // 10 ** 3 % 10),
                         interact // 10 ** 1 % 10,
                         interact // 10 ** 0 % 10]
 
                     if self.MCEnergyDeps_p is not None:
-                        self.MCInteractions_p_full[i, 3] = (self.MCEnergyDeps_p[i] > 0.0) * 1
+                        self.MCInteractions_p_full[i, 3] = (
+                            self.MCEnergyDeps_p[i] > 0.0) * 1
                     else:
                         self.MCInteractions_p_full[i, 3] = 1
 
@@ -247,7 +253,8 @@ class EventSimulation:
                             tmp_angle = vector_angle(
                                 self.MCPosition_p[i] - self.MCComptonPosition,
                                 self.MCDirection_scatter)
-                            r = (self.MCPosition_p[i] - self.MCComptonPosition).mag
+                            r = (self.MCPosition_p[i] -
+                                 self.MCComptonPosition).mag
                             tmp_dist = np.sin(tmp_angle) * r
                             if tmp_dist < self.ph_acceptance:
                                 self.ph_tag = True
@@ -491,7 +498,8 @@ class EventSimulation:
             print(
                 "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff. | Energy dep.")
         else:
-            print("Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff.")
+            print(
+                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff.")
 
         for i in range(self.MCInteractions_p_full.shape[0]):
             tmp_vec = self.MCPosition_p[i] - self.MCComptonPosition
@@ -572,9 +580,11 @@ class RecoCluster:
         # Reco information (Cut-Based Reconstruction)
         self.Identified = Identified
         self.RecoClusterPosition = tVector_list(RecoClusterPosition)
-        self.RecoClusterPosition_uncertainty = tVector_list(RecoClusterPosition_uncertainty)
+        self.RecoClusterPosition_uncertainty = tVector_list(
+            RecoClusterPosition_uncertainty)
         self.RecoClusterEnergies_values = np.array(RecoClusterEnergies_values)
-        self.RecoClusterEnergies_uncertainty = np.array(RecoClusterEnergies_uncertainty)
+        self.RecoClusterEnergies_uncertainty = np.array(
+            RecoClusterEnergies_uncertainty)
         self.RecoClusterEntries = np.array(RecoClusterEntries)
         self.RecoClusterTimestamps = np.array(RecoClusterTimestamps)
         self.RecoClusterTimeStart = min(RecoClusterTimestamps)
@@ -636,7 +646,8 @@ class RecoCluster:
             photon energy, photon energy uncertainty
         """
         _, idx_absorber = self.sort_clusters_by_module(use_energy=True)
-        photon_energy_value = np.sum(self.RecoClusterEnergies_values[idx_absorber])
+        photon_energy_value = np.sum(
+            self.RecoClusterEnergies_values[idx_absorber])
         photon_energy_uncertainty = np.sqrt(
             np.sum(self.RecoClusterEnergies_uncertainty[idx_absorber] ** 2))
         return photon_energy_value, photon_energy_uncertainty
@@ -967,7 +978,7 @@ class SiPMHit:
             euclidean distance, azimuthal angle, polar angle
         """
         vec = self.SiPMPosition[idx2] - self.SiPMPosition[idx1]
-        dt  = self.SiPMTimeStamp[idx2] - self.SiPMTimeStamp[idx1]
+        dt = self.SiPMTimeStamp[idx2] - self.SiPMTimeStamp[idx1]
         dPhotonCount = self.SiPMPhotonCount[idx2] - self.SiPMPhotonCount[idx1]
 
         if not cartesian:

@@ -24,20 +24,25 @@ class RootSimulation:
 		if self.mode == "CM-4to1":
 		    # create SIFICC-Module objects for detector (=scatterer)
 		    self.detector = Detector.from_root(self.setup["DetectorPosition"].array()[0],
-		                                        self.setup["DetectorThickness_x"].array()[0],
-		                                        self.setup["DetectorThickness_y"].array()[0],
+		                                        self.setup["DetectorThickness_x"].array()[
+		                                                                                0],
+		                                        self.setup["DetectorThickness_y"].array()[
+		                                                                                0],
 		                                        self.setup["DetectorThickness_z"].array()[0])
 		elif self.mode == "CC-4to1":
 		    # create SIFICC-Module objects for scatterer and absorber
 		    self.scatterer = Detector.from_root(self.setup["ScattererPosition"].array()[0],
-		                                        self.setup["ScattererThickness_x"].array()[0],
-		                                        self.setup["ScattererThickness_y"].array()[0],
+		                                        self.setup["ScattererThickness_x"].array()[
+		                                                                                 0],
+		                                        self.setup["ScattererThickness_y"].array()[
+		                                                                                 0],
 		                                        self.setup["ScattererThickness_z"].array()[0])
 		    self.absorber = Detector.from_root(self.setup["AbsorberPosition"].array()[0],
-		                                       self.setup["AbsorberThickness_x"].array()[0],
-		                                       self.setup["AbsorberThickness_y"].array()[0],
+		                                       self.setup["AbsorberThickness_x"].array()[
+		                                                                               0],
+		                                       self.setup["AbsorberThickness_y"].array()[
+		                                                                               0],
 		                                       self.setup["AbsorberThickness_z"].array()[0])
-
 
         # create a list of all leaves contained in the root file
         # used to determine the amount of information stored inside the root file
@@ -111,7 +116,7 @@ class RootSimulation:
 		    dictSimulation = {"EventNumber": "EventNumber",
 		                      "MCPosition_source": "MCPosition_source",
 		                      "MCDirection_source": "MCDirection_source",
-		                      "MCEnergyPrimary": "MCEnergy_Primary",}
+		                      "MCEnergyPrimary": "MCEnergy_Primary", }
 
 		elif self.mode == "CC-4to1":
 		        dictSimulation = {"EventNumber": "EventNumber",
@@ -181,7 +186,8 @@ class RootSimulation:
             n_start = 0
         # evaluate parameter n
         if n_start > self.events_entries:
-            raise ValueError("Can't start at index {}, root file only contains {} events!".format(n_start, self.events_entries))
+            raise ValueError("Can't start at index {}, root file only contains {} events!".format(
+                n_start, self.events_entries))
         if n_stop is None:
             n_stop = self.events_entries
 

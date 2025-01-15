@@ -7,7 +7,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class DatasetReader:
     def __init__(self, dataset_path, show_adjacency_matrix=False, **kwargs):
@@ -44,13 +46,16 @@ class DatasetReader:
             # Load dataset only once
             logging.info(f"Loading dataset: {self.name}")
             try:
-                self.node_batch_index = np.load(os.path.join(self.path, "graph_indicator.npy"))
+                self.node_batch_index = np.load(
+                    os.path.join(self.path, "graph_indicator.npy"))
                 self.n_nodes = np.bincount(self.node_batch_index)
-                self.n_nodes_cum = np.concatenate(([0], np.cumsum(self.n_nodes)[:-1]))
+                self.n_nodes_cum = np.concatenate(
+                    ([0], np.cumsum(self.n_nodes)[:-1]))
 
                 self.x_list = self._get_x_list(self.n_nodes_cum)
                 self.y_list = self._get_y_list()
-                self.labels = np.load(os.path.join(self.path, "graph_labels.npy"))
+                self.labels = np.load(os.path.join(
+                    self.path, "graph_labels.npy"))
             except FileNotFoundError as e:
                 logging.error(f"Required file not found: {e}")
                 raise
@@ -59,16 +64,18 @@ class DatasetReader:
 
         block_events = []
         for i in np.arange(start_index, start_index+block_size, 1):
-            
+
             sipm_attributes = self.x_list.pop(0)
             graph_label = self.labels[i]
             graph_attributes = self.y_list[i]
-            block_events.append(Event([Cluster(sipm_attributes, graph_label, graph_attributes)]))
+            block_events.append(
+                Event([Cluster(sipm_attributes, graph_label, graph_attributes)]))
 
         yield block_events
 
     def _get_x_list(self, n_nodes_cum):
-        sipm_attributes = np.load(os.path.join(self.path, "node_attributes.npy"))
+        sipm_attributes = np.load(os.path.join(
+            self.path, "node_attributes.npy"))
         return np.split(sipm_attributes, n_nodes_cum[1:])
 
     def _get_y_list(self):
@@ -85,6 +92,7 @@ class DatasetReader:
     """@property
     def labels(self):
         return np.load(os.path.join(self.path, "graph_labels.npy"))"""
+
 
 class Detector:
     """
@@ -116,47 +124,61 @@ class Detector:
     _generate_sipm_positions():
         Generates the positions of the SiPMs based on the initialized bins.
     """
+
     def __init__(self):
         self._initialize_sipm_bins()
         self.sipm_positions = self._generate_sipm_positions()
-    
+
     def _initialize_sipm_bins(self):
         self.sipm_size = 4
 
-        self.sipm_bins0_bottom_scatterer = np.arange(-55, 53 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_bottom_scatterer = np.arange(
+            -55, 53 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_bottom_scatterer = -51
-        self.sipm_bins2_bottom_scatterer = np.arange(143, 155 + self.sipm_size, self.sipm_size)
-        self.sipm_bins0_top_scatterer = np.arange(-53, 55 + self.sipm_size, self.sipm_size)
+        self.sipm_bins2_bottom_scatterer = np.arange(
+            143, 155 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_top_scatterer = np.arange(
+            -53, 55 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_top_scatterer = 51
-        self.sipm_bins2_top_scatterer = np.arange(145, 157 + self.sipm_size, self.sipm_size)
+        self.sipm_bins2_top_scatterer = np.arange(
+            145, 157 + self.sipm_size, self.sipm_size)
 
-        self.sipm_bins0_bottom_absorber = np.arange(-63, 61 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_bottom_absorber = np.arange(
+            -63, 61 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_bottom_absorber = -51
-        self.sipm_bins2_bottom_absorber = np.arange(255, 283 + self.sipm_size, self.sipm_size)
-        self.sipm_bins0_top_absorber = np.arange(-61, 63 + self.sipm_size, self.sipm_size)
+        self.sipm_bins2_bottom_absorber = np.arange(
+            255, 283 + self.sipm_size, self.sipm_size)
+        self.sipm_bins0_top_absorber = np.arange(
+            -61, 63 + self.sipm_size, self.sipm_size)
         self.sipm_bins1_top_absorber = 51
-        self.sipm_bins2_top_absorber = np.arange(257, 285 + self.sipm_size, self.sipm_size)
-
-
+        self.sipm_bins2_top_absorber = np.arange(
+            257, 285 + self.sipm_size, self.sipm_size)
 
     def _generate_sipm_positions(self):
         bottom_positions_scatterer = np.array(
-            [[x, self.sipm_bins1_bottom_scatterer, z] for x in self.sipm_bins0_bottom_scatterer for z in self.sipm_bins2_bottom_scatterer]
+            [[x, self.sipm_bins1_bottom_scatterer, z]
+                for x in self.sipm_bins0_bottom_scatterer for z in self.sipm_bins2_bottom_scatterer]
         )
         top_positions_scatterer = np.array(
-            [[x, self.sipm_bins1_top_scatterer, z] for x in self.sipm_bins0_top_scatterer for z in self.sipm_bins2_top_scatterer]
+            [[x, self.sipm_bins1_top_scatterer, z]
+                for x in self.sipm_bins0_top_scatterer for z in self.sipm_bins2_top_scatterer]
         )
         bottom_positions_absorber = np.array(
-            [[x, self.sipm_bins1_bottom_absorber, z] for x in self.sipm_bins0_bottom_absorber for z in self.sipm_bins2_bottom_absorber]
-        )   
+            [[x, self.sipm_bins1_bottom_absorber, z]
+                for x in self.sipm_bins0_bottom_absorber for z in self.sipm_bins2_bottom_absorber]
+        )
         top_positions_absorber = np.array(
-            [[x, self.sipm_bins1_top_absorber, z] for x in self.sipm_bins0_top_absorber for z in self.sipm_bins2_top_absorber]
+            [[x, self.sipm_bins1_top_absorber, z]
+                for x in self.sipm_bins0_top_absorber for z in self.sipm_bins2_top_absorber]
         )
 
-        bottom_positions = np.vstack((bottom_positions_scatterer, bottom_positions_absorber))
-        top_positions = np.vstack((top_positions_scatterer, top_positions_absorber))
+        bottom_positions = np.vstack(
+            (bottom_positions_scatterer, bottom_positions_absorber))
+        top_positions = np.vstack(
+            (top_positions_scatterer, top_positions_absorber))
 
         return np.vstack((bottom_positions, top_positions))
+
 
 class SiPM:
     """
@@ -185,6 +207,7 @@ class SiPM:
         represent the position, the fifth element represents the photon count,
         and the sixth element represents the timestamp.
     """
+
     def __init__(self, node):
         self.position = node[:3]
         self.timestamp = node[5]
@@ -192,6 +215,7 @@ class SiPM:
 
     def __repr__(self):
         return f"SiPM(position={self.position})"
+
 
 class Cluster:
     """
@@ -213,6 +237,7 @@ class Cluster:
     get_bounding_box():
         Returns the minimum and maximum coordinates of the SiPM positions in the cluster.
     """
+
     def __init__(self, nodes, label, cluster_hit):
         self.sipms = nodes
         self.label = label
@@ -225,6 +250,7 @@ class Cluster:
 
     def __repr__(self):
         return f"Cluster(num_sipms={len(self.sipms)})"
+
 
 class Event:
     """
@@ -244,10 +270,12 @@ class Event:
     plot(detector, event_idx, show_sipms=False, show_cluster_area=False, show_photon_hits=False, ax=None):
         Plots a 3D visualization of the event.
     """
+
     def __init__(self, clusters):
         self.clusters = clusters
         self.nClusters = len(self.clusters)
-        self.contains_non_compton_hit = 0 in [cluster.label for cluster in self.clusters]
+        self.contains_non_compton_hit = 0 in [
+            cluster.label for cluster in self.clusters]
 
     def plot(self, detector, event_idx, show_sipms=False, show_cluster_area=False, show_compton_hits=False, ax=None):
         """
@@ -267,7 +295,6 @@ class Event:
         if ax is None:
             fig = plt.figure(figsize=(10, 7))
             ax = fig.add_subplot(111, projection='3d')
-
 
         cluster_colors = plt.cm.get_cmap('plasma', len(self.clusters))
 
@@ -301,21 +328,21 @@ class Event:
                          [vertices[0], vertices[3], vertices[7], vertices[4]],
                          [vertices[1], vertices[2], vertices[6], vertices[5]]]
 
-                poly3d = Poly3DCollection(faces, color=cluster_color, alpha=0.3)
+                poly3d = Poly3DCollection(
+                    faces, color=cluster_color, alpha=0.3)
                 ax.add_collection3d(poly3d)
-
 
             if show_compton_hits:
                 if self.contains_non_compton_hit:
                     print("No Compton Hit found!")
                 else:
-                    cluster_hit_position = cluster.cluster_hit[2:5] ##################################################
+                    cluster_hit_position = cluster.cluster_hit[2:5]
                     print("cluster_hit_position", cluster_hit_position)
                     ax.scatter(cluster_hit_position[0], cluster_hit_position[1], cluster_hit_position[2],
-                           color='red', marker='*', s=200, label=f'Compton e Position')
+                               color='red', marker='*', s=200, label=f'Compton e Position')
 
-
-            inactive_positions = [pos for pos in all_positions if tuple(pos) not in activated_positions]
+            inactive_positions = [pos for pos in all_positions if tuple(
+                pos) not in activated_positions]
             inactive_positions = np.array(inactive_positions)
 
             ax.scatter(inactive_positions[:, 0], inactive_positions[:, 1], inactive_positions[:, 2],
@@ -326,7 +353,8 @@ class Event:
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
 
-        mid_x, mid_y, mid_z = map(lambda lim: (lim[0] + lim[1]) / 2.0, [ax.get_xlim(), ax.get_ylim(), ax.get_zlim()])
+        mid_x, mid_y, mid_z = map(lambda lim: (
+            lim[0] + lim[1]) / 2.0, [ax.get_xlim(), ax.get_ylim(), ax.get_zlim()])
         max_range = max(
             ax.get_xlim()[1] - ax.get_xlim()[0],
             ax.get_ylim()[1] - ax.get_ylim()[0],
@@ -342,6 +370,7 @@ class Event:
     def __repr__(self):
         return f"Event(num_clusters={len(self.clusters)})"
 
+
 def main():
     name = 'datasets/SimGraphSiPM/OptimisedGeometry_4to1_0mm_3.9e9protons_simv4'
     reader = DatasetReader(name)
@@ -352,6 +381,7 @@ def main():
     for event_idx, block in enumerate(reader.read()):
         for idx, event in enumerate(block):
             event.plot(detector, event_idx * 100 + idx)
+
 
 if __name__ == "__main__":
     main()

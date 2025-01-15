@@ -259,17 +259,23 @@ def evaluate(dataset_name,
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
+    parser = argparse.ArgumentParser(
+        description='Trainings script ECRNCluster model')
     parser.add_argument("--name", type=str, help="Run name")
     parser.add_argument("--epochs", type=int, help="Number of epochs")
     parser.add_argument("--batch_size", type=int, help="Batch size")
     parser.add_argument("--dropout", type=float, help="Dropout")
-    parser.add_argument("--nFilter", type=int, help="Number of filters per layer")
+    parser.add_argument("--nFilter", type=int,
+                        help="Number of filters per layer")
     parser.add_argument("--nOut", type=int, help="Number of output nodes")
-    parser.add_argument("--activation", type=str, help="Activation function of layers")
-    parser.add_argument("--activation_out", type=str, help="Activation function of output node")
-    parser.add_argument("--training", type=bool, help="If true, do training process")
-    parser.add_argument("--evaluation", type=bool, help="If true, do evaluation process")
+    parser.add_argument("--activation", type=str,
+                        help="Activation function of layers")
+    parser.add_argument("--activation_out", type=str,
+                        help="Activation function of output node")
+    parser.add_argument("--training", type=bool,
+                        help="If true, do training process")
+    parser.add_argument("--evaluation", type=bool,
+                        help="If true, do evaluation process")
     args = parser.parse_args()
 
     # base settings if no parameters are given

@@ -22,7 +22,7 @@ class DSGraphSiPM(Dataset):
 
     def __init__(self,
                  type,
-				 mode,
+                 mode,
                  norm_x=None,
                  norm_e=None,
                  positives=False,
@@ -95,28 +95,29 @@ class DSGraphSiPM(Dataset):
         edge_batch_idx = node_batch_index[edges[:, 0]]
         n_edges = np.bincount(edge_batch_idx)
         n_edges_cum = np.cumsum(n_edges[:-1])
-        el_list = np.split(edges - n_nodes_cum[edge_batch_idx, None], n_edges_cum)
+        el_list = np.split(
+            edges - n_nodes_cum[edge_batch_idx, None], n_edges_cum)
 
         # Get node attributes (x_list)
         x_list = self._get_x_list(n_nodes_cum=n_nodes_cum)
         # Get edge attributes (e_list), in this case edge features are disabled
         e_list = np.array([None] * len(n_nodes))
 
-
         # Create sparse adjacency matrices and re-sort edge attributes in lexicographic order
         a_e_list = []
         total_matrices = len(n_nodes)
-        print(f"Total number of adjacency matrices to be created: {total_matrices}")
+        print(
+            f"Total number of adjacency matrices to be created: {total_matrices}")
 
         with tqdm(total=total_matrices, desc="Creating adjacency matrices") as pbar:
             for el, e, n in zip(el_list, e_list, n_nodes):
                 a = sparse.edge_index_to_matrix(edge_index=el,
-                                                edge_weight=np.ones(el.shape[0]),
+                                                edge_weight=np.ones(
+                                                    el.shape[0]),
                                                 edge_features=e,
                                                 shape=(n, n))
                 a_e_list.append(a)
                 pbar.update(1)
-
 
         a_list = a_e_list
         # If edge features are used, use this: a_list, e_list = list(zip(*a_e_list))
@@ -188,7 +189,8 @@ class DSGraphSiPM(Dataset):
         """
         if self.regression is not None:
             # Load graph attributes for regression tasks
-            graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
+            graph_attributes = np.load(
+                self.path + "/" + "graph_attributes.npy")
             if self.regression == "Energy":
                 y_list = graph_attributes[:, :self.graph_attribute_slice_edge]
             elif self.regression == "Position":

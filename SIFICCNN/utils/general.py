@@ -11,5 +11,3 @@ def parent_directory(repo_name="SiFiCC-NN"):
             break
         path = os.path.abspath(os.path.join(path, os.pardir))
     return path
-
-
