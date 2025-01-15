@@ -38,14 +38,22 @@ def exportCC6(filename,
     # If int/float, they are extended to the needed array length
     # If they are not given, each error entry is filled with zero
     l = len(ee)
-    ee_err = np.zeros(shape=(l,)) if ee_err is None else correct_input_length(ee_err, l)
-    ep_err = np.zeros(shape=(l,)) if ep_err is None else correct_input_length(ep_err, l)
-    ex_err = np.zeros(shape=(l,)) if ex_err is None else correct_input_length(ex_err, l)
-    ey_err = np.zeros(shape=(l,)) if ey_err is None else correct_input_length(ey_err, l)
-    ez_err = np.zeros(shape=(l,)) if ez_err is None else correct_input_length(ez_err, l)
-    px_err = np.zeros(shape=(l,)) if px_err is None else correct_input_length(px_err, l)
-    py_err = np.zeros(shape=(l,)) if py_err is None else correct_input_length(py_err, l)
-    pz_err = np.zeros(shape=(l,)) if pz_err is None else correct_input_length(pz_err, l)
+    ee_err = np.zeros(
+        shape=(l,)) if ee_err is None else correct_input_length(ee_err, l)
+    ep_err = np.zeros(
+        shape=(l,)) if ep_err is None else correct_input_length(ep_err, l)
+    ex_err = np.zeros(
+        shape=(l,)) if ex_err is None else correct_input_length(ex_err, l)
+    ey_err = np.zeros(
+        shape=(l,)) if ey_err is None else correct_input_length(ey_err, l)
+    ez_err = np.zeros(
+        shape=(l,)) if ez_err is None else correct_input_length(ez_err, l)
+    px_err = np.zeros(
+        shape=(l,)) if px_err is None else correct_input_length(px_err, l)
+    py_err = np.zeros(
+        shape=(l,)) if py_err is None else correct_input_length(py_err, l)
+    pz_err = np.zeros(
+        shape=(l,)) if pz_err is None else correct_input_length(pz_err, l)
 
     # Define verbose statistic on event rejection
     identified = np.ones(shape=(l,))
@@ -103,11 +111,16 @@ def exportCC6(filename,
     e0 = ee + ep
     arc = np.arccos(1 - 0.511 * (1 / ep - 1 / e0))
 
-    e0_unc = np.array([np.sqrt(ee_err[i] ** 2 + ep_err[i] ** 2) for i in range(len(ee_err))])
-    p_unc_x = np.array([np.sqrt(py_err[i] ** 2 + ey_err[i] ** 2) for i in range(len(py_err))])
-    p_unc_y = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2) for i in range(len(px_err))])
-    p_unc_z = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2) for i in range(len(pz_err))])
-    arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt((ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0[i]**2))**2)) for i in range(len(ep))])
+    e0_unc = np.array([np.sqrt(ee_err[i] ** 2 + ep_err[i] ** 2)
+                      for i in range(len(ee_err))])
+    p_unc_x = np.array([np.sqrt(py_err[i] ** 2 + ey_err[i] ** 2)
+                       for i in range(len(py_err))])
+    p_unc_y = np.array([np.sqrt(px_err[i] ** 2 + ex_err[i] ** 2)
+                       for i in range(len(px_err))])
+    p_unc_z = np.array([np.sqrt(pz_err[i] ** 2 + ez_err[i] ** 2)
+                       for i in range(len(pz_err))])
+    arc_unc = np.array([0.511/np.sqrt(1-np.cos(arc[i])**2 * np.sqrt(
+        (ep_err[i]/(ep[i]**2))**2 + (ee_err[i]/(e0[i]**2))**2)) for i in range(len(ep))])
 
     # open root file from simulation and read additional values
     if sim_filename == "" or sel is None:
@@ -128,7 +141,7 @@ def exportCC6(filename,
 
     # create output root file
     if path == "":
-        path=os.getcwd() + "/"
+        path = os.getcwd() + "/"
     file_name = path + filename + ".root"
     file = uproot.recreate(file_name, compression=None)
 
@@ -137,17 +150,17 @@ def exportCC6(filename,
 
     # filling the branch
     # ROOT FILES ARE FILLED IN LUEBECK COORDINATE SYSTEM
-        # ClassID                       : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
-        # (x_1,y_1,z_1)                 : reconstructed electron position in scatterer in mm
-        # (x_2,y_2,z_2)                 : reconstructed photon position in absorber in mm
-        # E1                            : reconstructed electron energy in scatterer in MeV
-        # E2                            : reconstructed photon energy in absorber in MeV
-        # E0Calc                        : sum of E1 and E2
-        # (v_x,v_y,v_z)                 : cone apex (same as (x_1,y_1,z_1))
-        # (p_x,p_y,p_z)                 : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
-        # arc                           : cone angle in rad (calculated from E1 and E2)
-        # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect, 
-        #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
+    # ClassID                       : 1 or 0 to indicate if this was defined as good Compton event or background during NN training based on MC information
+    # (x_1,y_1,z_1)                 : reconstructed electron position in scatterer in mm
+    # (x_2,y_2,z_2)                 : reconstructed photon position in absorber in mm
+    # E1                            : reconstructed electron energy in scatterer in MeV
+    # E2                            : reconstructed photon energy in absorber in MeV
+    # E0Calc                        : sum of E1 and E2
+    # (v_x,v_y,v_z)                 : cone apex (same as (x_1,y_1,z_1))
+    # (p_x,p_y,p_z)                 : cone axis (calculated as difference of (x_2,y_2,z_2) and x_1,y_1,z_1))
+    # arc                           : cone angle in rad (calculated from E1 and E2)
+    # (vertex_x,vertex_y,vertex_z)  : position of the vertex of the photon in case the event was created by a photon undergoing Compton effect,
+    #                                 for random coincidences from several particles where there is no single defined vertex, this variables will contain only zeros
     # positions are transformed from Aachen coordinate system to Luebeck coordinate system
     file['ConeList'] = {'GlobalEventNumber': eventnumbers[identified],
                         'ClassID': clas[identified],
@@ -193,9 +206,10 @@ def exportCC6(filename,
                         'p_unc_z': p_unc_z[identified],
                         'arc': arc[identified],
                         'arc_unc': arc_unc[identified],
-                        'vertex_x': source_y[identified],      # transform from Cracow coordinate system to Luebeck coordinate system for 1-to-1 simulation file - needs to be changed for 4-to-1 coupling files
+                        # transform from Cracow coordinate system to Luebeck coordinate system for 1-to-1 simulation file - needs to be changed for 4-to-1 coupling files
+                        'vertex_x': source_y[identified],
                         'vertex_y': -source_z[identified],
-                        'vertex_z': -source_x[identified] }
+                        'vertex_z': -source_x[identified]}
 
     # filling the branch
     file['TreeStat'] = {'StartEvent': [0],

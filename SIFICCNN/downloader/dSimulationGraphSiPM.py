@@ -46,19 +46,20 @@ def dSimulation_to_GraphSiPM(root_simulation,
         n_start (int):                      Start iteration at event n_start
 
     """
-    if neutrons==0:
-        photon_set=True
-        with_neutrons=False
+    if neutrons == 0:
+        photon_set = True
+        with_neutrons = False
     else:
-        photon_set=False
-        if neutrons==2:
-            with_neutrons=True
-        if neutrons==3:
-            with_neutrons=False
+        photon_set = False
+        if neutrons == 2:
+            with_neutrons = True
+        if neutrons == 3:
+            with_neutrons = False
 
-    #DEBUG
+    # DEBUG
     PrimaryEnergies = list()
     NeutronCount = list()
+
     def plot_neutrons_vs_energy(NeutronCount, NeutronPrimaryEnergies, key):
 
         # Create a histogram
@@ -73,19 +74,19 @@ def dSimulation_to_GraphSiPM(root_simulation,
         plt.savefig("EnergyNeutronHist_"+neutron_key+".png")
         plt.close()
 
-    def plot_primary_energy(NeutronPrimaryEnergies, neutron_key,compton=False):
+    def plot_primary_energy(NeutronPrimaryEnergies, neutron_key, compton=False):
         if compton:
             end = "Compton"
         else:
             end = ""
         # Create a histogram
         plt.figure(figsize=(8, 6))
-        plt.hist(NeutronPrimaryEnergies, bins=np.arange(0,20,0.2))
+        plt.hist(NeutronPrimaryEnergies, bins=np.arange(0, 20, 0.2))
         plt.title('Primary Energies'+' '+neutron_key+' '+end)
         plt.xlabel('Energies / MeV')
         plt.ylabel('Primary Energies')
         plt.grid()
-        plt.xlim(left=0,right=20)
+        plt.xlim(left=0, right=20)
 
         # Show the plot
         plt.savefig("EnergySpectrum_"+neutron_key+end+".png")
@@ -93,17 +94,18 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
     def stacked_primary_energy(compton, not_compton, neutron_key):
         plt.figure(figsize=(8, 6))
-        
+
         # Create the histogram with stacking
-        plt.hist([compton, not_compton], bins=np.arange(0, 20, 0.2), stacked=True, label=["Compton", "Not Compton"])
-        
+        plt.hist([compton, not_compton], bins=np.arange(0, 20, 0.2),
+                 stacked=True, label=["Compton", "Not Compton"])
+
         plt.title('Primary Energies ' + neutron_key)
         plt.xlabel('Energies / MeV')
         plt.ylabel('Primary Energies')
         plt.grid()
         plt.xlim(left=0, right=20)
         plt.legend()
-        
+
         # Save the plot
         plt.savefig("EnergySpectrumStacked_" + neutron_key + ".png")
         plt.close()
@@ -115,10 +117,10 @@ def dSimulation_to_GraphSiPM(root_simulation,
         neutron_key = "NoNeutrons"
     if photon_set:
         neutron_key = "Photons"
-    
+
     if path == "":
         path = parent_directory() + "/datasets/"
-        path = os.path.join(path, "SimGraphSiPM",neutron_key, dataset_name)
+        path = os.path.join(path, "SimGraphSiPM", neutron_key, dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
 
@@ -182,7 +184,7 @@ def dSimulation_to_GraphSiPM(root_simulation,
     node_id = 0
     edge_id = 0
 
-    distcompton_tags=list()
+    distcompton_tags = list()
     for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
         # get number of cluster
         if event == None:
@@ -208,17 +210,17 @@ def dSimulation_to_GraphSiPM(root_simulation,
                     edge_id += 1
                 if coordinate_system == "CRACOW":
                     attributes = np.array([event.SiPMHit.SiPMPosition[j].z,
-                                        -event.SiPMHit.SiPMPosition[j].y,
-                                        event.SiPMHit.SiPMPosition[j].x,
-                                        event.SiPMHit.SiPMTimeStamp[j],
-                                        event.SiPMHit.SiPMPhotonCount[j]])
+                                           -event.SiPMHit.SiPMPosition[j].y,
+                                           event.SiPMHit.SiPMPosition[j].x,
+                                           event.SiPMHit.SiPMTimeStamp[j],
+                                           event.SiPMHit.SiPMPhotonCount[j]])
                     ary_node_attributes[node_id, :] = attributes
                 if coordinate_system == "AACHEN":
                     attributes = np.array([event.SiPMHit.SiPMPosition[j].x,
-                                        event.SiPMHit.SiPMPosition[j].y,
-                                        event.SiPMHit.SiPMPosition[j].z,
-                                        event.SiPMHit.SiPMTimeStamp[j],
-                                        event.SiPMHit.SiPMPhotonCount[j]])
+                                           event.SiPMHit.SiPMPosition[j].y,
+                                           event.SiPMHit.SiPMPosition[j].z,
+                                           event.SiPMHit.SiPMTimeStamp[j],
+                                           event.SiPMHit.SiPMPhotonCount[j]])
                     ary_node_attributes[node_id, :] = attributes
 
                 # Graph indicator counts up which node belongs to which graph
@@ -239,38 +241,39 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
             if coordinate_system == "CRACOW":
                 ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                    target_energy_p,
-                                                    target_position_e.z,
-                                                    -target_position_e.y,
-                                                    target_position_e.x,
-                                                    target_position_p.z,
-                                                    -target_position_p.y,
-                                                    target_position_p.x]
+                                                     target_energy_p,
+                                                     target_position_e.z,
+                                                     -target_position_e.y,
+                                                     target_position_e.x,
+                                                     target_position_p.z,
+                                                     -target_position_p.y,
+                                                     target_position_p.x]
                 ary_sp[graph_id] = event.MCPosition_source.z
             if coordinate_system == "AACHEN":
                 ary_graph_attributes[graph_id, :] = [target_energy_e,
-                                                    target_energy_p,
-                                                    target_position_e.x,
-                                                    target_position_e.y,
-                                                    target_position_e.z,
-                                                    target_position_p.x,
-                                                    target_position_p.y,
-                                                    target_position_p.z]
+                                                     target_energy_p,
+                                                     target_position_e.x,
+                                                     target_position_e.y,
+                                                     target_position_e.z,
+                                                     target_position_p.x,
+                                                     target_position_p.y,
+                                                     target_position_p.z]
                 ary_sp[graph_id] = event.MCPosition_source.x
 
             # count up graph indexing
             graph_id += 1
 
     if not photon_set:
-        NeutronCount=np.array(NeutronCount)
-    PrimaryEnergies=np.array(PrimaryEnergies)
-    distcompton_tags=np.array(distcompton_tags)
-    ComptonPrimaryEnergies=PrimaryEnergies[distcompton_tags]
-    NotComptonPrimaryEnergies=PrimaryEnergies[np.logical_not(distcompton_tags)]
-    plot_primary_energy(ComptonPrimaryEnergies, neutron_key,compton=True)
-    stacked_primary_energy(ComptonPrimaryEnergies,NotComptonPrimaryEnergies,neutron_key)
+        NeutronCount = np.array(NeutronCount)
+    PrimaryEnergies = np.array(PrimaryEnergies)
+    distcompton_tags = np.array(distcompton_tags)
+    ComptonPrimaryEnergies = PrimaryEnergies[distcompton_tags]
+    NotComptonPrimaryEnergies = PrimaryEnergies[np.logical_not(
+        distcompton_tags)]
+    plot_primary_energy(ComptonPrimaryEnergies, neutron_key, compton=True)
+    stacked_primary_energy(ComptonPrimaryEnergies,
+                           NotComptonPrimaryEnergies, neutron_key)
     np.save(path + "/" + "ComptonPrimaryEnergies.npy", ComptonPrimaryEnergies)
-
 
     # save up all files
     np.save(path + "/" + "A.npy", ary_A)
@@ -284,14 +287,17 @@ def dSimulation_to_GraphSiPM(root_simulation,
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(description='Simulation to GraphSiPM downloader')
+    parser = argparse.ArgumentParser(
+        description='Simulation to GraphSiPM downloader')
     parser.add_argument("--rf", type=str, help="Target root file")
     parser.add_argument("--name", type=str, help="Name of final datasets")
     parser.add_argument("-path", type=str, help="Path to final datasets")
     parser.add_argument("-n", type=int, help="Number of events used")
     parser.add_argument("-cs", type=str, help="Coordinate system of root file")
-    parser.add_argument("--with_neutrons", action='store_true', help="Include events with neutrons")
-    parser.add_argument("--photon_set", action='store_true', help="Include photon set")
+    parser.add_argument("--with_neutrons", action='store_true',
+                        help="Include events with neutrons")
+    parser.add_argument("--photon_set", action='store_true',
+                        help="Include photon set")
     args = parser.parse_args()
 
     dSimulation_to_GraphSiPM(root_simulation=args.rf,

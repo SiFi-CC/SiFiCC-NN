@@ -14,7 +14,7 @@ def lorentzian(x, mu, sigma, A, c):
 
 def lorentzian_pol2(x, mu, sigma, A, c, p4, p5):
     return A / np.pi * (1 / 2 * sigma) / ((x - mu) ** 2 + (1 / 2 * sigma) ** 2) + c\
-           + x * p4 + x ** 2 * p5
+        + x * p4 + x ** 2 * p5
 
 
 def gaussian_pol2(x, mu, sigma, A, c, p4, p5):
@@ -24,8 +24,9 @@ def gaussian_pol2(x, mu, sigma, A, c, p4, p5):
 
 def gaussian_lorentzian(x, mu1, sigma1, A1, mu2, sigma2, A2, c):
     return c +\
-           A1 / np.pi * (1 / 2 * sigma1) / ((x - mu1) ** 2 + (1 / 2 * sigma1) ** 2) +\
-           A2 / (sigma2 * np.sqrt(2 * np.pi)) * np.exp(-1 / 2 * ((x - mu2) / sigma2) ** 2)
+        A1 / np.pi * (1 / 2 * sigma1) / ((x - mu1) ** 2 + (1 / 2 * sigma1) ** 2) +\
+        A2 / (sigma2 * np.sqrt(2 * np.pi)) * \
+        np.exp(-1 / 2 * ((x - mu2) / sigma2) ** 2)
 
 
 def gaussian_gaussian(x, mu1, sigma1, A1, mu2, sigma2, A2, c):
@@ -58,7 +59,8 @@ def auto_hist_fitting(f,
                                xdata=xdata,
                                ydata=ydata,
                                sigma=sigma,
-                               p0=p0 if p0 is not None else [0.0, 1.0, np.sum(hist) * width, 0],
+                               p0=p0 if p0 is not None else [
+                                   0.0, 1.0, np.sum(hist) * width, 0],
                                maxfev=100000)
         fx = dict_f[f](x, *popt)
         return popt, pcov, x, fx
@@ -103,7 +105,7 @@ def auto_hist_fitting(f,
                                sigma=sigma,
                                p0=p0 if p0 is not None else [0.0, 1.0, np.sum(hist) * width,
                                                              0.0, 0.5, np.sum(hist) * width, 0],
-                                maxfev = 100000)
+                               maxfev=100000)
         fx = dict_f[f](x, *popt)
         return popt, pcov, x, fx
 
@@ -121,14 +123,15 @@ def auto_hist_fitting(f,
     else:
         return 0 """
 
+
 def get_fwhm(data_slice, i):
     if data_slice.shape[0] > 1:
         # Calculate histogram
-        plt.hist(data_slice,bins=1000)
+        plt.hist(data_slice, bins=1000)
         plt.xlim(left=-200, right=200)
         plt.show()
         plt.close()
-        y, bins = np.histogram(data_slice[np.abs(data_slice)<300], bins=600)
+        y, bins = np.histogram(data_slice[np.abs(data_slice) < 300], bins=600)
         bin_centers = (bins[:-1] + bins[1:]) / 2
 
         # Plot histogram
@@ -137,10 +140,11 @@ def get_fwhm(data_slice, i):
 
         # Initial guess for Gaussian parameters
         initial_guess = [0, 20, np.max(y), 0]
-        
+
         try:
             # Fit Gaussian
-            popt, _ = curve_fit(gaussian, bin_centers, y, p0=initial_guess, bounds=[(-200,5,np.max(y)/1.5,-2),(200,150,1.5*np.max(y),2)], maxfev=1000000)
+            popt, _ = curve_fit(gaussian, bin_centers, y, p0=initial_guess, bounds=[
+                                (-200, 5, np.max(y)/1.5, -2), (200, 150, 1.5*np.max(y), 2)], maxfev=1000000)
             mean, stddev, amplitude, offset = popt
 
             # Calculate FWHM from stddev (FWHM = 2 * sqrt(2 * ln(2)) * stddev)

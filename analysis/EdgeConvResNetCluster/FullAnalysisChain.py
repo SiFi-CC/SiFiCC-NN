@@ -14,7 +14,6 @@ from SIFICCNN.analysis import sigma_ee, \
 from SIFICCNN.analysis import read_resolution_file
 
 
-
 def main(run_name,
          exp_name,
          threshold,
@@ -57,7 +56,8 @@ def main(run_name,
         # TODO: THIS NEEDS TO BE PLACED SOMEWHERE DIFFERENT
         plot_position_error_vs_energy(y_regP_pred[y_score_true == 1],
                                       y_regP_true[y_score_true == 1],
-                                      np.sum(y_regE_true[y_score_true == 1], axis=1),
+                                      np.sum(
+                                          y_regE_true[y_score_true == 1], axis=1),
                                       "error_regression")
 
         # calculate uncertainties of all quantities
@@ -103,7 +103,7 @@ def main(run_name,
                   px_err=px_err,
                   py_err=py_err,
                   pz_err=pz_err,
-                  #path=path_main + "/root_files/",
+                  # path=path_main + "/root_files/",
                   filename="CC6_{}_{}".format(exp_name, file),
                   verbose=1,
                   veto=True)
@@ -111,8 +111,10 @@ def main(run_name,
     if fp_only:
         os.chdir(path_results + DATASET_0MM + "/")
         # gather all network predictions
-        y_score_pred = np.loadtxt(DATASET_0MM + "_clas_pred.txt", delimiter=",")
-        y_score_true = np.loadtxt(DATASET_0MM + "_clas_true.txt", delimiter=",")
+        y_score_pred = np.loadtxt(
+            DATASET_0MM + "_clas_pred.txt", delimiter=",")
+        y_score_true = np.loadtxt(
+            DATASET_0MM + "_clas_true.txt", delimiter=",")
         y_regE_pred = np.loadtxt(DATASET_0MM + "_regE_pred.txt", delimiter=",")
         y_regP_pred = np.loadtxt(DATASET_0MM + "_regP_pred.txt", delimiter=",")
 
@@ -133,18 +135,23 @@ def main(run_name,
                   px=y_regP_pred[idx_pos, 3],
                   py=y_regP_pred[idx_pos, 4],
                   pz=y_regP_pred[idx_pos, 5],
-                  #path=path_main + "/root_files/",
+                  # path=path_main + "/root_files/",
                   filename="CC6_FPONLY_{}_{}".format(exp_name, file),
                   verbose=1,
                   veto=True)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the full analysis chain.")
-    parser.add_argument('--run_name', type=str, default="ECRNCluster_PostTraining", help='Name of the run')
-    parser.add_argument('--exp_name', type=str, default="ECRNCluster_PostTraining", help='Name of the experiment')
-    parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for classification')
-    parser.add_argument('--fp_only', action='store_true', help='Flag to indicate if only false positives should be considered', default=False)
+    parser = argparse.ArgumentParser(
+        description="Run the full analysis chain.")
+    parser.add_argument('--run_name', type=str,
+                        default="ECRNCluster_PostTraining", help='Name of the run')
+    parser.add_argument('--exp_name', type=str,
+                        default="ECRNCluster_PostTraining", help='Name of the experiment')
+    parser.add_argument('--threshold', type=float, default=0.5,
+                        help='Threshold for classification')
+    parser.add_argument('--fp_only', action='store_true',
+                        help='Flag to indicate if only false positives should be considered', default=False)
 
     args = parser.parse_args()
 

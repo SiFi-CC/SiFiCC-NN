@@ -124,7 +124,8 @@ plt.close()
 
 # loading all necessary files for plot
 # load root file containing the data points as well as the fitting parameter
-file_fit_dp = uproot.open(path_results_NN + "ee_vs_ee_resolution_histOnly.root")
+file_fit_dp = uproot.open(
+    path_results_NN + "ee_vs_ee_resolution_histOnly.root")
 # file_fit_params = uproot.open(path_results + "allResolutions.root")
 
 # load neural network predictions from the 0mm dataset
@@ -162,11 +163,15 @@ width = 0.05
 bins = np.arange(-1.5, 2.0, width)
 bins_center = bins[:-1] + (width / 2)
 # histogram for gaussian fit
-histNN, _ = np.histogram(y_NNregE_pred[idx_nn, 0] - y_regE_true[idx_nn, 0], bins=bins)
-histCB, _ = np.histogram(y_CBregE_pred[idx_cb, 0] - y_regE_true[idx_cb, 0], bins=bins)
+histNN, _ = np.histogram(
+    y_NNregE_pred[idx_nn, 0] - y_regE_true[idx_nn, 0], bins=bins)
+histCB, _ = np.histogram(
+    y_CBregE_pred[idx_cb, 0] - y_regE_true[idx_cb, 0], bins=bins)
 # remove bins from fit with zero entries as they break the fitting
-poptNN, pcovNN, xNN, fxNN = auto_hist_fitting(f="gaussian", bins=bins_center, hist=histNN)
-poptCB, pcovCB, xCB, fxCB = auto_hist_fitting(f="gaussian", bins=bins_center, hist=histCB)
+poptNN, pcovNN, xNN, fxNN = auto_hist_fitting(
+    f="gaussian", bins=bins_center, hist=histNN)
+poptCB, pcovCB, xCB, fxCB = auto_hist_fitting(
+    f="gaussian", bins=bins_center, hist=histCB)
 
 fig, ax = plt.subplots(figsize=(8, 5))
 ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -215,7 +220,8 @@ plt.close()
 
 # 2D Counts vs (E_reco-E_mc) vs E_mc
 xlabel = r"$E^{{true}}_{{{0}}}$ [MeV]".format("e")
-ylabel = r"$E^({{pred}}_{{{0}}} - E^{{true}}_{{{0}}})/E^{{true}}_{{{0}}}$ [MeV]".format("e")
+ylabel = r"$E^({{pred}}_{{{0}}} - E^{{true}}_{{{0}}})/E^{{true}}_{{{0}}}$ [MeV]".format(
+    "e")
 # plot settings
 width = 0.1
 bins_x = np.arange(0.0, 10.0, width)
@@ -230,7 +236,8 @@ ax.set_ylabel(ylabel, loc="top")
 ax.set_xlim(min(bins_x), max(bins_x))
 ax.set_ylim(min(bins_y), max(bins_y))
 h2d = ax.hist2d(x=y_regE_true[idx_nn, 0],
-                y=(y_NNregE_pred[idx_cb, 0] - y_regE_true[idx_nn, 0]) / y_regE_true[idx_nn, 0],
+                y=(y_NNregE_pred[idx_cb, 0] -
+                   y_regE_true[idx_nn, 0]) / y_regE_true[idx_nn, 0],
                 bins=[bins_x, bins_y], norm=LogNorm())
 ax.grid(which='major', color='#CCCCCC', linewidth=0.8)
 ax.grid(which='minor', color='#DDDDDD', linestyle=':', linewidth=0.5)
@@ -268,4 +275,3 @@ ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
 plt.tight_layout()
 plt.savefig(path_targets + "ee_resolution.png")
 plt.close()
-

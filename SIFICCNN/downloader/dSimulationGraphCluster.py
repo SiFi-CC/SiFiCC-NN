@@ -119,7 +119,8 @@ def dSimulation_to_GraphCluster(root_simulation,
                 # determine edge attributes
                 if j != k:
                     # grab edge features in polar and cartesian representation
-                    r, phi, theta = event.RecoCluster.get_edge_features(j, k, cartesian=False)
+                    r, phi, theta = event.RecoCluster.get_edge_features(
+                        j, k, cartesian=False)
                 else:
                     r, phi, theta = 0, 0, 0
                 ary_edge_attributes[edge_id, :] = [r, phi, theta]
@@ -204,13 +205,15 @@ def dSimulation_to_GraphCluster(root_simulation,
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(description='Simulation to GraphCluster downloader')
+    parser = argparse.ArgumentParser(
+        description='Simulation to GraphCluster downloader')
     parser.add_argument("--rf", type=str, help="Target root file")
     parser.add_argument("--name", type=str, help="Name of final datasets")
     parser.add_argument("-path", type=str, help="Path to final datasets")
     parser.add_argument("-n", type=int, help="Number of events used")
     parser.add_argument("-cs", type=str, help="Coordinate system of root file")
-    parser.add_argument("-ec", type=float, help="Energy cut applied to sum of all cluster energies")
+    parser.add_argument(
+        "-ec", type=float, help="Energy cut applied to sum of all cluster energies")
     args = parser.parse_args()
 
     dSimulation_to_GraphCluster(root_simulation=args.rf,

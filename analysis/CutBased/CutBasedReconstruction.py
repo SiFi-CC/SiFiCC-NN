@@ -152,7 +152,8 @@ def eval_regressionPosition(run_name, dataset_name, path):
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(description='Trainings script ECRNCluster model')
+    parser = argparse.ArgumentParser(
+        description='Trainings script ECRNCluster model')
     parser.add_argument("--name", type=str, help="Run name")
     args = parser.parse_args()
     # base settings if no parameters are given

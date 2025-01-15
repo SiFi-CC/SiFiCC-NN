@@ -8,12 +8,12 @@
 #
 ####################################################################################################
 
+from scipy.optimize import curve_fit
+from matplotlib.colors import LogNorm
+import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-from scipy.optimize import curve_fit
 
 
 ####################################################################################################
@@ -192,7 +192,7 @@ def plot_sp_distribution(ary_sp,
 
     # generate plots
     # MC Total / MC Ideal Compton
-    plt.figure(figsize=(12,8))
+    plt.figure(figsize=(12, 8))
     plt.title("MC Source Position z")
     plt.xlabel("z-position [mm]")
     plt.ylabel("counts")
@@ -235,7 +235,7 @@ def plot_pe_distribution(ary_pe,
 
     # generate plots
     # MC Total / MC Ideal Compton
-    plt.figure(figsize=(12,8))
+    plt.figure(figsize=(12, 8))
     plt.title("MC Energy Primary")
     plt.xlabel("Energy [MeV]")
     plt.ylabel("counts (normalized)")
@@ -272,7 +272,7 @@ def lorentzian(x, mu, sigma, A):
 
 def max_super_function(x):
     return (0.1 + np.exp((0.5 * (x + 3)) / 2)) / (
-            1 + np.exp((8 * x + 5) / 3)) / 6
+        1 + np.exp((8 * x + 5) / 3)) / 6
 
 
 def plot_energy_error(y_pred, y_true, figure_name):
@@ -368,11 +368,11 @@ def plot_position_error(y_pred, y_true, figure_name):
     """
 
     width = 0.1
-    bins_err_x = np.arange(-30, 190, width) #np.arange(-5.5, 5.5, width)
+    bins_err_x = np.arange(-30, 190, width)  # np.arange(-5.5, 5.5, width)
     bins_err_y = np.arange(-60.5, 60.5, width)
     bins_err_z = np.arange(-5.5, 5.5, width)
 
-    bins_x = np.arange(140, 160) #np.arange(-98.8 / 2.0, 98.8 / 2.0, width)
+    bins_x = np.arange(140, 160)  # np.arange(-98.8 / 2.0, 98.8 / 2.0, width)
     bins_y = np.arange(-100.0 / 2.0, 100.0 / 2.0, width)
     bins_z = np.arange(150.0 - 20.8 / 2.0, 270.0 + 46.8 / 2.0, width)
 
@@ -385,17 +385,17 @@ def plot_position_error(y_pred, y_true, figure_name):
 
     # fitting position resolution
     popt0, pcov0 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist0,
-                             p0=[0.0, 1.0, np.sum(hist0) * width] ,maxfev=1000000)
+                             p0=[0.0, 1.0, np.sum(hist0) * width], maxfev=1000000)
     popt1, pcov1 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist1,
-                             p0=[0.0, 20.0, np.sum(hist1) * width] ,maxfev=1000000)
+                             p0=[0.0, 20.0, np.sum(hist1) * width], maxfev=1000000)
     popt2, pcov2 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist2,
-                             p0=[0.0, 1.0, np.sum(hist2) * width] ,maxfev=1000000)
+                             p0=[0.0, 1.0, np.sum(hist2) * width], maxfev=1000000)
     popt3, pcov3 = curve_fit(gaussian, bins_err_x[:-1] + width / 2, hist3,
-                             p0=[0.0, 1.0, np.sum(hist3) * width] ,maxfev=1000000)
+                             p0=[0.0, 1.0, np.sum(hist3) * width], maxfev=1000000)
     popt4, pcov4 = curve_fit(gaussian, bins_err_y[:-1] + width / 2, hist4,
-                             p0=[0.0, 20.0, np.sum(hist4) * width] ,maxfev=1000000)
+                             p0=[0.0, 20.0, np.sum(hist4) * width], maxfev=1000000)
     popt5, pcov5 = curve_fit(gaussian, bins_err_z[:-1] + width / 2, hist5,
-                             p0=[0.0, 1.0, np.sum(hist5) * width] ,maxfev=1000000)
+                             p0=[0.0, 1.0, np.sum(hist5) * width], maxfev=1000000)
 
     ary_x = np.linspace(min(bins_err_x), max(bins_err_x), 1000)
     ary_y = np.linspace(min(bins_err_y), max(bins_err_y), 1000)
@@ -473,7 +473,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_y, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_y), xmax=max(bins_y), y=0, color="red",
                linestyles="--")
-    ##plt.colorbar()
+    # plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -506,7 +506,7 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.xlim(150.0 - 20.8 / 2.0, 150.0 + 20.8 / 2.0)
     plt.hlines(xmin=150.0 - 20.8 / 2.0, xmax=150.0 + 20.8 / 2.0, y=0,
                color="red", linestyles="--")
-    ##plt.colorbar()
+    # plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -540,7 +540,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_x, bins_err_x], norm=LogNorm())
     plt.hlines(xmin=min(bins_x), xmax=max(bins_x), y=0, color="red",
                linestyles="--")
-    ##plt.colorbar()
+    # plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -572,7 +572,7 @@ def plot_position_error(y_pred, y_true, figure_name):
                bins=[bins_y, bins_err_y], norm=LogNorm())
     plt.hlines(xmin=min(bins_y), xmax=max(bins_y), y=0, color="red",
                linestyles="--")
-    ##plt.colorbar()
+    # plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -605,7 +605,7 @@ def plot_position_error(y_pred, y_true, figure_name):
     plt.xlim(270.0 - 46.8 / 2.0, 270.0 + 46.8 / 2.0)
     plt.hlines(xmin=270.0 - 46.8 / 2.0, xmax=270.0 + 46.8 / 2.0, y=0,
                color="red", linestyles="--")
-    ##plt.colorbar()
+    # plt.colorbar()
     plt.grid(which='major', color='#DDDDDD', linewidth=0.8)
     plt.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5)
     plt.minorticks_on()
@@ -649,7 +649,7 @@ def plot_theta_error(y_pred, y_true, figure_name):
     plt.ylabel(r"$\theta_{Pred}$ - $\theta_{True}$")
     plt.hist2d(x=y_true, y=y_pred - y_true, bins=[bins_theta, bins_err],
                norm=LogNorm(vmin=1.0, vmax=800))
-    ###plt.colorbar()
+    # plt.colorbar()
     plt.tight_layout()
     plt.savefig(figure_name + "_relative.png")
     plt.close()
@@ -910,11 +910,13 @@ def plot_2dhist_sp_score(sp, y_score, y_true, figure_name):
     plt.figure(figsize=(7, 6))
     plt.xlabel("True source position z-axis [mm]")
     plt.ylabel("Signal score")
-    h0 = plt.hist2d(sp[y_true == 1], y_score[y_true == 1], bins=[bin_sp, bin_score])
+    h0 = plt.hist2d(sp[y_true == 1], y_score[y_true == 1],
+                    bins=[bin_sp, bin_score])
     plt.colorbar(h0[3], norm=LogNorm())
     plt.tight_layout()
     plt.grid(which='major', color='#CCCCCC', linewidth=0.5, alpha=0.5)
-    plt.grid(which='minor', color='#DDDDDD', linestyle=":", linewidth=0.5, alpha=0.5)
+    plt.grid(which='minor', color='#DDDDDD',
+             linestyle=":", linewidth=0.5, alpha=0.5)
     plt.minorticks_on()
     plt.savefig(figure_name + ".png")
     plt.close()
@@ -927,10 +929,12 @@ def plot_2dhist_ep_score(pe, y_score, y_true, figure_name):
     plt.figure()
     plt.xlabel("MC Primary Energy [MeV]")
     plt.ylabel("Score")
-    h0 = plt.hist2d(pe[y_true == 1], y_score[y_true == 1], bins=[bin_pe, bin_score], norm=LogNorm())
+    h0 = plt.hist2d(pe[y_true == 1], y_score[y_true == 1],
+                    bins=[bin_pe, bin_score], norm=LogNorm())
     plt.colorbar(h0[3], norm=LogNorm())
     plt.grid(which='major', color='#DDDDDD', linewidth=0.5, alpha=0.5)
-    plt.grid(which='minor', color='#EEEEEE', linestyle=":", linewidth=0.5, alpha=0.5)
+    plt.grid(which='minor', color='#EEEEEE',
+             linestyle=":", linewidth=0.5, alpha=0.5)
     plt.minorticks_on()
     plt.tight_layout()
     plt.savefig(figure_name + ".png")
@@ -962,7 +966,7 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
 
     def gaussian_lin_bg(x, mu, sigma, A, m, b):
         return A / (sigma * np.sqrt(2 * np.pi)) * np.exp(-1 / 2 * ((x - mu) / sigma) ** 2) + \
-               (m * x + b)
+            (m * x + b)
 
     # binning energy error
     bins_err_1 = np.arange(-0.5, 0.5 + 0.005, 0.005)
@@ -1000,7 +1004,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
     # main iteration over energy bins for electron energy
     for i in range(len(bins_energy_e) - 1):
         ary_ee_cut = np.where(
-            (bins_energy_e[i] < y_true[:, 0]) & (bins_energy_e[i + 1] > y_true[:, 0]),
+            (bins_energy_e[i] < y_true[:, 0]) & (
+                bins_energy_e[i + 1] > y_true[:, 0]),
             y_true[:, 0], y_true[:, 0] * 0)
 
         # initialization
@@ -1061,7 +1066,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         # fit gaussian to histogram
         popt_e, pcov_e = curve_fit(gaussian_lin_bg, bins_center[e_frl:e_frr],
                                    hist_ee[e_frl:e_frr],
-                                   p0=[0.0, 1.0, np.sum(hist_ee[e_frl:e_frr]) * width, p0_m, p0_b],
+                                   p0=[0.0, 1.0, np.sum(
+                                       hist_ee[e_frl:e_frr]) * width, p0_m, p0_b],
                                    maxfev=100000)
         plt.plot(bins_center[e_frl:e_frr],
                  gaussian_lin_bg(bins_center[e_frl:e_frr], *popt_e), color="deeppink",
@@ -1079,7 +1085,8 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
     # main iteration over energy bins for electron energy
     for i in range(len(bins_energy_p) - 1):
         ary_ep_cut = np.where(
-            (bins_energy_p[i] < y_true[:, 1]) & (bins_energy_p[i + 1] > y_true[:, 1]),
+            (bins_energy_p[i] < y_true[:, 1]) & (
+                bins_energy_p[i + 1] > y_true[:, 1]),
             y_true[:, 1], y_true[:, 1] * 0)
 
         # initialization
@@ -1133,8 +1140,9 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         # fit gaussian to histogram
         popt_p, pcov_p = curve_fit(gaussian_lin_bg, bins_center[p_frl:p_frr],
                                    hist_ep[p_frl:p_frr],
-                                   p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
-                                   maxfev = 100000)
+                                   p0=[0.0, 1.0, np.sum(
+                                       hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
+                                   maxfev=100000)
         plt.plot(bins_center[p_frl:p_frr],
                  gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p), color="deeppink",
                  label=r"$\mu$ = {:.2f} $\pm$ {:.2f}""\n"r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
