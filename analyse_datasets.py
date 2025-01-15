@@ -7,7 +7,7 @@ def get_compton_distances(arr):
         print("-------------------------")
         e_slice = arr[:, 2:5]
         p_slice = arr[:, 5:]
-        distances = e_slice-p_slice
+        distances = e_slice - p_slice
         print(distances.shape)
         print(distances)
         print(mean_std(distances))
@@ -36,19 +36,19 @@ def iterate_array(arr):
 def read_files(path):
     suffixes = [
         # 'A.npy',
-        'graph_attributes.npy',
+        "graph_attributes.npy",
         # 'graph_labels.npy',
         # 'graph_sp.npy',
         # 'graph_indicator.npy',
         # 'graph_pe.npy',
-        'node_attributes.npy',
+        "node_attributes.npy",
     ]
 
     data = {}
     for filename in os.listdir(path):
         if any(filename.endswith(suffix) for suffix in suffixes):
             file_path = os.path.join(path, filename)
-            data_key = filename.replace('.npy', '')
+            data_key = filename.replace(".npy", "")
             data[data_key] = np.load(file_path)
 
     return data

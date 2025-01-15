@@ -9,15 +9,20 @@ from SIFICCNN.ComptonCamera6 import exportCC6
 
 from SIFICCNN.utils.plotter import plot_position_error_vs_energy
 
-from SIFICCNN.analysis import sigma_ee, \
-    sigma_ep, sigma_ex, sigma_ey, sigma_ez, sigma_px, sigma_py, sigma_pz
+from SIFICCNN.analysis import (
+    sigma_ee,
+    sigma_ep,
+    sigma_ex,
+    sigma_ey,
+    sigma_ez,
+    sigma_px,
+    sigma_py,
+    sigma_pz,
+)
 from SIFICCNN.analysis import read_resolution_file
 
 
-def main(run_name,
-         exp_name,
-         threshold,
-         fp_only):
+def main(run_name, exp_name, threshold, fp_only):
     # Datasets used
     # Training file used for classification and regression training
     # Generated via an input generator, contain one Bragg-peak position
@@ -40,7 +45,13 @@ def main(run_name,
         y_regP_pred = np.loadtxt(file + "_regP_pred.txt", delimiter=",")
 
         # define positive classified events
-        idx_pos = np.zeros(shape=(len(y_score_pred, )))
+        idx_pos = np.zeros(
+            shape=(
+                len(
+                    y_score_pred,
+                )
+            )
+        )
         for i in range(len(idx_pos)):
             if y_score_pred[i] > threshold:
                 idx_pos[i] = 1
@@ -54,11 +65,12 @@ def main(run_name,
 
         # plot of more convoluted histograms
         # TODO: THIS NEEDS TO BE PLACED SOMEWHERE DIFFERENT
-        plot_position_error_vs_energy(y_regP_pred[y_score_true == 1],
-                                      y_regP_true[y_score_true == 1],
-                                      np.sum(
-                                          y_regE_true[y_score_true == 1], axis=1),
-                                      "error_regression")
+        plot_position_error_vs_energy(
+            y_regP_pred[y_score_true == 1],
+            y_regP_true[y_score_true == 1],
+            np.sum(y_regE_true[y_score_true == 1], axis=1),
+            "error_regression",
+        )
 
         # calculate uncertainties of all quantities
 
@@ -74,7 +86,7 @@ def main(run_name,
         pz_err = sigma_pz(y_regE_pred[idx_pos, 1], *params["pz"])
 
         """
-        # Hardcoded parameter  
+        # Hardcoded parameter
         ee_err = sigma_ee(y_regE_pred[idx_pos, 0], 9.087e-2, -6.904e-2, 6.41e-2)
         ep_err = sigma_ep(y_regE_pred[idx_pos, 1], 0.05636, -0.1248, 0.4622)
         ey_err = sigma_ey(y_regE_pred[idx_pos, 0], 3.089e0, 5.959e0, -7.568e-2)
@@ -86,76 +98,98 @@ def main(run_name,
         """
 
         # export to root file compatible with CC6 image reconstruction
-        exportCC6(clas=y_score_true[idx_pos],
-                  ee=y_regE_pred[idx_pos, 0],
-                  ep=y_regE_pred[idx_pos, 1],
-                  ex=y_regP_pred[idx_pos, 0],
-                  ey=y_regP_pred[idx_pos, 1],
-                  ez=y_regP_pred[idx_pos, 2],
-                  px=y_regP_pred[idx_pos, 3],
-                  py=y_regP_pred[idx_pos, 4],
-                  pz=y_regP_pred[idx_pos, 5],
-                  ee_err=ee_err,
-                  ep_err=ep_err,
-                  ex_err=ex_err,
-                  ey_err=ey_err,
-                  ez_err=ez_err,
-                  px_err=px_err,
-                  py_err=py_err,
-                  pz_err=pz_err,
-                  # path=path_main + "/root_files/",
-                  filename="CC6_{}_{}".format(exp_name, file),
-                  verbose=1,
-                  veto=True)
+        exportCC6(
+            clas=y_score_true[idx_pos],
+            ee=y_regE_pred[idx_pos, 0],
+            ep=y_regE_pred[idx_pos, 1],
+            ex=y_regP_pred[idx_pos, 0],
+            ey=y_regP_pred[idx_pos, 1],
+            ez=y_regP_pred[idx_pos, 2],
+            px=y_regP_pred[idx_pos, 3],
+            py=y_regP_pred[idx_pos, 4],
+            pz=y_regP_pred[idx_pos, 5],
+            ee_err=ee_err,
+            ep_err=ep_err,
+            ex_err=ex_err,
+            ey_err=ey_err,
+            ez_err=ez_err,
+            px_err=px_err,
+            py_err=py_err,
+            pz_err=pz_err,
+            # path=path_main + "/root_files/",
+            filename="CC6_{}_{}".format(exp_name, file),
+            verbose=1,
+            veto=True,
+        )
 
     if fp_only:
         os.chdir(path_results + DATASET_0MM + "/")
         # gather all network predictions
-        y_score_pred = np.loadtxt(
-            DATASET_0MM + "_clas_pred.txt", delimiter=",")
-        y_score_true = np.loadtxt(
-            DATASET_0MM + "_clas_true.txt", delimiter=",")
+        y_score_pred = np.loadtxt(DATASET_0MM + "_clas_pred.txt", delimiter=",")
+        y_score_true = np.loadtxt(DATASET_0MM + "_clas_true.txt", delimiter=",")
         y_regE_pred = np.loadtxt(DATASET_0MM + "_regE_pred.txt", delimiter=",")
         y_regP_pred = np.loadtxt(DATASET_0MM + "_regP_pred.txt", delimiter=",")
 
         # define positive classified events
-        idx_pos = np.zeros(shape=(len(y_score_pred, )))
+        idx_pos = np.zeros(
+            shape=(
+                len(
+                    y_score_pred,
+                )
+            )
+        )
         for i in range(len(idx_pos)):
             if y_score_true[i] == 0 and y_score_pred[i] > threshold:
                 idx_pos[i] = 1
         idx_pos = idx_pos == 1
 
         # export to root file compatible with CC6 image reconstruction
-        exportCC6(clas=y_score_true[idx_pos],
-                  ee=y_regE_pred[idx_pos, 0],
-                  ep=y_regE_pred[idx_pos, 1],
-                  ex=y_regP_pred[idx_pos, 0],
-                  ey=y_regP_pred[idx_pos, 1],
-                  ez=y_regP_pred[idx_pos, 2],
-                  px=y_regP_pred[idx_pos, 3],
-                  py=y_regP_pred[idx_pos, 4],
-                  pz=y_regP_pred[idx_pos, 5],
-                  # path=path_main + "/root_files/",
-                  filename="CC6_FPONLY_{}_{}".format(exp_name, file),
-                  verbose=1,
-                  veto=True)
+        exportCC6(
+            clas=y_score_true[idx_pos],
+            ee=y_regE_pred[idx_pos, 0],
+            ep=y_regE_pred[idx_pos, 1],
+            ex=y_regP_pred[idx_pos, 0],
+            ey=y_regP_pred[idx_pos, 1],
+            ez=y_regP_pred[idx_pos, 2],
+            px=y_regP_pred[idx_pos, 3],
+            py=y_regP_pred[idx_pos, 4],
+            pz=y_regP_pred[idx_pos, 5],
+            # path=path_main + "/root_files/",
+            filename="CC6_FPONLY_{}_{}".format(exp_name, file),
+            verbose=1,
+            veto=True,
+        )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run the full analysis chain.")
-    parser.add_argument('--run_name', type=str,
-                        default="ECRNCluster_PostTraining", help='Name of the run')
-    parser.add_argument('--exp_name', type=str,
-                        default="ECRNCluster_PostTraining", help='Name of the experiment')
-    parser.add_argument('--threshold', type=float, default=0.5,
-                        help='Threshold for classification')
-    parser.add_argument('--fp_only', action='store_true',
-                        help='Flag to indicate if only false positives should be considered', default=False)
+    parser = argparse.ArgumentParser(description="Run the full analysis chain.")
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default="ECRNCluster_PostTraining",
+        help="Name of the run",
+    )
+    parser.add_argument(
+        "--exp_name",
+        type=str,
+        default="ECRNCluster_PostTraining",
+        help="Name of the experiment",
+    )
+    parser.add_argument(
+        "--threshold", type=float, default=0.5, help="Threshold for classification"
+    )
+    parser.add_argument(
+        "--fp_only",
+        action="store_true",
+        help="Flag to indicate if only false positives should be considered",
+        default=False,
+    )
 
     args = parser.parse_args()
 
-    main(run_name=args.run_name,
-         exp_name=args.exp_name,
-         threshold=args.threshold,
-         fponly=args.fp_only)
+    main(
+        run_name=args.run_name,
+        exp_name=args.exp_name,
+        threshold=args.threshold,
+        fponly=args.fp_only,
+    )

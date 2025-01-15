@@ -27,12 +27,13 @@ def main(run_name):
         if not os.path.isdir(path_results + "/" + file + "/"):
             os.mkdir(path_results + "/" + file + "/")
 
-    gen_results(path_results + DATASET_0MM + "/" + DATASET_0MM,
-                path_root + DATASET_0MM + ".root")
+    gen_results(
+        path_results + DATASET_0MM + "/" + DATASET_0MM,
+        path_root + DATASET_0MM + ".root",
+    )
 
 
-def gen_results(target,
-                file_name):
+def gen_results(target, file_name):
     # open root file
     root_simulation = RootSimulation(file_name)
 
@@ -58,35 +59,35 @@ def gen_results(target,
         y_regE_pred[i, :] = [ee, ep]
         y_regE_true[i, :] = [target_ee, target_ep]
         y_regP_pred[i, :] = [tv3e.z, -tv3e.y, tv3e.x, tv3p.z, -tv3p.y, tv3p.x]
-        y_regP_true[i, :] = [target_tv3e.z, -target_tv3e.y, target_tv3e.x,
-                             target_tv3p.z, -target_tv3p.y, target_tv3p.x]
+        y_regP_true[i, :] = [
+            target_tv3e.z,
+            -target_tv3e.y,
+            target_tv3e.x,
+            target_tv3p.z,
+            -target_tv3p.y,
+            target_tv3p.x,
+        ]
 
-    np.savetxt(fname=target + "_clas_pred.txt",
-               X=y_clas_pred,
-               delimiter=",",
-               newline="\n")
-    np.savetxt(fname=target + "_clas_true.txt",
-               X=y_clas_true,
-               delimiter=",",
-               newline="\n")
+    np.savetxt(
+        fname=target + "_clas_pred.txt", X=y_clas_pred, delimiter=",", newline="\n"
+    )
+    np.savetxt(
+        fname=target + "_clas_true.txt", X=y_clas_true, delimiter=",", newline="\n"
+    )
 
-    np.savetxt(fname=target + "_regE_pred.txt",
-               X=y_regE_pred,
-               delimiter=",",
-               newline="\n")
-    np.savetxt(fname=target + "_regE_true.txt",
-               X=y_regE_true,
-               delimiter=",",
-               newline="\n")
+    np.savetxt(
+        fname=target + "_regE_pred.txt", X=y_regE_pred, delimiter=",", newline="\n"
+    )
+    np.savetxt(
+        fname=target + "_regE_true.txt", X=y_regE_true, delimiter=",", newline="\n"
+    )
 
-    np.savetxt(fname=target + "_regP_pred.txt",
-               X=y_regP_pred,
-               delimiter=",",
-               newline="\n")
-    np.savetxt(fname=target + "_regP_true.txt",
-               X=y_regP_true,
-               delimiter=",",
-               newline="\n")
+    np.savetxt(
+        fname=target + "_regP_pred.txt", X=y_regP_pred, delimiter=",", newline="\n"
+    )
+    np.savetxt(
+        fname=target + "_regP_true.txt", X=y_regP_true, delimiter=",", newline="\n"
+    )
 
 
 if __name__ == "__main__":

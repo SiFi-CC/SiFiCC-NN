@@ -10,12 +10,9 @@ import inspect
 import types
 
 
-def SiFiECRNShort(F=10,
-                  nFilter=32,
-                  activation="relu",
-                  n_out=1,
-                  activation_out="sigmoid",
-                  dropout=0.0):
+def SiFiECRNShort(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -68,12 +65,9 @@ def SiFiECRNShort(F=10,
     return model
 
 
-def SiFiECRNShortOld(F=10,
-                     nFilter=32,
-                     activation="relu",
-                     n_out=1,
-                     activation_out="sigmoid",
-                     dropout=0.0):
+def SiFiECRNShortOld(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -126,12 +120,9 @@ def SiFiECRNShortOld(F=10,
     return model
 
 
-def SiFiECRN4(F=10,
-              nFilter=32,
-              activation="relu",
-              n_out=1,
-              activation_out="sigmoid",
-              dropout=0.0):
+def SiFiECRN4(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -185,12 +176,9 @@ def SiFiECRN4(F=10,
     return model
 
 
-def SiFiECRN5(F=10,
-              nFilter=32,
-              activation="relu",
-              n_out=1,
-              activation_out="sigmoid",
-              dropout=0.0):
+def SiFiECRN5(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -245,12 +233,9 @@ def SiFiECRN5(F=10,
     return model
 
 
-def SiFiECRNShortBN(F=10,
-                    nFilter=32,
-                    activation="relu",
-                    n_out=1,
-                    activation_out="sigmoid",
-                    dropout=0.0):
+def SiFiECRNShortBN(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -303,12 +288,9 @@ def SiFiECRNShortBN(F=10,
     return model
 
 
-def SiFiECRNOldBN(F=10,
-                  nFilter=32,
-                  activation="relu",
-                  n_out=1,
-                  activation_out="sigmoid",
-                  dropout=0.0):
+def SiFiECRNOldBN(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+):
     """
     Graph EdgeConv model used in the paper: "To be released"
 
@@ -361,7 +343,9 @@ def SiFiECRNOldBN(F=10,
     return model
 
 
-def create_model_edgeconv_res2net(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_res2net(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvRes2NetBlock layers.
     """
@@ -382,8 +366,7 @@ def create_model_edgeconv_res2net(F, nFilter, activation, n_out, activation_out,
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvRes2Net")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2Net")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -398,7 +381,9 @@ def create_model_edgeconv_res2net(F, nFilter, activation, n_out, activation_out,
     return model
 
 
-def create_model_edgeconv_res2net_bn(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_res2net_bn(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvRes2NetBlockBN layers.
     """
@@ -419,8 +404,7 @@ def create_model_edgeconv_res2net_bn(F, nFilter, activation, n_out, activation_o
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvRes2NetBN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetBN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -435,7 +419,9 @@ def create_model_edgeconv_res2net_bn(F, nFilter, activation, n_out, activation_o
     return model
 
 
-def create_model_edgeconv_res2net_v2(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_res2net_v2(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvRes2NetBlockV2 layers.
     """
@@ -456,8 +442,7 @@ def create_model_edgeconv_res2net_v2(F, nFilter, activation, n_out, activation_o
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvRes2NetV2")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetV2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -472,7 +457,9 @@ def create_model_edgeconv_res2net_v2(F, nFilter, activation, n_out, activation_o
     return model
 
 
-def create_model_edgeconv_res2net_v2_bn(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_res2net_v2_bn(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvRes2NetBlockV2BN layers.
     """
@@ -493,8 +480,7 @@ def create_model_edgeconv_res2net_v2_bn(F, nFilter, activation, n_out, activatio
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out,
-                  name="EdgeConvRes2NetV2BN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetV2BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -509,7 +495,9 @@ def create_model_edgeconv_res2net_v2_bn(F, nFilter, activation, n_out, activatio
     return model
 
 
-def create_model_edgeconv_resnext_v2(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_resnext_v2(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvResNeXtBlockV2 layers.
     """
@@ -530,8 +518,7 @@ def create_model_edgeconv_resnext_v2(F, nFilter, activation, n_out, activation_o
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvResNeXtV2")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtV2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -546,7 +533,9 @@ def create_model_edgeconv_resnext_v2(F, nFilter, activation, n_out, activation_o
     return model
 
 
-def create_model_edgeconv_resnext_v2_bn(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_resnext_v2_bn(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvResNeXtBlockV2BN layers.
     """
@@ -567,8 +556,7 @@ def create_model_edgeconv_resnext_v2_bn(F, nFilter, activation, n_out, activatio
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out,
-                  name="EdgeConvResNeXtV2BN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtV2BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -583,7 +571,9 @@ def create_model_edgeconv_resnext_v2_bn(F, nFilter, activation, n_out, activatio
     return model
 
 
-def create_model_edgeconv_resnext(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_resnext(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvResNeXtBlock layers.
     """
@@ -604,8 +594,7 @@ def create_model_edgeconv_resnext(F, nFilter, activation, n_out, activation_out,
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvResNeXt")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXt")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -620,7 +609,9 @@ def create_model_edgeconv_resnext(F, nFilter, activation, n_out, activation_out,
     return model
 
 
-def create_model_edgeconv_resnext_bn(F, nFilter, activation, n_out, activation_out, dropout):
+def create_model_edgeconv_resnext_bn(
+    F, nFilter, activation, n_out, activation_out, dropout
+):
     """
     Create a model using EdgeConvResNeXtBlockBN layers.
     """
@@ -641,8 +632,7 @@ def create_model_edgeconv_resnext_bn(F, nFilter, activation, n_out, activation_o
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in],
-                  outputs=out, name="EdgeConvResNeXtBN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtBN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -659,6 +649,11 @@ def create_model_edgeconv_resnext_bn(F, nFilter, activation, n_out, activation_o
 
 def get_models():
     current_module = inspect.getmodule(inspect.currentframe())
-    functions = {name: obj for name, obj in globals().items()
-                 if isinstance(obj, types.FunctionType) and inspect.getmodule(obj) == current_module and name != 'get_models'}
+    functions = {
+        name: obj
+        for name, obj in globals().items()
+        if isinstance(obj, types.FunctionType)
+        and inspect.getmodule(obj) == current_module
+        and name != "get_models"
+    }
     return functions

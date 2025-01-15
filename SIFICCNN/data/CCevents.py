@@ -1,6 +1,11 @@
 import numpy as np
 
-from SIFICCNN.utils import TVector3, tVector_list, vector_angle, compton_scattering_angle
+from SIFICCNN.utils import (
+    TVector3,
+    tVector_list,
+    vector_angle,
+    compton_scattering_angle,
+)
 
 
 class EventSimulation:
@@ -34,28 +39,30 @@ class EventSimulation:
         FibreHit (class FibreHit):              Container for Fibre detector response
     """
 
-    def __init__(self,
-                 EventNumber,
-                 MCSimulatedEventType,
-                 MCEnergy_Primary,
-                 MCEnergy_e,
-                 MCEnergy_p,
-                 MCPosition_source,
-                 MCDirection_source,
-                 MCComptonPosition,
-                 MCDirection_scatter,
-                 MCPosition_e,
-                 MCInteractions_e,
-                 MCPosition_p,
-                 MCInteractions_p,
-                 Scatterer,
-                 Absorber,
-                 MCNPrimaryNeutrons=None,
-                 MCEnergyDeps_e=None,
-                 MCEnergyDeps_p=None,
-                 RecoCluster=None,
-                 SiPMHit=None,
-                 FibreHit=None):
+    def __init__(
+        self,
+        EventNumber,
+        MCSimulatedEventType,
+        MCEnergy_Primary,
+        MCEnergy_e,
+        MCEnergy_p,
+        MCPosition_source,
+        MCDirection_source,
+        MCComptonPosition,
+        MCDirection_scatter,
+        MCPosition_e,
+        MCInteractions_e,
+        MCPosition_p,
+        MCInteractions_p,
+        Scatterer,
+        Absorber,
+        MCNPrimaryNeutrons=None,
+        MCEnergyDeps_e=None,
+        MCEnergyDeps_p=None,
+        RecoCluster=None,
+        SiPMHit=None,
+        FibreHit=None,
+    ):
         # Global information
         self.EventNumber = EventNumber
         self.MCSimulatedEventType = MCSimulatedEventType
@@ -76,7 +83,8 @@ class EventSimulation:
         self.scatterer = Scatterer
         self.absorber = Absorber
 
-        # additional attributes. May not be present in every file, if so filled with None
+        # additional attributes. May not be present in every file, if so filled
+        # with None
         if MCEnergyDeps_e is not None:
             self.MCEnergyDeps_e = np.array(MCEnergyDeps_e)
             self.MCEnergyDeps_p = np.array(MCEnergyDeps_p)
@@ -110,10 +118,8 @@ class EventSimulation:
         #   - type: describes the interaction type of particle interaction
         #   - level: describes the secondary level of the interacting particle
         #   - energy: boolean encoding if the interaction deposited energy
-        self.MCInteractions_e_full = np.zeros(
-            shape=(len(self.MCInteractions_e), 4))
-        self.MCInteractions_p_full = np.zeros(
-            shape=(len(self.MCInteractions_p), 4))
+        self.MCInteractions_e_full = np.zeros(shape=(len(self.MCInteractions_e), 4))
+        self.MCInteractions_p_full = np.zeros(shape=(len(self.MCInteractions_p), 4))
         self.set_interaction_list()
 
     def set_interaction_list(self):
@@ -144,48 +150,58 @@ class EventSimulation:
             # X // 10**n % 10 is an elegant method to get the n+1'st digit of X
             if len(str(self.MCInteractions_e[0])) <= 2:
                 for i, interact in enumerate(self.MCInteractions_e):
-                    self.MCInteractions_e_full[i, :2] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10]
+                    self.MCInteractions_e_full[i, :2] = [
+                        interact // 10**0 % 10,
+                        interact // 10**1 % 10,
+                    ]
                     self.MCInteractions_e_full[i, 3] = 1
                 for i, interact in enumerate(self.MCInteractions_p):
-                    self.MCInteractions_p_full[i, :2] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10]
+                    self.MCInteractions_p_full[i, :2] = [
+                        interact // 10**0 % 10,
+                        interact // 10**1 % 10,
+                    ]
                     self.MCInteractions_p_full[i, 3] = 1
             elif len(str(self.MCInteractions_e[0])) == 3:
                 for i, interact in enumerate(self.MCInteractions_e):
-                    self.MCInteractions_e_full[i, :3] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10,
-                                                         interact // 10 ** 2 % 10]
+                    self.MCInteractions_e_full[i, :3] = [
+                        interact // 10**0 % 10,
+                        interact // 10**1 % 10,
+                        interact // 10**2 % 10,
+                    ]
                     self.MCInteractions_e_full[i, 3] = 1
                 for i, interact in enumerate(self.MCInteractions_p):
-                    self.MCInteractions_p_full[i, :3] = [interact // 10 ** 0 % 10,
-                                                         interact // 10 ** 1 % 10,
-                                                         interact // 10 ** 2 % 10]
+                    self.MCInteractions_p_full[i, :3] = [
+                        interact // 10**0 % 10,
+                        interact // 10**1 % 10,
+                        interact // 10**2 % 10,
+                    ]
                     self.MCInteractions_p_full[i, 3] = 1
             elif len(str(self.MCInteractions_e[0])) == 5:
                 for i, interact in enumerate(self.MCInteractions_e):
                     self.MCInteractions_e_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 *
-                        (interact // 10 ** 3 % 10),
-                        interact // 10 ** 1 % 10,
-                        interact // 10 ** 0 % 10]
+                        interact // 10**2 % 10 + 10 * (interact // 10**3 % 10),
+                        interact // 10**1 % 10,
+                        interact // 10**0 % 10,
+                    ]
 
                     if self.MCEnergyDeps_e is not None:
                         self.MCInteractions_e_full[i, 3] = (
-                            self.MCEnergyDeps_e[i] > 0.0) * 1
+                            self.MCEnergyDeps_e[i] > 0.0
+                        ) * 1
                     else:
                         self.MCInteractions_e_full[i, 3] = 1
 
                 for i, interact in enumerate(self.MCInteractions_p):
                     self.MCInteractions_p_full[i, :3] = [
-                        interact // 10 ** 2 % 10 + 10 *
-                        (interact // 10 ** 3 % 10),
-                        interact // 10 ** 1 % 10,
-                        interact // 10 ** 0 % 10]
+                        interact // 10**2 % 10 + 10 * (interact // 10**3 % 10),
+                        interact // 10**1 % 10,
+                        interact // 10**0 % 10,
+                    ]
 
                     if self.MCEnergyDeps_p is not None:
                         self.MCInteractions_p_full[i, 3] = (
-                            self.MCEnergyDeps_p[i] > 0.0) * 1
+                            self.MCEnergyDeps_p[i] > 0.0
+                        ) * 1
                     else:
                         self.MCInteractions_p_full[i, 3] = 1
 
@@ -211,18 +227,23 @@ class EventSimulation:
         target_position_p = TVector3.zeros()
 
         # exceptions for interaction list that are too short due to missing interactions
-        # Note: This is mostly if the scattering is only happening in the scatterer
+        # Note: This is mostly if the scattering is only happening in the
+        # scatterer
         if len(self.MCPosition_p) <= 1:
             return target_position_e, target_position_p
 
         # check if the first interaction is compton scattering in the scatterer
-        if (self.MCInteractions_p_full[0, 0] == 1 and
-                self.scatterer.is_vec_in_module(self.MCPosition_p[0])):
+        if self.MCInteractions_p_full[0, 0] == 1 and self.scatterer.is_vec_in_module(
+            self.MCPosition_p[0]
+        ):
 
             # scan for the next interaction of the primary prompt gamma
             # Its position interactions auto determines the gamma absorption position if the event
             # is a dist. Compton event
-            if self.MCInteractions_p_full[1, 1] == 0 and self.MCInteractions_p_full[1, 3] == 1:
+            if (
+                self.MCInteractions_p_full[1, 1] == 0
+                and self.MCInteractions_p_full[1, 3] == 1
+            ):
                 target_position_p = self.MCPosition_p[1]
                 return target_position_e, target_position_p
 
@@ -246,15 +267,16 @@ class EventSimulation:
                         # skip zero energy deposition interactions
                         if self.MCInteractions_p_full[i, 3] == 0:
                             continue
-                        if (self.MCInteractions_p_full[i, 1] <= 2 and
-                                self.absorber.is_vec_in_module(self.MCPosition_p[i])):
+                        if self.MCInteractions_p_full[
+                            i, 1
+                        ] <= 2 and self.absorber.is_vec_in_module(self.MCPosition_p[i]):
                             # check additionally if the interaction is in the scattering
                             # direction
                             tmp_angle = vector_angle(
                                 self.MCPosition_p[i] - self.MCComptonPosition,
-                                self.MCDirection_scatter)
-                            r = (self.MCPosition_p[i] -
-                                 self.MCComptonPosition).mag
+                                self.MCDirection_scatter,
+                            )
+                            r = (self.MCPosition_p[i] - self.MCComptonPosition).mag
                             tmp_dist = np.sin(tmp_angle) * r
                             if tmp_dist < self.ph_acceptance:
                                 self.ph_tag = True
@@ -304,12 +326,13 @@ class EventSimulation:
         target_energy_e, target_energy_p = self.get_target_energy()
 
         # check for valid target energies
-        if target_energy_e == 0. or target_energy_p == 0.:
+        if target_energy_e == 0.0 or target_energy_p == 0.0:
             return False
 
         # check if interaction positions are in the correct module
-        if (self.scatterer.is_vec_in_module(target_position_e)
-                and self.absorber.is_vec_in_module(target_position_p)):
+        if self.scatterer.is_vec_in_module(
+            target_position_e
+        ) and self.absorber.is_vec_in_module(target_position_p):
             return True
         return False
 
@@ -328,8 +351,8 @@ class EventSimulation:
         # check if the event is a valid event by considering the clusters
         # associated with it, the event is considered valid if there are at
         # least one cluster within each module of the SiFiCC
-        if self.clusters_count >= 2 
-                and scatterer.is_any_point_inside_x(self.clusters_position) 
+        if self.clusters_count >= 2
+                and scatterer.is_any_point_inside_x(self.clusters_position)
                 and absorber.is_any_point_inside_x(self.clusters_position):
             self.is_distributed_clusters = True
         else:
@@ -347,13 +370,19 @@ class EventSimulation:
         # 0 < p interaction < 10
         # 10 <= e interaction < 20
         # Note: first interaction of p is the compton event
-        if is_compton \
-                and len(self.MCPosition_p) >= 2 \
-                and len(self.MCPosition_e) >= 1 \
-                and ((self.MCInteractions_p_full[0, 1:] > 0) & (
-                self.MCInteractions_p_full[0, 1:] < 10)).any() \
-                and ((self.MCInteractions_e_full[0, 0] >= 10) & (
-                self.MCInteractions_e_full[0, 0] < 20)):
+        if (
+            is_compton
+            and len(self.MCPosition_p) >= 2
+            and len(self.MCPosition_e) >= 1
+            and (
+                (self.MCInteractions_p_full[0, 1:] > 0)
+                & (self.MCInteractions_p_full[0, 1:] < 10)
+            ).any()
+            and (
+                (self.MCInteractions_e_full[0, 0] >= 10)
+                & (self.MCInteractions_e_full[0, 0] < 20)
+            )
+        ):
             is_complete_compton = True
         else:
             is_complete_compton = False
@@ -386,15 +415,19 @@ class EventSimulation:
         # ideal Compton event = complete distributed Compton event where the
         # next interaction of both
         # e and p is in the different modules of SiFiCC
-        if is_complete_compton \
-                and self.scatterer.is_vec_in_module(target_position_e) \
-                and self.absorber.is_vec_in_module(target_position_p) \
-                and self.MCSimulatedEventType == 2:
+        if (
+            is_complete_compton
+            and self.scatterer.is_vec_in_module(target_position_e)
+            and self.absorber.is_vec_in_module(target_position_p)
+            and self.MCSimulatedEventType == 2
+        ):
             return True
-        elif is_complete_compton \
-                and self.scatterer.is_vec_in_module(target_position_p) \
-                and self.absorber.is_vec_in_module(target_position_e) \
-                and self.MCSimulatedEventType == 2:
+        elif (
+            is_complete_compton
+            and self.scatterer.is_vec_in_module(target_position_p)
+            and self.absorber.is_vec_in_module(target_position_e)
+            and self.MCSimulatedEventType == 2
+        ):
             return True
         return False
 
@@ -407,7 +440,9 @@ class EventSimulation:
             scatter angle theta (based on energy)
         """
         target_energy_e, target_energy_p = self.get_target_energy()
-        return compton_scattering_angle(target_energy_e + target_energy_p, target_energy_p)
+        return compton_scattering_angle(
+            target_energy_e + target_energy_p, target_energy_p
+        )
 
     @property
     def theta_dotvec(self):
@@ -458,13 +493,22 @@ class EventSimulation:
         target_energy_e, target_energy_p = self.get_target_energy()
         target_position_e, target_position_p = self.get_target_position()
         print("Target Energy Electron: {:.3f} [MeV]".format(target_energy_e))
-        print("Target Position Electron: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            target_position_e.x, target_position_e.y, target_position_e.z))
+        print(
+            "Target Position Electron: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                target_position_e.x, target_position_e.y, target_position_e.z
+            )
+        )
         print("Target Energy Photon: {:.3f} [MeV]".format(target_energy_p))
-        print("Target Position Photon: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            target_position_p.x, target_position_p.y, target_position_p.z))
-        print("Distributed Compton (PH: {}) : {}".format(self.ph_method,
-                                                         self.get_distcompton_tag()))
+        print(
+            "Target Position Photon: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                target_position_p.x, target_position_p.y, target_position_p.z
+            )
+        )
+        print(
+            "Distributed Compton (PH: {}) : {}".format(
+                self.ph_method, self.get_distcompton_tag()
+            )
+        )
         # print("Distributed Compton (legacy)  : {}".format(self.get_distcompton_tag_legacy()))
 
         # primary gamma track information
@@ -472,59 +516,90 @@ class EventSimulation:
         print("EnergyPrimary: {:.3f} [MeV]".format(self.MCEnergy_Primary))
         print("RealEnergy_e: {:.3f} [MeV]".format(self.MCEnergy_e))
         print("RealEnergy_p: {:.3f} [MeV]".format(self.MCEnergy_p))
-        print("RealPosition_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCPosition_source.x, self.MCPosition_source.y, self.MCPosition_source.z))
-        print("RealDirection_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCDirection_source.x, self.MCDirection_source.y, self.MCDirection_source.z))
-        print("RealComptonPosition: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCComptonPosition.x, self.MCComptonPosition.y, self.MCComptonPosition.z))
-        print("RealDirection_scatter: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            self.MCDirection_scatter.x, self.MCDirection_scatter.y, self.MCDirection_scatter.z))
+        print(
+            "RealPosition_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                self.MCPosition_source.x,
+                self.MCPosition_source.y,
+                self.MCPosition_source.z,
+            )
+        )
+        print(
+            "RealDirection_source: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                self.MCDirection_source.x,
+                self.MCDirection_source.y,
+                self.MCDirection_source.z,
+            )
+        )
+        print(
+            "RealComptonPosition: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                self.MCComptonPosition.x,
+                self.MCComptonPosition.y,
+                self.MCComptonPosition.z,
+            )
+        )
+        print(
+            "RealDirection_scatter: ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                self.MCDirection_scatter.x,
+                self.MCDirection_scatter.y,
+                self.MCDirection_scatter.z,
+            )
+        )
 
         # Interaction list electron
         print("\n# Electron interaction chain #")
         print("Position [mm] | Interaction: (type, level)")
         for i in range(self.MCInteractions_e_full.shape[0]):
-            print("({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}) ".format(
-                self.MCPosition_e[i].x,
-                self.MCPosition_e[i].y,
-                self.MCPosition_e[i].z,
-                int(str(self.MCInteractions_e[i])[0]),
-                int(str(self.MCInteractions_e[i])[1])))
+            print(
+                "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}) ".format(
+                    self.MCPosition_e[i].x,
+                    self.MCPosition_e[i].y,
+                    self.MCPosition_e[i].z,
+                    int(str(self.MCInteractions_e[i])[0]),
+                    int(str(self.MCInteractions_e[i])[1]),
+                )
+            )
 
         # Interaction list photon
         print("\n# Photon interaction chain #")
         if self.MCEnergyDeps_e is not None:
             print(
-                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff. | Energy dep.")
+                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff. | Energy dep."
+            )
         else:
             print(
-                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff.")
+                "Position [mm] | Interaction: (Ptype, Itype, level) | Direction diff."
+            )
 
         for i in range(self.MCInteractions_p_full.shape[0]):
             tmp_vec = self.MCPosition_p[i] - self.MCComptonPosition
             r = tmp_vec.mag
             tmp_angle = vector_angle(tmp_vec, self.MCDirection_scatter)
 
-            list_params = [self.MCPosition_p[i].x,
-                           self.MCPosition_p[i].y,
-                           self.MCPosition_p[i].z,
-                           self.MCInteractions_p_full[i, 3],
-                           self.MCInteractions_p_full[i, 0] * 10 +
-                           self.MCInteractions_p_full[i, 1],
-                           self.MCInteractions_p_full[i, 2],
-                           tmp_angle,
-                           np.sin(tmp_angle) * r]
+            list_params = [
+                self.MCPosition_p[i].x,
+                self.MCPosition_p[i].y,
+                self.MCPosition_p[i].z,
+                self.MCInteractions_p_full[i, 3],
+                self.MCInteractions_p_full[i, 0] * 10
+                + self.MCInteractions_p_full[i, 1],
+                self.MCInteractions_p_full[i, 2],
+                tmp_angle,
+                np.sin(tmp_angle) * r,
+            ]
 
             if self.MCEnergyDeps_p is not None:
                 list_params.append(self.MCEnergyDeps_p[i] > 0.0)
                 print(
                     "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}, {:3}) | {:.5f} [rad] ({:7.5f} [mm]) | {}".format(
-                        *list_params))
+                        *list_params
+                    )
+                )
             else:
                 print(
                     "({:7.3f}, {:7.3f}, {:7.3f}) | ({:3}, {:3}, {:3}) | {:.5f} [rad] ({:7.5f} [mm])".format(
-                        *list_params))
+                        *list_params
+                    )
+                )
 
         # print added information for container classes
         if self.RecoCluster is not None:
@@ -567,24 +642,26 @@ class RecoCluster:
     class but there is no better option
     """
 
-    def __init__(self,
-                 Identified,
-                 RecoClusterPosition,
-                 RecoClusterPosition_uncertainty,
-                 RecoClusterEnergies_values,
-                 RecoClusterEnergies_uncertainty,
-                 RecoClusterEntries,
-                 RecoClusterTimestamps,
-                 Scatterer,
-                 Absorber):
+    def __init__(
+        self,
+        Identified,
+        RecoClusterPosition,
+        RecoClusterPosition_uncertainty,
+        RecoClusterEnergies_values,
+        RecoClusterEnergies_uncertainty,
+        RecoClusterEntries,
+        RecoClusterTimestamps,
+        Scatterer,
+        Absorber,
+    ):
         # Reco information (Cut-Based Reconstruction)
         self.Identified = Identified
         self.RecoClusterPosition = tVector_list(RecoClusterPosition)
         self.RecoClusterPosition_uncertainty = tVector_list(
-            RecoClusterPosition_uncertainty)
+            RecoClusterPosition_uncertainty
+        )
         self.RecoClusterEnergies_values = np.array(RecoClusterEnergies_values)
-        self.RecoClusterEnergies_uncertainty = np.array(
-            RecoClusterEnergies_uncertainty)
+        self.RecoClusterEnergies_uncertainty = np.array(RecoClusterEnergies_uncertainty)
         self.RecoClusterEntries = np.array(RecoClusterEntries)
         self.RecoClusterTimestamps = np.array(RecoClusterTimestamps)
         self.RecoClusterTimeStart = min(RecoClusterTimestamps)
@@ -606,23 +683,38 @@ class RecoCluster:
                     cluster.y,
                     cluster.z,
                     self.RecoClusterEntries[i],
-                    self.RecoClusterTimestamps[i]))
+                    self.RecoClusterTimestamps[i],
+                )
+            )
 
-        RecoCluster_idx_scatterer, RecoCluster_idx_absorber = self.sort_clusters_by_module(
-            use_energy=True)
-        print("Cluster in Scatterer: {} | Cluster idx: {}".format(
-            len(RecoCluster_idx_scatterer), RecoCluster_idx_scatterer))
-        print("Cluster in Absorber: {} | Cluster idx: {}".format(
-            len(RecoCluster_idx_absorber), RecoCluster_idx_absorber))
+        RecoCluster_idx_scatterer, RecoCluster_idx_absorber = (
+            self.sort_clusters_by_module(use_energy=True)
+        )
+        print(
+            "Cluster in Scatterer: {} | Cluster idx: {}".format(
+                len(RecoCluster_idx_scatterer), RecoCluster_idx_scatterer
+            )
+        )
+        print(
+            "Cluster in Absorber: {} | Cluster idx: {}".format(
+                len(RecoCluster_idx_absorber), RecoCluster_idx_absorber
+            )
+        )
 
         print("\n# Cut-Based Reconstruction: #")
         print("Identification: {}".format(self.Identified))
         reco_energy_e, reco_energy_p = self.get_reco_energy()
         reco_position_e, reco_position_p = self.get_reco_position()
-        print("Electron Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            reco_energy_e, reco_position_e.x, reco_position_e.y, reco_position_e.z))
-        print("Photon   Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
-            reco_energy_p, reco_position_p.x, reco_position_p.y, reco_position_p.z))
+        print(
+            "Electron Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                reco_energy_e, reco_position_e.x, reco_position_e.y, reco_position_e.z
+            )
+        )
+        print(
+            "Photon   Interaction: {:7.3f} [MeV] | ({:7.3f}, {:7.3f}, {:7.3f}) [mm]".format(
+                reco_energy_p, reco_position_p.x, reco_position_p.y, reco_position_p.z
+            )
+        )
 
     def get_electron_energy(self):
         """
@@ -646,10 +738,10 @@ class RecoCluster:
             photon energy, photon energy uncertainty
         """
         _, idx_absorber = self.sort_clusters_by_module(use_energy=True)
-        photon_energy_value = np.sum(
-            self.RecoClusterEnergies_values[idx_absorber])
+        photon_energy_value = np.sum(self.RecoClusterEnergies_values[idx_absorber])
         photon_energy_uncertainty = np.sqrt(
-            np.sum(self.RecoClusterEnergies_uncertainty[idx_absorber] ** 2))
+            np.sum(self.RecoClusterEnergies_uncertainty[idx_absorber] ** 2)
+        )
         return photon_energy_value, photon_energy_uncertainty
 
     def get_electron_position(self):
@@ -803,10 +895,11 @@ class RecoCluster:
                 tcluster_unc = self.RecoClusterPosition_uncertainty[i]
                 # check if absolute x,y,z difference is smaller than
                 # absolute uncertainty
-                if (abs(tvec3.x - tcluster.x) <= a * abs(tcluster_unc.x)
-                        and abs(tvec3.y - tcluster.y) <= a * abs(tcluster_unc.y)
-                        and abs(tvec3.z - tcluster.z) <= a * abs(
-                            tcluster_unc.z)):
+                if (
+                    abs(tvec3.x - tcluster.x) <= a * abs(tcluster_unc.x)
+                    and abs(tvec3.y - tcluster.y) <= a * abs(tcluster_unc.y)
+                    and abs(tvec3.z - tcluster.z) <= a * abs(tcluster_unc.z)
+                ):
                     return i
             else:
                 return -1
@@ -817,9 +910,11 @@ class RecoCluster:
                 tcluster_unc = self.RecoClusterPosition_uncertainty[idx]
                 # check if absolute x,y,z difference is smaller than
                 # absolute uncertainty
-                if (abs(tvec3.x - tcluster.x) <= abs(tcluster_unc.x)
-                        and abs(tvec3.y - tcluster.y) <= abs(tcluster_unc.y)
-                        and abs(tvec3.z - tcluster.z) <= abs(tcluster_unc.z)):
+                if (
+                    abs(tvec3.x - tcluster.x) <= abs(tcluster_unc.x)
+                    and abs(tvec3.y - tcluster.y) <= abs(tcluster_unc.y)
+                    and abs(tvec3.z - tcluster.z) <= abs(tcluster_unc.z)
+                ):
                     return i
             else:
                 return -1
@@ -852,8 +947,7 @@ class RecoCluster:
         if subtract_prime:
             tvec3 = tvec3 - tvec3_prime
         # rotate tvec3 so that the prime vector aligns with the x-axis
-        tvec3 = tvec3.rotatez(-tvec3_prime.phi).rotatey(
-            -tvec3_prime.theta + np.pi / 2)
+        tvec3 = tvec3.rotatez(-tvec3_prime.phi).rotatey(-tvec3_prime.theta + np.pi / 2)
 
         return tvec3
 
@@ -877,13 +971,9 @@ class SiPMHit:
     class but there is no better option
     """
 
-    def __init__(self,
-                 SiPMTimeStamp,
-                 SiPMPhotonCount,
-                 SiPMPosition,
-                 SiPMId,
-                 Scatterer,
-                 Absorber):
+    def __init__(
+        self, SiPMTimeStamp, SiPMPhotonCount, SiPMPosition, SiPMId, Scatterer, Absorber
+    ):
         self.SiPMTimeStamp = np.array(SiPMTimeStamp)
         self.SiPMTimeStart = min(SiPMTimeStamp)
         self.SiPMTimeStamp -= self.SiPMTimeStart
@@ -904,14 +994,16 @@ class SiPMHit:
                     self.SiPMPosition[j].x,
                     self.SiPMPosition[j].y,
                     self.SiPMPosition[j].z,
-                    self.SiPMTimeStamp[j]))
+                    self.SiPMTimeStamp[j],
+                )
+            )
 
     @staticmethod
     def sipm_id_to_position(sipm_id):
         # determine y
         y = sipm_id // 368
         # remove third dimension
-        sipm_id -= (y * 368)
+        sipm_id -= y * 368
         # x and z in scatterer
         if sipm_id < 112:
             x = sipm_id // 28
@@ -928,9 +1020,14 @@ class SiPMHit:
         dimy = 2
         dimz = 32
 
-        ary_feature = np.zeros(shape=(
-            dimx + 2 * padding + gap_padding, dimy + 2 * padding,
-            dimz + 2 * padding, 2))
+        ary_feature = np.zeros(
+            shape=(
+                dimx + 2 * padding + gap_padding,
+                dimy + 2 * padding,
+                dimz + 2 * padding,
+                2,
+            )
+        )
 
         for i, sipm_id in enumerate(self.SiPMId):
             x, y, z = self.sipm_id_to_position(sipm_id=sipm_id)
@@ -1015,13 +1112,9 @@ class FibreHit:
     class but there is no better option
     """
 
-    def __init__(self,
-                 FibreTime,
-                 FibreEnergy,
-                 FibrePosition,
-                 FibreId,
-                 Scatterer,
-                 Absorber):
+    def __init__(
+        self, FibreTime, FibreEnergy, FibrePosition, FibreId, Scatterer, Absorber
+    ):
         self.FibreTime = np.array(FibreTime)
         self.FibreTimeStart = min(FibreTime)
         self.FibreTime -= self.FibreTimeStart
@@ -1043,4 +1136,6 @@ class FibreHit:
                     self.FibrePosition[j].x,
                     self.FibrePosition[j].y,
                     self.FibrePosition[j].z,
-                    self.FibreTime[j]))
+                    self.FibreTime[j],
+                )
+            )

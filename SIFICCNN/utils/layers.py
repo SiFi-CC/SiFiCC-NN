@@ -38,10 +38,12 @@ class ReZero(tf.keras.layers.Layer):
     def build(self, input_shape):
         # create residual weight
         assert isinstance(input_shape, list)
-        self.residualWeight = self.add_weight(name="residualWeight",
-                                              shape=(1,),
-                                              initializer=tf.keras.initializers.Zeros(),
-                                              trainable=True)
+        self.residualWeight = self.add_weight(
+            name="residualWeight",
+            shape=(1,),
+            initializer=tf.keras.initializers.Zeros(),
+            trainable=True,
+        )
         super(ReZero, self).build(input_shape)
 
     def call(self, inputs):
@@ -73,19 +75,20 @@ def adjustChannelSize(xInput, fxInput):
 
     # 1 X 1 conv if shape is different. Else identity.
     if not equalChannels:
-        x = tf.keras.layers.Dense(convBlockShape[-1],
-                                  activation="relu")(xInput)
+        x = tf.keras.layers.Dense(convBlockShape[-1], activation="relu")(xInput)
         return x
     else:
         return xInput
 
 
-def GCNConvResNetBlock(x,
-                       A,
-                       n_filter=64,
-                       activation="relu",
-                       conv_activation="relu",
-                       kernel_initializer="glorot_uniform"):
+def GCNConvResNetBlock(
+    x,
+    A,
+    n_filter=64,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     r"""
     ResNetBlock implementation used in the master thesis??????????
     'Vertex Reconstruction for Neutrino Events in the Double Chooz Experiment using Graph Neural
@@ -108,15 +111,18 @@ def GCNConvResNetBlock(x,
     """
 
     # two convolution layers in ResNetBlock
-    fx = sp.layers.GCNConv(n_filter,
-                           activation=conv_activation,
-                           use_bias=True,
-                           kernel_initializer=kernel_initializer)([x, A])
-    fx = sp.layers.GCNConv(n_filter,
-                           use_bias=False,
-                           kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.GCNConv(
+        n_filter,
+        activation=conv_activation,
+        use_bias=True,
+        kernel_initializer=kernel_initializer,
+    )([x, A])
+    fx = sp.layers.GCNConv(
+        n_filter, use_bias=False, kernel_initializer=kernel_initializer
+    )([fx, A])
 
-    # adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, fx)
 
     # apply rezero layer
@@ -128,12 +134,14 @@ def GCNConvResNetBlock(x,
     return x
 
 
-def EdgeConvResNetBlock(x,
-                        A,
-                        n_filter=64,
-                        activation="relu",
-                        conv_activation="relu",
-                        kernel_initializer="glorot_uniform"):
+def EdgeConvResNetBlock(
+    x,
+    A,
+    n_filter=64,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     r"""
     ResNetBlock implementation used in the master thesis
     'Vertex Reconstruction for Neutrino Events in the Double Chooz Experiment using Graph Neural
@@ -156,15 +164,18 @@ def EdgeConvResNetBlock(x,
     """
 
     # two convolution layers in ResNetBlock
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            activation=conv_activation,
-                            use_bias=True,
-                            kernel_initializer=kernel_initializer)([x, A])
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=False,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter,
+        activation=conv_activation,
+        use_bias=True,
+        kernel_initializer=kernel_initializer,
+    )([x, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
+    )([fx, A])
 
-    # adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, fx)
 
     # apply rezero layer
@@ -176,11 +187,9 @@ def EdgeConvResNetBlock(x,
     return x
 
 
-def EdgeConvResNetBlockV2(x,
-                          A,
-                          n_filter=64,
-                          activation="relu",
-                          kernel_initializer="glorot_uniform"):
+def EdgeConvResNetBlockV2(
+    x, A, n_filter=64, activation="relu", kernel_initializer="glorot_uniform"
+):
     """
     Updated ResNetBlock implementation from https://arxiv.org/pdf/1603.05027v3.pdf
     Compared to the standard ResNet implementation the order of BN and ReLU is changed for better
@@ -203,16 +212,17 @@ def EdgeConvResNetBlockV2(x,
     # two weight layers in ResNetBlock
     # fx = tf.keras.layers.BatchNormalization(axis=0)(x)
     fx = tf.keras.layers.Activation(activation)(x)
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=True,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
+    )([fx, A])
     # fx = tf.keras.layers.BatchNormalization(axis=0)(fx)
     fx = tf.keras.layers.Activation(activation)(fx)
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=False,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
+    )([fx, A])
 
-    # adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, fx)
 
     # apply rezero layer
@@ -225,11 +235,9 @@ def resNetBlocks(implementation, **kwargs):
         return GCNConvResNetBlock(**kwargs)
 
 
-def EdgeConvResNetBlockV2BN(x,
-                            A,
-                            n_filter=64,
-                            activation="relu",
-                            kernel_initializer="glorot_uniform"):
+def EdgeConvResNetBlockV2BN(
+    x, A, n_filter=64, activation="relu", kernel_initializer="glorot_uniform"
+):
     """
     Updated ResNetBlock implementation from https://arxiv.org/pdf/1603.05027v3.pdf
     Compared to the standard ResNet implementation the order of BN and ReLU is changed for better
@@ -252,16 +260,17 @@ def EdgeConvResNetBlockV2BN(x,
     # two weight layers in ResNetBlock
     fx = tf.keras.layers.BatchNormalization(axis=1)(x)
     fx = tf.keras.layers.Activation(activation)(x)
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=True,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
+    )([fx, A])
     fx = tf.keras.layers.BatchNormalization(axis=1)(fx)
     fx = tf.keras.layers.Activation(activation)(fx)
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=False,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
+    )([fx, A])
 
-    # adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, fx)
 
     # apply rezero layer
@@ -269,12 +278,14 @@ def EdgeConvResNetBlockV2BN(x,
     return x
 
 
-def EdgeConvResNetBlockBN(x,
-                          A,
-                          n_filter=64,
-                          activation="relu",
-                          conv_activation="relu",
-                          kernel_initializer="glorot_uniform"):
+def EdgeConvResNetBlockBN(
+    x,
+    A,
+    n_filter=64,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     r"""
     ResNetBlock implementation used in the master thesis
     'Vertex Reconstruction for Neutrino Events in the Double Chooz Experiment using Graph Neural
@@ -297,15 +308,18 @@ def EdgeConvResNetBlockBN(x,
     """
 
     # two convolution layers in ResNetBlock
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            activation=conv_activation,
-                            use_bias=True,
-                            kernel_initializer=kernel_initializer)([x, A])
-    fx = sp.layers.EdgeConv(channels=n_filter,
-                            use_bias=False,
-                            kernel_initializer=kernel_initializer)([fx, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter,
+        activation=conv_activation,
+        use_bias=True,
+        kernel_initializer=kernel_initializer,
+    )([x, A])
+    fx = sp.layers.EdgeConv(
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
+    )([fx, A])
 
-    # adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, fx)
 
     # apply rezero layer
@@ -318,7 +332,15 @@ def EdgeConvResNetBlockBN(x,
     return x
 
 
-def EdgeConvRes2NetBlock(x, A, n_filter=64, scales=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvRes2NetBlock(
+    x,
+    A,
+    n_filter=64,
+    scales=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     Res2Net-inspired Block for Graph Neural Networks using progressive feature reuse.
     Each scale builds on the original input and the output of the previous scale.
@@ -342,9 +364,7 @@ def EdgeConvRes2NetBlock(x, A, n_filter=64, scales=4, activation="relu", conv_ac
     for i in range(scales):
         # Apply EdgeConv on the current output + original input
         current_output = sp.layers.EdgeConv(
-            channels=n_filter,
-            use_bias=True,
-            kernel_initializer=kernel_initializer
+            channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
         )([current_output, A])
 
         # Add the original input into the computation for progressive reuse
@@ -364,9 +384,7 @@ def EdgeConvRes2NetBlock(x, A, n_filter=64, scales=4, activation="relu", conv_ac
 
     # Step 3: Apply final EdgeConv for feature merging
     merged = sp.layers.EdgeConv(
-        channels=n_filter,
-        use_bias=False,
-        kernel_initializer=kernel_initializer
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
     )([concatenated, A])
 
     x = adjustChannelSize(x, merged)
@@ -380,7 +398,15 @@ def EdgeConvRes2NetBlock(x, A, n_filter=64, scales=4, activation="relu", conv_ac
     return x_res
 
 
-def EdgeConvRes2NetBlockBN(x, A, n_filter=64, scales=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvRes2NetBlockBN(
+    x,
+    A,
+    n_filter=64,
+    scales=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     Res2Net-inspired Block for Graph Neural Networks using progressive feature reuse.
     Each scale builds on the original input and the output of the previous scale.
@@ -403,9 +429,7 @@ def EdgeConvRes2NetBlockBN(x, A, n_filter=64, scales=4, activation="relu", conv_
     for i in range(scales):
         # Apply EdgeConv on the current output + original input
         current_output = sp.layers.EdgeConv(
-            channels=n_filter,
-            use_bias=True,
-            kernel_initializer=kernel_initializer
+            channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
         )([current_output, A])
 
         # Add the original input into the computation for progressive reuse
@@ -423,9 +447,7 @@ def EdgeConvRes2NetBlockBN(x, A, n_filter=64, scales=4, activation="relu", conv_
 
     # Step 3: Apply final EdgeConv for feature merging
     merged = sp.layers.EdgeConv(
-        channels=n_filter,
-        use_bias=False,
-        kernel_initializer=kernel_initializer
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
     )([concatenated, A])
 
     x = adjustChannelSize(x, merged)
@@ -440,7 +462,15 @@ def EdgeConvRes2NetBlockBN(x, A, n_filter=64, scales=4, activation="relu", conv_
     return x
 
 
-def EdgeConvRes2NetBlockV2(x, A, n_filter=64, scales=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvRes2NetBlockV2(
+    x,
+    A,
+    n_filter=64,
+    scales=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     Res2Net-inspired Block for Graph Neural Networks using progressive feature reuse.
     Each scale builds on the original input and the output of the previous scale.
@@ -464,9 +494,7 @@ def EdgeConvRes2NetBlockV2(x, A, n_filter=64, scales=4, activation="relu", conv_
         # Apply EdgeConv on the current output + original input
         current_output = tf.keras.layers.Activation(activation)(current_output)
         current_output = sp.layers.EdgeConv(
-            channels=n_filter,
-            use_bias=True,
-            kernel_initializer=kernel_initializer
+            channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
         )([current_output, A])
 
         # Add the original input into the computation for progressive reuse
@@ -484,9 +512,7 @@ def EdgeConvRes2NetBlockV2(x, A, n_filter=64, scales=4, activation="relu", conv_
 
     # Step 3: Apply final EdgeConv for feature merging
     merged = sp.layers.EdgeConv(
-        channels=n_filter,
-        use_bias=False,
-        kernel_initializer=kernel_initializer
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
     )([concatenated, A])
 
     x = adjustChannelSize(x, merged)
@@ -497,7 +523,15 @@ def EdgeConvRes2NetBlockV2(x, A, n_filter=64, scales=4, activation="relu", conv_
     return x
 
 
-def EdgeConvRes2NetBlockV2BN(x, A, n_filter=64, scales=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvRes2NetBlockV2BN(
+    x,
+    A,
+    n_filter=64,
+    scales=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     Res2Net-inspired Block for Graph Neural Networks using progressive feature reuse.
     Each scale builds on the original input and the output of the previous scale.
@@ -519,13 +553,10 @@ def EdgeConvRes2NetBlockV2BN(x, A, n_filter=64, scales=4, activation="relu", con
     current_output = x
     for i in range(scales):
         # Apply EdgeConv on the current output + original input
-        current_output = tf.keras.layers.BatchNormalization(
-            axis=1)(current_output)
+        current_output = tf.keras.layers.BatchNormalization(axis=1)(current_output)
         current_output = tf.keras.layers.Activation(activation)(current_output)
         current_output = sp.layers.EdgeConv(
-            channels=n_filter,
-            use_bias=True,
-            kernel_initializer=kernel_initializer
+            channels=n_filter, use_bias=True, kernel_initializer=kernel_initializer
         )([current_output, A])
 
         # Add the original input into the computation for progressive reuse
@@ -543,9 +574,7 @@ def EdgeConvRes2NetBlockV2BN(x, A, n_filter=64, scales=4, activation="relu", con
 
     # Step 3: Apply final EdgeConv for feature merging
     merged = sp.layers.EdgeConv(
-        channels=n_filter,
-        use_bias=False,
-        kernel_initializer=kernel_initializer
+        channels=n_filter, use_bias=False, kernel_initializer=kernel_initializer
     )([concatenated, A])
 
     x = adjustChannelSize(x, merged)
@@ -556,7 +585,15 @@ def EdgeConvRes2NetBlockV2BN(x, A, n_filter=64, scales=4, activation="relu", con
     return x
 
 
-def EdgeConvResNeXtBlockV2(x, A, n_filter=64, cardinality=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvResNeXtBlockV2(
+    x,
+    A,
+    n_filter=64,
+    cardinality=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     ResNeXt block with EdgeConv layers and improved activation function preceding the convolution layer.
 
@@ -581,15 +618,18 @@ def EdgeConvResNeXtBlockV2(x, A, n_filter=64, cardinality=4, activation="relu", 
     paths = []
     for i in range(cardinality):
         y = tf.keras.layers.Activation(conv_activation)(splits[i])
-        y = sp.layers.EdgeConv(channels=split_channels,
-                               use_bias=True,
-                               kernel_initializer=kernel_initializer)([y, A])
+        y = sp.layers.EdgeConv(
+            channels=split_channels,
+            use_bias=True,
+            kernel_initializer=kernel_initializer,
+        )([y, A])
         paths.append(y)
 
     # Concatenate all paths
     y = tf.concat(paths, axis=-1)
 
-    # Adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # Adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, y)
 
     # Apply rezero layer
@@ -598,7 +638,15 @@ def EdgeConvResNeXtBlockV2(x, A, n_filter=64, cardinality=4, activation="relu", 
     return x
 
 
-def EdgeConvResNeXtBlockV2BN(x, A, n_filter=64, cardinality=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvResNeXtBlockV2BN(
+    x,
+    A,
+    n_filter=64,
+    cardinality=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     ResNeXt block with EdgeConv layers, improved activation function preceding the convolution layer, and batch normalization.
 
@@ -624,15 +672,18 @@ def EdgeConvResNeXtBlockV2BN(x, A, n_filter=64, cardinality=4, activation="relu"
     for i in range(cardinality):
         y = tf.keras.layers.BatchNormalization(axis=1)(splits[i])
         y = tf.keras.layers.Activation(conv_activation)(y)
-        y = sp.layers.EdgeConv(channels=split_channels,
-                               use_bias=True,
-                               kernel_initializer=kernel_initializer)([y, A])
+        y = sp.layers.EdgeConv(
+            channels=split_channels,
+            use_bias=True,
+            kernel_initializer=kernel_initializer,
+        )([y, A])
         paths.append(y)
 
     # Concatenate all paths
     y = tf.concat(paths, axis=-1)
 
-    # Adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # Adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, y)
 
     # Apply rezero layer
@@ -641,7 +692,15 @@ def EdgeConvResNeXtBlockV2BN(x, A, n_filter=64, cardinality=4, activation="relu"
     return x
 
 
-def EdgeConvResNeXtBlock(x, A, n_filter=64, cardinality=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvResNeXtBlock(
+    x,
+    A,
+    n_filter=64,
+    cardinality=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     ResNeXt block with EdgeConv layers and improved activation function preceding the convolution layer.
 
@@ -665,15 +724,18 @@ def EdgeConvResNeXtBlock(x, A, n_filter=64, cardinality=4, activation="relu", co
     # Apply EdgeConv to each path and concatenate
     paths = []
     for i in range(cardinality):
-        y = sp.layers.EdgeConv(channels=split_channels,
-                               use_bias=True,
-                               kernel_initializer=kernel_initializer)([splits[i], A])
+        y = sp.layers.EdgeConv(
+            channels=split_channels,
+            use_bias=True,
+            kernel_initializer=kernel_initializer,
+        )([splits[i], A])
         paths.append(y)
 
     # Concatenate all paths
     y = tf.concat(paths, axis=-1)
 
-    # Adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # Adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, y)
 
     # Apply rezero layer
@@ -684,7 +746,15 @@ def EdgeConvResNeXtBlock(x, A, n_filter=64, cardinality=4, activation="relu", co
     return x
 
 
-def EdgeConvResNeXtBlockBN(x, A, n_filter=64, cardinality=4, activation="relu", conv_activation="relu", kernel_initializer="glorot_uniform"):
+def EdgeConvResNeXtBlockBN(
+    x,
+    A,
+    n_filter=64,
+    cardinality=4,
+    activation="relu",
+    conv_activation="relu",
+    kernel_initializer="glorot_uniform",
+):
     """
     ResNeXt block with EdgeConv layers, improved activation function preceding the convolution layer, and batch normalization.
 
@@ -708,15 +778,18 @@ def EdgeConvResNeXtBlockBN(x, A, n_filter=64, cardinality=4, activation="relu", 
     # Apply EdgeConv to each path and concatenate
     paths = []
     for i in range(cardinality):
-        y = sp.layers.EdgeConv(channels=split_channels,
-                               use_bias=True,
-                               kernel_initializer=kernel_initializer)([splits[i], A])
+        y = sp.layers.EdgeConv(
+            channels=split_channels,
+            use_bias=True,
+            kernel_initializer=kernel_initializer,
+        )([splits[i], A])
         paths.append(y)
 
     # Concatenate all paths
     y = tf.concat(paths, axis=-1)
 
-    # Adjust the number of filters in the short cut path by eventually applying a Conv1D with kernel size 1
+    # Adjust the number of filters in the short cut path by eventually
+    # applying a Conv1D with kernel size 1
     x = adjustChannelSize(x, y)
 
     # Apply rezero layer

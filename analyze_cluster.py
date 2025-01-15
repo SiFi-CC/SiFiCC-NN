@@ -6,9 +6,12 @@ from tqdm import tqdm  # Progress bar library
 
 # Define regex patterns for data extraction
 cluster_pattern = re.compile(
-    r"# SiPM Clusters in event \d+#\nNumber of SiPM clusters:\s+(\d+)")
+    r"# SiPM Clusters in event \d+#\nNumber of SiPM clusters:\s+(\d+)"
+)
 cluster_details_pattern = re.compile(
-    r"Cluster:\s+\[.*?\]\nCluster size:\s+(\d+)\nCluster SiPM Positions:\s+(.*?)\n", re.DOTALL)
+    r"Cluster:\s+\[.*?\]\nCluster size:\s+(\d+)\nCluster SiPM Positions:\s+(.*?)\n",
+    re.DOTALL,
+)
 
 # Function to process a single file
 
@@ -32,17 +35,26 @@ def process_file(file_path):
             positions_raw = eval(match.group(2))
 
             # Convert positions to numpy arrays of integers and round them
-            positions = np.array([np.round(pos).astype(np.int16)
-                                 for pos in positions_raw])
+            positions = np.array(
+                [np.round(pos).astype(np.int16) for pos in positions_raw]
+            )
 
             cluster_sizes.append(size)
             cluster_positions.append(positions)
 
     # Convert cluster_positions into a single numpy array (n, 3)
-    all_positions = np.vstack(
-        cluster_positions) if cluster_positions else np.empty((0, 3), dtype=np.int16)
+    all_positions = (
+        np.vstack(cluster_positions)
+        if cluster_positions
+        else np.empty((0, 3), dtype=np.int16)
+    )
 
-    return np.array(event_clusters, dtype=np.uint8), np.array(cluster_sizes, dtype=np.uint8), all_positions
+    return (
+        np.array(event_clusters, dtype=np.uint8),
+        np.array(cluster_sizes, dtype=np.uint8),
+        all_positions,
+    )
+
 
 # Main script
 
@@ -67,17 +79,21 @@ def main():
 
     # Parallel processing with progress bar
     with ProcessPoolExecutor() as executor:
-        results = list(tqdm(executor.map(process_file, file_list),
-                       total=len(file_list), desc="Processing files"))
+        results = list(
+            tqdm(
+                executor.map(process_file, file_list),
+                total=len(file_list),
+                desc="Processing files",
+            )
+        )
 
         for event_clusters, cluster_sizes, cluster_positions in results:
             # Efficiently concatenate results into numpy arrays
-            all_event_clusters = np.concatenate(
-                (all_event_clusters, event_clusters))
-            all_cluster_sizes = np.concatenate(
-                (all_cluster_sizes, cluster_sizes))
+            all_event_clusters = np.concatenate((all_event_clusters, event_clusters))
+            all_cluster_sizes = np.concatenate((all_cluster_sizes, cluster_sizes))
             all_cluster_positions = np.concatenate(
-                (all_cluster_positions, cluster_positions))
+                (all_cluster_positions, cluster_positions)
+            )
 
     # Save data as numpy arrays
     np.save(os.path.join(output_dir, "number_of_clusters.npy"), all_event_clusters)

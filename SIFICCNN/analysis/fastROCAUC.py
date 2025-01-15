@@ -2,10 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def fastROCAUC(y_pred,
-               y_true,
-               weighted=False,
-               return_score=False):
+def fastROCAUC(y_pred, y_true, weighted=False, return_score=False):
     """
 
     :param y_pred: Predicted probabilities of shape [n,1]
@@ -120,7 +117,7 @@ def fastROCAUC(y_pred,
         # lowest
         auc_score += area * (-1)
 
-    """ 
+    """
     # results
     print("### AUC Results: ###")
     print("AUC Score: ", auc_score)

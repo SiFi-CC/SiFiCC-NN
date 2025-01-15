@@ -5,14 +5,20 @@ import json
 import argparse
 
 from SIFICCNN.utils import parent_directory
-from SIFICCNN.analysis import fastROCAUC, print_classifier_summary, write_classifier_summary
+from SIFICCNN.analysis import (
+    fastROCAUC,
+    print_classifier_summary,
+    write_classifier_summary,
+)
 
-from SIFICCNN.plot import plot_1dhist_energy_residual, \
-    plot_1dhist_energy_residual_relative, \
-    plot_1dhist_position_residual, \
-    plot_2dhist_energy_residual_vs_true, \
-    plot_2dhist_energy_residual_relative_vs_true, \
-    plot_2dhist_position_residual_vs_true
+from SIFICCNN.plot import (
+    plot_1dhist_energy_residual,
+    plot_1dhist_energy_residual_relative,
+    plot_1dhist_position_residual,
+    plot_2dhist_energy_residual_vs_true,
+    plot_2dhist_energy_residual_relative_vs_true,
+    plot_2dhist_position_residual_vs_true,
+)
 
 
 def main(run_name="CutBased"):
@@ -63,33 +69,45 @@ def eval_regressionEnergy(run_name, dataset_name, path):
     y_pred = np.loadtxt(dataset_name + "_regE_pred.txt", delimiter=",")
     y_true = np.loadtxt(dataset_name + "_regE_true.txt", delimiter=",")
 
-    plot_1dhist_energy_residual(y_pred=y_pred[y_label, 0],
-                                y_true=y_true[y_label, 0],
-                                particle="e",
-                                file_name="1dhist_energy_electron_residual.png")
-    plot_1dhist_energy_residual_relative(y_pred=y_pred[y_label, 0],
-                                         y_true=y_true[y_label, 0],
-                                         particle="e",
-                                         file_name="1dhist_energy_electron_residual_relative.png")
-    plot_2dhist_energy_residual_vs_true(y_pred=y_pred[y_label, 0],
-                                        y_true=y_true[y_label, 0],
-                                        particle="e",
-                                        file_name="2dhist_energy_electron_residual_vs_true.png")
-    plot_2dhist_energy_residual_relative_vs_true(y_pred=y_pred[y_label, 0],
-                                                 y_true=y_true[y_label, 0],
-                                                 particle="e",
-                                                 file_name="2dhist_energy_electron_residual_relative_vs_true.png")
+    plot_1dhist_energy_residual(
+        y_pred=y_pred[y_label, 0],
+        y_true=y_true[y_label, 0],
+        particle="e",
+        file_name="1dhist_energy_electron_residual.png",
+    )
+    plot_1dhist_energy_residual_relative(
+        y_pred=y_pred[y_label, 0],
+        y_true=y_true[y_label, 0],
+        particle="e",
+        file_name="1dhist_energy_electron_residual_relative.png",
+    )
+    plot_2dhist_energy_residual_vs_true(
+        y_pred=y_pred[y_label, 0],
+        y_true=y_true[y_label, 0],
+        particle="e",
+        file_name="2dhist_energy_electron_residual_vs_true.png",
+    )
+    plot_2dhist_energy_residual_relative_vs_true(
+        y_pred=y_pred[y_label, 0],
+        y_true=y_true[y_label, 0],
+        particle="e",
+        file_name="2dhist_energy_electron_residual_relative_vs_true.png",
+    )
 
-    plot_1dhist_energy_residual(y_pred=y_pred[y_label, 1],
-                                y_true=y_true[y_label, 1],
-                                particle="\gamma",
-                                f="gaussian_gaussian",
-                                file_name="1dhist_energy_gamma_residual.png")
-    plot_1dhist_energy_residual_relative(y_pred=y_pred[y_label, 1],
-                                         y_true=y_true[y_label, 1],
-                                         particle="\gamma",
-                                         f="gaussian_gaussian",
-                                         file_name="1dhist_energy_gamma_residual_relative.png")
+    plot_1dhist_energy_residual(
+        y_pred=y_pred[y_label, 1],
+        y_true=y_true[y_label, 1],
+        particle="\\gamma",
+        f="gaussian_gaussian",
+        file_name="1dhist_energy_gamma_residual.png",
+    )
+    plot_1dhist_energy_residual_relative(
+        y_pred=y_pred[y_label, 1],
+        y_true=y_true[y_label, 1],
+        particle="\\gamma",
+        f="gaussian_gaussian",
+        file_name="1dhist_energy_gamma_residual_relative.png",
+    )
 
 
 def eval_regressionPosition(run_name, dataset_name, path):
@@ -100,60 +118,73 @@ def eval_regressionPosition(run_name, dataset_name, path):
     y_pred = np.loadtxt(dataset_name + "_regP_pred.txt", delimiter=",")
     y_true = np.loadtxt(dataset_name + "_regP_true.txt", delimiter=",")
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 0],
-                                  y_true=y_true[labels, 0],
-                                  particle="e",
-                                  coordinate="x",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("x"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 3],
-                                  y_true=y_true[labels, 3],
-                                  particle="\gamma",
-                                  coordinate="x",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("x"))
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 0],
+        y_true=y_true[labels, 0],
+        particle="e",
+        coordinate="x",
+        file_name="1dhist_electron_position_{}_residual.png".format("x"),
+    )
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 3],
+        y_true=y_true[labels, 3],
+        particle="\\gamma",
+        coordinate="x",
+        file_name="1dhist_gamma_position_{}_residual.png".format("x"),
+    )
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 1],
-                                  y_true=y_true[labels, 1],
-                                  particle="e",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("y"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 4],
-                                  y_true=y_true[labels, 4],
-                                  particle="\gamma",
-                                  coordinate="y",
-                                  f="lorentzian",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("y"))
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 1],
+        y_true=y_true[labels, 1],
+        particle="e",
+        coordinate="y",
+        f="lorentzian",
+        file_name="1dhist_electron_position_{}_residual.png".format("y"),
+    )
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 4],
+        y_true=y_true[labels, 4],
+        particle="\\gamma",
+        coordinate="y",
+        f="lorentzian",
+        file_name="1dhist_gamma_position_{}_residual.png".format("y"),
+    )
 
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 2],
-                                  y_true=y_true[labels, 2],
-                                  particle="e",
-                                  coordinate="z",
-                                  file_name="1dhist_electron_position_{}_residual.png".format("z"))
-    plot_1dhist_position_residual(y_pred=y_pred[labels, 5],
-                                  y_true=y_true[labels, 5],
-                                  particle="\gamma",
-                                  coordinate="z",
-                                  file_name="1dhist_gamma_position_{}_residual.png".format("z"))
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 2],
+        y_true=y_true[labels, 2],
+        particle="e",
+        coordinate="z",
+        file_name="1dhist_electron_position_{}_residual.png".format("z"),
+    )
+    plot_1dhist_position_residual(
+        y_pred=y_pred[labels, 5],
+        y_true=y_true[labels, 5],
+        particle="\\gamma",
+        coordinate="z",
+        file_name="1dhist_gamma_position_{}_residual.png".format("z"),
+    )
 
     for i, r in enumerate(["x", "y", "z"]):
-        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i],
-                                              y_true=y_true[labels, i],
-                                              particle="e",
-                                              coordinate=r,
-                                              file_name="2dhist_position_electron_{}_residual_vs_true.png".format(
-                                                  r))
-        plot_2dhist_position_residual_vs_true(y_pred=y_pred[labels, i + 3],
-                                              y_true=y_true[labels, i + 3],
-                                              particle="\gamma",
-                                              coordinate=r,
-                                              file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(
-                                                  r))
+        plot_2dhist_position_residual_vs_true(
+            y_pred=y_pred[labels, i],
+            y_true=y_true[labels, i],
+            particle="e",
+            coordinate=r,
+            file_name="2dhist_position_electron_{}_residual_vs_true.png".format(r),
+        )
+        plot_2dhist_position_residual_vs_true(
+            y_pred=y_pred[labels, i + 3],
+            y_true=y_true[labels, i + 3],
+            particle="\\gamma",
+            coordinate=r,
+            file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(r),
+        )
 
 
 if __name__ == "__main__":
     # configure argument parser
-    parser = argparse.ArgumentParser(
-        description='Trainings script ECRNCluster model')
+    parser = argparse.ArgumentParser(description="Trainings script ECRNCluster model")
     parser.add_argument("--name", type=str, help="Run name")
     args = parser.parse_args()
     # base settings if no parameters are given
