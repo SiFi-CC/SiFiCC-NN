@@ -8,7 +8,7 @@ from SIFICCNN.utils import (
 )
 
 
-class EventSimulation:
+class CCEventSimulation:
     """
     A Container to represent a single simulated event from the SiFi-CC simulation framework.
     The data associated with a simulated event is at minimum described by the Monte-Carlo level
@@ -610,7 +610,7 @@ class EventSimulation:
             self.SiPMHit.summary()
 
 
-class RecoCluster:
+class CCRecoCluster:
     """
     A Container to represent the low level fibre reconstruction. All SiPM hits are reconstructed to
     Fibre hits with a clustering algorithm applied afterwards. For more information consult the
@@ -952,7 +952,7 @@ class RecoCluster:
         return tvec3
 
 
-class SiPMHit:
+class CCSiPMHit:
     """
     A Container to represent the SiPM hits of a single simulated event.
 
@@ -1093,7 +1093,7 @@ class SiPMHit:
             return dx, dy, dz, dt, dPhotonCount
 
 
-class FibreHit:
+class CCFibreHit:
     """
     A Container to represent the SiPM hits of a single simulated event.
 

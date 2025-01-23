@@ -11,7 +11,7 @@ import types
 
 
 def SiFiECRNShort(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -53,7 +53,7 @@ def SiFiECRNShort(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup

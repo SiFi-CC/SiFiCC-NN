@@ -1,10 +1,10 @@
 from .detector import Detector
 from .roots import RootSimulation
-from .CCevents import EventSimulation, RecoCluster, SiPMHit, FibreHit
+from .CCevents import CCEventSimulation, CCRecoCluster, CCSiPMHit, CCFibreHit
 from .CMevents import (
-    EventSimulation,
-    SiPMHit,
-    FibreHit,
+    CMEventSimulation,
+    CMSiPMHit,
+    CMFibreHit,
     SiPMCluster,
     FibreCluster,
     SiPM,

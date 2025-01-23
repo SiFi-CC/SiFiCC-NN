@@ -33,11 +33,13 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
             y_pred=y_pred[labels],
             y_true=y_true[labels],
             figure_name="energy_error_new_function",
+            mode=mode,
         )
         plot_energy_resolution(
             y_pred=y_pred[labels],
             y_true=y_true[labels],
             figure_name="energy_resolution_new_function",
+            mode=mode,
         )
 
         plot_1dhist_energy_residual(
@@ -68,37 +70,37 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
             file_name="2dhist_energy_electron_residual_relative_vs_true.png",
             title="Relative electron energy residual",
         )
-
-        plot_1dhist_energy_residual(
-            y_pred=y_pred[labels, 1],
-            y_true=y_true[labels, 1],
-            particle="\\gamma",
-            f="gaussian_gaussian",
-            file_name="1dhist_energy_gamma_residual.png",
-            title="Energy residual",
-        )
-        fit_p_E_rel = plot_1dhist_energy_residual_relative(
-            y_pred=y_pred[labels, 1],
-            y_true=y_true[labels, 1],
-            particle="\\gamma",
-            f="gaussian_gaussian",
-            file_name="1dhist_energy_gamma_residual_relative.png",
-            title="Relative energy residual",
-        )
-        plot_2dhist_energy_residual_vs_true(
-            y_pred=y_pred[labels, 1],
-            y_true=y_true[labels, 1],
-            particle="\\gamma",
-            file_name="2dhist_energy_gamma_residual_vs_true.png",
-            title="Photon energy residual",
-        )
-        plot_2dhist_energy_residual_relative_vs_true(
-            y_pred=y_pred[labels, 1],
-            y_true=y_true[labels, 1],
-            particle="\\gamma",
-            file_name="2dhist_energy_gamma_residual_relative_vs_true.png",
-            title="Relative photon energy residual",
-        )
+        if mode != "CM-4to1":
+            plot_1dhist_energy_residual(
+                y_pred=y_pred[labels, 1],
+                y_true=y_true[labels, 1],
+                particle="\\gamma",
+                f="gaussian_gaussian",
+                file_name="1dhist_energy_gamma_residual.png",
+                title="Energy residual",
+            )
+            fit_p_E_rel = plot_1dhist_energy_residual_relative(
+                y_pred=y_pred[labels, 1],
+                y_true=y_true[labels, 1],
+                particle="\\gamma",
+                f="gaussian_gaussian",
+                file_name="1dhist_energy_gamma_residual_relative.png",
+                title="Relative energy residual",
+            )
+            plot_2dhist_energy_residual_vs_true(
+                y_pred=y_pred[labels, 1],
+                y_true=y_true[labels, 1],
+                particle="\\gamma",
+                file_name="2dhist_energy_gamma_residual_vs_true.png",
+                title="Photon energy residual",
+            )
+            plot_2dhist_energy_residual_relative_vs_true(
+                y_pred=y_pred[labels, 1],
+                y_true=y_true[labels, 1],
+                particle="\\gamma",
+                file_name="2dhist_energy_gamma_residual_relative_vs_true.png",
+                title="Relative photon energy residual",
+            )
 
         # Collect the fit result into a dictionary
         fit_results = {"fit_e_E_rel": fit_e_E_rel, "fit_p_E_rel": fit_p_E_rel}
@@ -108,11 +110,13 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
             y_pred=y_pred[labels],
             y_true=y_true[labels],
             figure_name="energy_error_new_function",
+            mode=mode,
         )
         plot_energy_resolution(
             y_pred=y_pred[labels],
             y_true=y_true[labels],
             figure_name="energy_resolution_new_function",
+            mode=mode,
         )
 
         plot_1dhist_energy_residual(

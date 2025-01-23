@@ -22,7 +22,7 @@ def get_Fibre_SiPM_connections():
 Fibre_connections = get_Fibre_SiPM_connections()
 
 
-class EventSimulation:
+class CMEventSimulation:
     """
     A Container to represent a single simulated event from the SiFi-CC simulation framework.
     The data associated with a simulated event is at minimum described by the Monte-Carlo level
@@ -63,7 +63,6 @@ class EventSimulation:
         MCNPrimaryNeutrons=None,
         MCEnergyDeps_e=None,
         MCEnergyDeps_p=None,
-        RecoCluster=None,
         SiPMHit=None,
         FibreHit=None,
     ):
@@ -205,8 +204,9 @@ class SiPM:
         print(
             f"Position [mm]: ({self.SiPMPosition.x:.3f}, {self.SiPMPosition.y:.3f}, {self.SiPMPosition.z:.3f})"
         )
-        print(f"Photon Count: {self.PhotonCount}")
+        print(f"Photon Count: {self.SiPMPhotonCount}")
         print(f"Time Stamp [ns]: {self.SiPMTimeStamp:.3f}")
+        print(f"Time Stamp data type: {type(self.SiPMTimeStamp)}")
 
 
 class Fibre:
@@ -234,7 +234,7 @@ class Fibre:
         print(f"Time Stamp [ns]: {self.FibreTime:.3f}")
 
 
-class SiPMHit:
+class CMSiPMHit:
     def __init__(self, SiPMTimeStamp, SiPMPhotonCount, SiPMPosition, SiPMId, Detector):
         self.SiPMs = []
         SiPMPosition = tVector_list(SiPMPosition)
@@ -260,7 +260,7 @@ class SiPMHit:
             sipm.summary()
 
 
-class FibreHit:
+class CMFibreHit:
     def __init__(self, FibreTime, FibreEnergy, FibrePosition, FibreId, Detector):
         self.Fibres = []
         FibrePosition = tVector_list(FibrePosition)
@@ -433,6 +433,7 @@ class SiPMCluster:
         self.update_time_stamps()
         self.connectedFibreIDs = self.find_fibres(Fibre_connections)
         self.associatedFibres = self.assign_fibres_to_cluster(FibreHit)
+
 
     def update_time_stamps(self):
         for sipm in self.SiPMs:
