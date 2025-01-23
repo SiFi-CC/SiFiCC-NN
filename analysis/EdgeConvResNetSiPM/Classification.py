@@ -38,7 +38,8 @@ from SIFICCNN.utils.plotter import (
 )
 
 # Import datasets
-from analysis.EdgeConvResNetSiPM.parameters import datasets
+from analysis.EdgeConvResNetSiPM.parameters import *
+from analysis.EdgeConvResNetSiPM.helper import *
 
 
 def main(
@@ -54,13 +55,14 @@ def main(
     do_evaluation=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
+    mode="CC-4to1",
 ):
-
+    task = "classification"
     datasets, output_dimensions = get_parameters(mode)
 
     if nOut == 0:
         print("Setting output dimensions to default value set in parameters.py")
-        nOut = output_dimensions["classification"]
+        nOut = output_dimensions[task] 
 
     # Train-Test-Split configuration
     trainsplit = 0.8
@@ -73,6 +75,7 @@ def main(
         "n_out": nOut,
         "activation_out": activation_out,
         "dropout": dropout,
+        "task": task,
     }
 
     # Navigate to the main repository directory
@@ -101,6 +104,7 @@ def main(
             modelParameter=modelParameter,
             model_type=model_type,
             dataset_name=dataset_name,
+            mode=mode,
         )
 
     if do_evaluation:
@@ -110,6 +114,7 @@ def main(
                 RUN_NAME=run_name,
                 path=path_results,
                 dataset_name=dataset_name,
+                mode=mode,
             )
 
 
@@ -124,6 +129,7 @@ def training(
     modelParameter,
     model_type,
     dataset_name,
+    mode,
 ):
     """
     Train the model on the given dataset.
@@ -212,7 +218,10 @@ def evaluate(
     RUN_NAME,
     path,
     dataset_name,
+    mode,
 ):
+    
+    _, output_dimensions = get_parameters(mode)
 
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)

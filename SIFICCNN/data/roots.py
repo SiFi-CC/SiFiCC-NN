@@ -5,6 +5,8 @@ import os
 import warnings
 
 from .detector import Detector
+from .CMevents import CMEventSimulation, CMSiPMHit, CMFibreHit
+from .CCevents import CCEventSimulation, CCSiPMHit, CCFibreHit, CCRecoCluster
 
 
 class RootSimulation:
@@ -13,14 +15,10 @@ class RootSimulation:
         self.file = file
         self.mode = mode
 
-        # Import Event handler based on specified mode
-        if self.mode == "CM-4to1":
-            from .CMevents import EventSimulation, RecoCluster, SiPMHit, FibreHit
-        elif self.mode == "CC-4to1":
-            from .CCevents import EventSimulation, RecoCluster, SiPMHit, FibreHit
-        else:
+        # Verify mode
+        if mode not in ["CM-4to1", "CC-4to1", "CC-1to1"]:
             raise ValueError(
-                "Invalid mode specified. Please specify either 'CM-4to1' or 'CC-4to1'."
+                "Invalid mode specified. Please specify either 'CM-4to1', 'CC-4to1' or 'CC-1to1'."
             )
 
         self.file_base = os.path.basename(self.file)
@@ -31,28 +29,45 @@ class RootSimulation:
         self.setup = root_file["Setup"]
         self.events_entries = self.events.num_entries
         self.events_keys = self.events.keys()
+
+        # check if right mode is selected
+        if "RecoClusterPositions" in self.events_keys and self.mode != "CC-1to1":
+            raise ValueError(
+                "RecoClusterPositions are only available in 'CC-1to1' mode. Check root file!"
+            )
+        
         if self.mode == "CM-4to1":
-            # create SIFICC-Module objects for detector (=scatterer)
-            self.detector = Detector.from_root(
-                self.setup["DetectorPosition"].array()[0],
-                self.setup["DetectorThickness_x"].array()[0],
-                self.setup["DetectorThickness_y"].array()[0],
-                self.setup["DetectorThickness_z"].array()[0],
-            )
-        elif self.mode == "CC-4to1":
-            # create SIFICC-Module objects for scatterer and absorber
-            self.scatterer = Detector.from_root(
-                self.setup["ScattererPosition"].array()[0],
-                self.setup["ScattererThickness_x"].array()[0],
-                self.setup["ScattererThickness_y"].array()[0],
-                self.setup["ScattererThickness_z"].array()[0],
-            )
-            self.absorber = Detector.from_root(
-                self.setup["AbsorberPosition"].array()[0],
-                self.setup["AbsorberThickness_x"].array()[0],
-                self.setup["AbsorberThickness_y"].array()[0],
-                self.setup["AbsorberThickness_z"].array()[0],
-            )
+            try:
+                # create SIFICC-Module objects for detector (=scatterer)
+                self.detector = Detector.from_root(
+                    self.setup["DetectorPosition"].array()[0],
+                    self.setup["DetectorThickness_x"].array()[0],
+                    self.setup["DetectorThickness_y"].array()[0],
+                    self.setup["DetectorThickness_z"].array()[0],
+                )
+            except:
+                raise ValueError(
+                    "Detector information is missing in root file. Check root file and/or mode!"
+                )
+        elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
+            try:
+                # create SIFICC-Module objects for scatterer and absorber
+                self.scatterer = Detector.from_root(
+                    self.setup["ScattererPosition"].array()[0],
+                    self.setup["ScattererThickness_x"].array()[0],
+                    self.setup["ScattererThickness_y"].array()[0],
+                    self.setup["ScattererThickness_z"].array()[0],
+                )
+                self.absorber = Detector.from_root(
+                    self.setup["AbsorberPosition"].array()[0],
+                    self.setup["AbsorberThickness_x"].array()[0],
+                    self.setup["AbsorberThickness_y"].array()[0],
+                    self.setup["AbsorberThickness_z"].array()[0],
+                )
+            except:
+                raise ValueError(
+                    "Scatterer or Absorber information is missing in root file. Check root file and/or mode!"
+                )
 
         # create a list of all leaves contained in the root file
         # used to determine the amount of information stored inside the root
@@ -135,7 +150,7 @@ class RootSimulation:
                 "MCEnergyPrimary": "MCEnergy_Primary",
             }
 
-        elif self.mode == "CC-4to1":
+        elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
             dictSimulation = {
                 "EventNumber": "EventNumber",
                 "MCSimulatedEventType": "MCSimulatedEventType",
@@ -248,7 +263,7 @@ class RootSimulation:
             dictBasketSimulation = {"Detector": self.detector}
             dictBasketSiPMHit = {"Detector": self.detector}
             dictBasketFibreHit = {"Detector": self.detector}
-        elif self.mode == "CC-4to1":
+        elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
             dictBasketSimulation = {
                 "Scatterer": self.scatterer,
                 "Absorber": self.absorber,
@@ -270,7 +285,12 @@ class RootSimulation:
                 dictBasketRecoCluster[self.dictRecoCluster[tleave]] = basket[tleave][
                     idx
                 ]
-            recocluster = RecoCluster(**dictBasketRecoCluster)
+            if self.mode == "CC-1to1":
+                recocluster = CCRecoCluster(**dictBasketRecoCluster)
+            else:
+                raise ValueError(
+                    "RecoCluster information is only available in 'CC-1to1' mode. Check root file!"
+                )
 
         sipmhit = None
         if self.hasSiPMHit:
@@ -282,7 +302,10 @@ class RootSimulation:
                     % basket["EventNumber"][idx]
                 )
                 return None
-            sipmhit = SiPMHit(**dictBasketSiPMHit)
+            if self.mode == "CM-4to1":
+                sipmhit = CMSiPMHit(**dictBasketSiPMHit)
+            elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
+                sipmhit = CCSiPMHit(**dictBasketSiPMHit)
 
         fibrehit = None
         if self.hasFibreHit:
@@ -294,18 +317,28 @@ class RootSimulation:
                     % basket["EventNumber"][idx]
                 )
                 return None
-            fibrehit = FibreHit(**dictBasketFibreHit)
+            if self.mode == "CM-4to1":
+                fibrehit = CMFibreHit(**dictBasketFibreHit)
+            elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
+                fibrehit = CCFibreHit(**dictBasketFibreHit)
 
         # simulation event serves as container for any additional information
         for tleave in self.leavesTree[0]:
             dictBasketSimulation[self.dictSimulation[tleave]] = basket[tleave][idx]
         # build final event object
-        event_simulation = EventSimulation(
-            **dictBasketSimulation,
-            RecoCluster=recocluster,
-            SiPMHit=sipmhit,
-            FibreHit=fibrehit
-        )
+        if self.mode == "CM-4to1":
+            event_simulation = CMEventSimulation(
+                **dictBasketSimulation,
+                SiPMHit=sipmhit,
+                FibreHit=fibrehit
+            )
+        elif self.mode == "CC-4to1" or self.mode == "CC-1to1":
+            event_simulation = CCEventSimulation(
+                **dictBasketSimulation,
+                RecoCluster=recocluster,
+                SiPMHit=sipmhit,
+                FibreHit=fibrehit
+            )
 
         return event_simulation
 

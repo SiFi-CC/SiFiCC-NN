@@ -1,6 +1,3 @@
-mode = None
-
-
 def get_parameters(mode):
     if mode == "CC-4to1":
         # Parameters for the CC mode
@@ -21,7 +18,7 @@ def get_parameters(mode):
     elif mode == "CM-4to1":
         # Parameters for the CM mode
         datasets = {
-            "continuous": "mergedTree",
+            "continuous": "SiPMR_test_linesource_0to999_omittingbrokenfiles",
             "spot1": "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK",
             "spot2": "OptimisedGeometry_CodedMaskHIT_Spot2_1e10_protons_MK",
             "spot3": "OptimisedGeometry_CodedMaskHIT_Spot3_1e10_protons_MK",
@@ -29,7 +26,7 @@ def get_parameters(mode):
             "spot5": "OptimisedGeometry_CodedMaskHIT_Spot5_1e10_protons_MK",
             "spot6": "OptimisedGeometry_CodedMaskHIT_Spot6_1e10_protons_MK",
             "spot7": "OptimisedGeometry_CodedMaskHIT_Spot7_1e10_protons_MK",
-        }
+        }    
         output_dimensions = {
             "classification": 1,
             "energy": 1,

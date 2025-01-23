@@ -19,11 +19,11 @@ def dSimulation_to_GraphSiPM(
     root_simulation,
     dataset_name,
     path="",
-    n=None,
     coordinate_system="CRACOW",
     energy_cut=None,
     neutrons=0,
     n_start=0,
+    n_stop=None,
 ):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
@@ -141,7 +141,7 @@ def dSimulation_to_GraphSiPM(
     k_graphs = 0
     n_nodes = 0
     m_edges = 0
-    for i, event in enumerate(root_simulation.iterate_events(n=n)):
+    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
         if event is None:
             continue
         if (
@@ -195,7 +195,7 @@ def dSimulation_to_GraphSiPM(
     edge_id = 0
 
     distcompton_tags = list()
-    for i, event in enumerate(root_simulation.iterate_events(n=n, n_start=n_start)):
+    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
         # get number of cluster
         if event is None:
             continue
