@@ -13,10 +13,11 @@ logging.basicConfig(
 
 
 class DatasetReader:
-    def __init__(self, dataset_path, show_adjacency_matrix=False, **kwargs):
+    def __init__(self, dataset_path, show_adjacency_matrix=False, mode=None, **kwargs):
         self.name = dataset_path.split("/")[-1]
         self.dataset_path = dataset_path
         self.show_adjacency_matrix = show_adjacency_matrix
+        self.mode = mode
         super().__init__(**kwargs)
 
     @property
@@ -56,40 +57,56 @@ class DatasetReader:
                 self.x_list = self._get_x_list(self.n_nodes_cum)
                 self.y_list = self._get_y_list()
                 self.labels = np.load(os.path.join(self.path, "graph_labels.npy"))
-                self.event_indicator = np.load(
-                    os.path.join(self.path, "event_indicator.npy")
-                )
-                self.clusters_per_event = np.bincount(self.event_indicator)
+                if self.mode == "CM-4to1":
+                    self.event_indicator = np.load(
+                        os.path.join(self.path, "event_indicator.npy")
+                    )
+                    self.clusters_per_event = np.bincount(self.event_indicator)
+                logging.info(f"Successfully loaded dataset: {self.name}")
             except FileNotFoundError as e:
                 logging.error(f"Required file not found: {e}")
-                raise
-
-            logging.info(f"Successfully loaded dataset: {self.name}")
-
-        # Create events from clusters for particular block
-        cluster_counter = sum(self.clusters_per_event[:start_index])
-
-        for start_idx in range(start_index, len(self.clusters_per_event), block_size):
-            end_idx = min(start_idx + block_size, len(self.clusters_per_event))
+                raise e
+        logging.info("Starting to read dataset in mode: {}".format(self.mode))
+        if self.mode == "CC-4to1":
             block_events = []
+            for i in np.arange(start_index, start_index + block_size, 1):
 
-            for cluster_count in tqdm(
-                self.clusters_per_event[start_idx:end_idx],
-                desc="Assembling events",
-                total=end_idx - start_idx,
-            ):
-                event_list = []
-                for _ in range(cluster_count):
-                    sipm_attributes = self.x_list.pop(0)
-                    cluster_label = self.labels[cluster_counter]
-                    cluster_attributes = self.y_list[cluster_counter]
-                    event_list.append(
-                        Cluster(sipm_attributes, cluster_label, cluster_attributes)
-                    )
-                    cluster_counter += 1
-                block_events.append(Event(event_list))
+                sipm_attributes = self.x_list.pop(0)
+                graph_label = self.labels[i]
+                graph_attributes = self.y_list[i]
+                block_events.append(
+                    Event([Cluster(sipm_attributes, graph_label, graph_attributes)], mode=self.mode)
+                )
 
-            yield block_events
+                yield block_events
+
+        elif self.mode == "CM-4to1":
+            # Create events from clusters for particular block
+            logging.info("Counting clusters in block")
+            cluster_counter = sum(self.clusters_per_event[:start_index])
+            logging.info(f"There are {len(self.clusters_per_event)} clusters in total")
+            logging.info("Starting to assemble events from clusters")
+            for start_idx in range(start_index, len(self.clusters_per_event), block_size):
+                end_idx = min(start_idx + block_size, len(self.clusters_per_event))
+                block_events = []
+
+                for cluster_count in tqdm(
+                    self.clusters_per_event[start_idx:end_idx],
+                    desc="Assembling events",
+                    total=end_idx - start_idx,
+                ):
+                    event_list = []
+                    for _ in range(cluster_count):
+                        sipm_attributes = self.x_list.pop(0)
+                        cluster_label = self.labels[cluster_counter]
+                        cluster_attributes = self.y_list[cluster_counter]
+                        event_list.append(
+                            Cluster(sipm_attributes, cluster_label, cluster_attributes)
+                        )
+                        cluster_counter += 1
+                    block_events.append(Event(event_list, self.mode))
+
+                yield block_events
 
     def _get_x_list(self, n_nodes_cum):
         sipm_attributes = np.load(os.path.join(self.path, "node_attributes.npy"))
@@ -142,35 +159,104 @@ class Detector:
         Generates the positions of the SiPMs based on the initialized bins.
     """
 
-    def __init__(self):
+    def __init__(self, mode):
+        self.mode = mode
         self._initialize_sipm_bins()
         self.sipm_positions = self._generate_sipm_positions()
 
     def _initialize_sipm_bins(self):
         self.sipm_size = 4
-        self.sipm_bins0_bottom = np.arange(-55, 53 + self.sipm_size, self.sipm_size)
-        self.sipm_bins1_bottom = -51
-        self.sipm_bins2_bottom = np.arange(226, 238 + self.sipm_size, self.sipm_size)
-        self.sipm_bins0_top = np.arange(-53, 55 + self.sipm_size, self.sipm_size)
-        self.sipm_bins1_top = 51
-        self.sipm_bins2_top = np.arange(228, 240 + self.sipm_size, self.sipm_size)
+        if self.mode == "CC-4to1":
+            self.sipm_bins0_bottom_scatterer = np.arange(
+                -55, 53 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins1_bottom_scatterer = -51
+            self.sipm_bins2_bottom_scatterer = np.arange(
+                143, 155 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins0_top_scatterer = np.arange(
+                -53, 55 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins1_top_scatterer = 51
+            self.sipm_bins2_top_scatterer = np.arange(
+                145, 157 + self.sipm_size, self.sipm_size
+            )
+
+            self.sipm_bins0_bottom_absorber = np.arange(
+                -63, 61 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins1_bottom_absorber = -51
+            self.sipm_bins2_bottom_absorber = np.arange(
+                255, 283 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins0_top_absorber = np.arange(
+                -61, 63 + self.sipm_size, self.sipm_size
+            )
+            self.sipm_bins1_top_absorber = 51
+            self.sipm_bins2_top_absorber = np.arange(
+                257, 285 + self.sipm_size, self.sipm_size
+            )
+        elif self.mode == "CM-4to1":
+            self.sipm_bins0_bottom = np.arange(-55, 53 + self.sipm_size, self.sipm_size)
+            self.sipm_bins1_bottom = -51
+            self.sipm_bins2_bottom = np.arange(226, 238 + self.sipm_size, self.sipm_size)
+            self.sipm_bins0_top = np.arange(-53, 55 + self.sipm_size, self.sipm_size)
+            self.sipm_bins1_top = 51
+            self.sipm_bins2_top = np.arange(228, 240 + self.sipm_size, self.sipm_size)
 
     def _generate_sipm_positions(self):
-        bottom_positions = np.array(
-            [
-                [x, self.sipm_bins1_bottom, z]
-                for x in self.sipm_bins0_bottom
-                for z in self.sipm_bins2_bottom
-            ]
-        )
-        top_positions = np.array(
-            [
-                [x, self.sipm_bins1_top, z]
-                for x in self.sipm_bins0_top
-                for z in self.sipm_bins2_top
-            ]
-        )
-        return np.vstack((bottom_positions, top_positions))
+        if self.mode == "CC-4to1":
+            bottom_positions_scatterer = np.array(
+                [
+                    [x, self.sipm_bins1_bottom_scatterer, z]
+                    for x in self.sipm_bins0_bottom_scatterer
+                    for z in self.sipm_bins2_bottom_scatterer
+                ]
+            )
+            top_positions_scatterer = np.array(
+                [
+                    [x, self.sipm_bins1_top_scatterer, z]
+                    for x in self.sipm_bins0_top_scatterer
+                    for z in self.sipm_bins2_top_scatterer
+                ]
+            )
+            bottom_positions_absorber = np.array(
+                [
+                    [x, self.sipm_bins1_bottom_absorber, z]
+                    for x in self.sipm_bins0_bottom_absorber
+                    for z in self.sipm_bins2_bottom_absorber
+                ]
+            )
+            top_positions_absorber = np.array(
+                [
+                    [x, self.sipm_bins1_top_absorber, z]
+                    for x in self.sipm_bins0_top_absorber
+                    for z in self.sipm_bins2_top_absorber
+                ]
+            )
+
+            bottom_positions = np.vstack(
+                (bottom_positions_scatterer, bottom_positions_absorber)
+            )
+            top_positions = np.vstack((top_positions_scatterer, top_positions_absorber))
+
+            return np.vstack((bottom_positions, top_positions))
+        elif self.mode == "CM-4to1":
+            bottom_positions = np.array(
+                [
+                    [x, self.sipm_bins1_bottom, z]
+                    for x in self.sipm_bins0_bottom
+                    for z in self.sipm_bins2_bottom
+                ]
+            )
+            top_positions = np.array(
+                [
+                    [x, self.sipm_bins1_top, z]
+                    for x in self.sipm_bins0_top
+                    for z in self.sipm_bins2_top
+                ]
+            )
+            return np.vstack((bottom_positions, top_positions))
 
 
 class SiPM:
@@ -264,10 +350,17 @@ class Event:
         Plots a 3D visualization of the event.
     """
 
-    def __init__(self, clusters):
+    def __init__(self, clusters, mode):
         self.clusters = clusters
         self.nClusters = len(self.clusters)
-        self.contains_coupling_hit = 0 in [cluster.label for cluster in self.clusters]
+        self.mode = mode
+        if self.mode == "CC-4to1":
+            self.contains_non_compton_hit = 0 in [
+                cluster.label for cluster in self.clusters
+            ]
+        elif self.mode == "CM-4to1":
+            self.contains_coupling_hit = 0 in [cluster.label for cluster in self.clusters]
+
 
     def plot(
         self,
@@ -275,7 +368,8 @@ class Event:
         event_idx,
         show_sipms=False,
         show_cluster_area=False,
-        show_photon_hits=False,
+        show_compton_hits=False,
+        show_CMphoton_hits=False,
         ax=None,
     ):
         """
@@ -286,12 +380,14 @@ class Event:
         event_idx (int): The index of the event to be visualized.
         show_sipms (bool, optional): If True, displays the SiPM positions. Default is False.
         show_cluster_area (bool, optional): If True, displays the bounding box of the clusters. Default is False.
-        show_photon_hits (bool, optional): If True, displays the assumed photon hit positions. Default is False.
+        show_CMphoton_hits (bool, optional): If True, displays the assumed photon hit positions. Default is False.
         ax (matplotlib.axes._subplots.Axes3DSubplot, optional): The 3D axis to plot on. If None, a new figure and axis are created. Default is None.
 
         Returns:
         None
         """
+        logging.info(f"Plotting event {event_idx}")
+        logging.info(f"The following arguments are set: show_sipms={show_sipms}, show_cluster_area={show_cluster_area}, show_photon_hits={show_CMphoton_hits}")
         if ax is None:
             fig = plt.figure(figsize=(10, 7))
             ax = fig.add_subplot(111, projection="3d")
@@ -313,7 +409,7 @@ class Event:
                     s=100,
                 )
                 activated_positions.update(map(tuple, cluster_positions))
-                print("SiPM positions", cluster_positions)
+                logging.info("SiPM positions", cluster_positions)
 
             if show_cluster_area:
                 min_vals, max_vals = cluster.get_bounding_box()
@@ -343,9 +439,25 @@ class Event:
                 poly3d = Poly3DCollection(faces, color=cluster_color, alpha=0.3)
                 ax.add_collection3d(poly3d)
 
-            if show_photon_hits:
+            if show_compton_hits:
+                if self.contains_non_compton_hit:
+                    logging.info("No Compton Hit found!")
+                else:
+                    cluster_hit_position = cluster.cluster_hit[2:5]
+                    logging.info("cluster_hit_position", cluster_hit_position)
+                    ax.scatter(
+                        cluster_hit_position[0],
+                        cluster_hit_position[1],
+                        cluster_hit_position[2],
+                        color="red",
+                        marker="*",
+                        s=200,
+                        label=f"Compton e Position",
+                    )
+            elif show_CMphoton_hits:
+                logging.info(f"Plotting photon hits at positions: {cluster.cluster_hit}")
                 cluster_hit_position = cluster.cluster_hit[1:]
-                print("cluster_hit_position", cluster_hit_position)
+                logging.info("cluster_hit_position", cluster_hit_position)
                 ax.scatter(
                     cluster_hit_position[0],
                     cluster_hit_position[1],
@@ -399,7 +511,8 @@ class Event:
 
 
 def main():
-    name = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
+    name = "datasets/SimGraphSiPM/OptimisedGeometry_4to1_0mm_3.9e9protons_simv4"
+	#    name = "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK"
     reader = DatasetReader(name)
 
     # Initialize detector
