@@ -21,6 +21,7 @@ from utils import DatasetReader, Detector
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
+import logging
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
@@ -75,7 +76,8 @@ class PlotCanvas(FigureCanvas):
         event_idx,
         show_sipms=True,
         show_cluster_area=True,
-        show_photon_hits=True,
+        show_compton_hits=True,
+        show_CMphoton_hits=True,
     ):
         self.axes.clear()
         event.plot(
@@ -84,7 +86,8 @@ class PlotCanvas(FigureCanvas):
             ax=self.axes,
             show_sipms=show_sipms,
             show_cluster_area=show_cluster_area,
-            show_photon_hits=show_photon_hits,
+            show_compton_hits=show_compton_hits,
+			show_CMphoton_hits=show_CMphoton_hits,
         )
         self.draw()
 
@@ -106,12 +109,13 @@ class DatasetLoaderThread(QThread):
 
     dataset_loaded = pyqtSignal(object)
 
-    def __init__(self, dataset_path):
+    def __init__(self, dataset_path, mode):
         super().__init__()
         self.dataset_path = dataset_path
+        self.mode = mode
 
     def run(self):
-        reader = DatasetReader(self.dataset_path)
+        reader = DatasetReader(self.dataset_path, mode=self.mode)
         self.dataset_loaded.emit(reader)
 
 
@@ -158,10 +162,13 @@ class DatasetViewer(QMainWindow):
         self.setWindowTitle("Dataset Viewer")
         self.resize(800, 600)
 
+        # HARDCODED MODE SELECTION
+        self.mode = "CM-4to1"
+
         # DatasetReader and Detector
         self.dataset_path = None
         self.reader = None
-        self.detector = Detector()
+        self.detector = Detector(self.mode)
 
         # State
         self.current_block = []
@@ -188,17 +195,26 @@ class DatasetViewer(QMainWindow):
         # Checkboxes for plot options
         self.show_sipms_checkbox = QCheckBox("Show SiPMs")
         self.show_cluster_area_checkbox = QCheckBox("Show Cluster Area")
-        self.show_photon_hits_checkbox = QCheckBox("Show Photon Hits")
+        if self.mode == "CC-4to1":
+            self.show_compton_hits_checkbox = QCheckBox("Show Compton Hits")
+        elif self.mode == "CM-4to1":
+            self.show_photon_hits_checkbox = QCheckBox("Show Photon Hits")
 
         # Connect the stateChanged signal to the update_plot method
         self.show_sipms_checkbox.stateChanged.connect(self.update_plot)
         self.show_cluster_area_checkbox.stateChanged.connect(self.update_plot)
-        self.show_photon_hits_checkbox.stateChanged.connect(self.update_plot)
+        if self.mode == "CC-4to1":
+            self.show_compton_hits_checkbox.stateChanged.connect(self.update_plot)
+        elif self.mode == "CM-4to1":
+            self.show_photon_hits_checkbox.stateChanged.connect(self.update_plot)
 
         checkbox_layout = QHBoxLayout()
         checkbox_layout.addWidget(self.show_sipms_checkbox)
         checkbox_layout.addWidget(self.show_cluster_area_checkbox)
-        checkbox_layout.addWidget(self.show_photon_hits_checkbox)
+        if self.mode == "CC-4to1":
+            checkbox_layout.addWidget(self.show_compton_hits_checkbox)
+        elif self.mode == "CM-4to1":
+            checkbox_layout.addWidget(self.show_photon_hits_checkbox)
         main_layout.addLayout(checkbox_layout)
 
         # Splitter
@@ -208,8 +224,12 @@ class DatasetViewer(QMainWindow):
         # Table Widget
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(3)
+        if self.mode == "CC-4to1":
+            interaction_string = "Is Compton Event"
+        elif self.mode == "CM-4to1":
+            interaction_string = "Constains Coupling Hit"
         self.table_widget.setHorizontalHeaderLabels(
-            ["Event Index", "Num Clusters", "Contains Coupling Hit"]
+            ["Event Index", "Num Clusters", interaction_string]
         )
         self.table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -273,7 +293,7 @@ class DatasetViewer(QMainWindow):
         connects the dataset_loaded signal to the on_dataset_loaded slot, and starts
         the thread to load the dataset asynchronously.
         """
-        self.loader_thread = DatasetLoaderThread(self.dataset_path)
+        self.loader_thread = DatasetLoaderThread(self.dataset_path , self.mode)
         self.loader_thread.dataset_loaded.connect(self.on_dataset_loaded)
         self.loader_thread.start()
 
@@ -325,9 +345,16 @@ class DatasetViewer(QMainWindow):
             self.table_widget.setItem(
                 row, 1, NumericTableWidgetItem(str(event.nClusters))
             )
-            self.table_widget.setItem(
-                row, 2, NumericTableWidgetItem(str(event.contains_coupling_hit))
-            )
+            if self.mode == "CC-4to1":
+                self.table_widget.setItem(
+                    row,
+                    2,
+                    NumericTableWidgetItem(str(event.contains_non_compton_hit == False)),
+                )
+            elif self.mode == "CM-4to1":
+                self.table_widget.setItem(
+                    row, 2, NumericTableWidgetItem(str(event.contains_coupling_hit))
+                )
 
     def load_block(self, page, initial=False):
         """
@@ -349,6 +376,7 @@ class DatasetViewer(QMainWindow):
             )
             return None
         try:
+            logging.info(f"Loading block {page} ...")
             block = next(
                 self.reader.read(
                     block_size=self.block_size,
@@ -356,12 +384,16 @@ class DatasetViewer(QMainWindow):
                     initial=initial,
                 )
             )
+            logging.info(f"Successfully loaded block {page}")
             self.page_label.setText(f"Page {self.current_page}")
+            logging.info(f"Page {self.current_page} opened")
             self.update_table()
+            logging.info("Table updated")
             return block
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load block: {str(e)}")
             self.current_page -= 1
+            logging.error(f"Failed to load block: {str(e)}")
             return None
 
     def load_previous(self):
@@ -451,18 +483,24 @@ class DatasetViewer(QMainWindow):
         """
         show_sipms = self.show_sipms_checkbox.isChecked()
         show_cluster_area = self.show_cluster_area_checkbox.isChecked()
-        show_photon_hits = self.show_photon_hits_checkbox.isChecked()
-        event_idx = self.current_page * self.block_size + self.current_block.index(
-            event
-        )
-        print(f"Plotting event {event_idx}")
+        if self.mode == "CC-4to1":
+            show_CMphoton_hits = False
+            show_compton_hits = self.show_compton_hits_checkbox.isChecked()
+            logging.info(f"Compton hits are shown: {show_compton_hits}")
+        elif self.mode == "CM-4to1":
+            show_CMphoton_hits = self.show_photon_hits_checkbox.isChecked()
+            show_compton_hits = False
+            logging.info(f"Photon hits are shown: {show_CMphoton_hits}")
+        event_idx = self.current_page * self.block_size + self.current_block.index(event)
+        logging.info(f"Plotting event {event_idx}")
         self.plot_canvas.plot_event(
             event,
             self.detector,
             event_idx,
             show_sipms,
             show_cluster_area,
-            show_photon_hits,
+            show_compton_hits=show_compton_hits,
+			show_CMphoton_hits=show_CMphoton_hits,
         )
 
     def populate_table(self):
@@ -487,9 +525,16 @@ class DatasetViewer(QMainWindow):
             self.table_widget.setItem(
                 row, 1, NumericTableWidgetItem(str(event.nClusters))
             )
-            self.table_widget.setItem(
-                row, 2, QTableWidgetItem("Yes" if event.contains_coupling_hit else "No")
-            )
+            if self.mode == "CC-4to1":
+                self.table_widget.setItem(
+                    row,
+                    2,
+                    QTableWidgetItem("No" if event.contains_non_compton_hit else "Yes"),
+                )
+            elif self.mode == "CM-4to1":
+                self.table_widget.setItem(
+                    row, 2, QTableWidgetItem("Yes" if event.contains_coupling_hit else "No")
+                )
 
     def update_plot(self):
         # Get the selected row number from the table
