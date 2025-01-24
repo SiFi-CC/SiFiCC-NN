@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+import logging
 
 
 def gaussian(x, mu, sigma, A, c):
@@ -200,9 +201,9 @@ def get_fwhm(data_slice, i):
             plt.plot(x_fit, y_fit, label="Gaussian fit")
             plt.legend()
         except RuntimeError:
-            print("Fit " + str(i) + " failed!")
+            logging.error("Fit " + str(i) + " failed!")
         plt.savefig("/home/home2/institut_3b/clement/Master/fit" + str(i) + ".png")
         plt.close()
         return fwhm
     else:
-        return 0
+  

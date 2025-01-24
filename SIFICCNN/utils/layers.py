@@ -1,5 +1,6 @@
 import tensorflow as tf
 import spektral as sp
+import logging
 
 
 class ReZero(tf.keras.layers.Layer):
@@ -370,8 +371,8 @@ def EdgeConvRes2NetBlock(
         # Add the original input into the computation for progressive reuse
         if i > 0:
             current_output = adjustChannelSize(x, current_output)
-            print("current_output.shape", current_output.shape)
-            print("x.shape", x.shape)
+            logging.info("current_output.shape", current_output.shape)
+            logging.info("x.shape", x.shape)
 
             # apply rezero layer
             current_output = ReZero()([x, current_output])

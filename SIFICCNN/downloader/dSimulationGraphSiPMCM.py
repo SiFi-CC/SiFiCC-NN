@@ -9,10 +9,9 @@
 import numpy as np
 import os
 import argparse
-import sys
+import logging
 import matplotlib.pyplot as plt
-import csv
-from collections import defaultdict
+
 
 from SIFICCNN.utils import TVector3, tVector_list, parent_directory
 
@@ -21,11 +20,11 @@ def dSimulation_to_GraphSiPMCM(
     root_simulation,
     dataset_name,
     path="",
-    n_stop=None,
     coordinate_system="CRACOW",
     energy_cut=None,
     neutrons=0,
     n_start=0,
+    n_stop=None,
 ):
     """
     Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
@@ -134,15 +133,17 @@ def dSimulation_to_GraphSiPMCM(
     # Pre-determine the final array size.
     # Total number of graphs needed (n samples)
     # Total number of nodes (Iteration over root file needed)
-    print("Loading root file: {}".format(root_simulation.file_name))
-    print("Dataset name: {}".format(dataset_name))
-    print("Path: {}".format(path))
-    print("Energy Cut: {}".format(energy_cut))
-    print("Coordinate system of root file: {}".format(coordinate_system))
-    print("\nCounting number of graphs to be created")
+    logging.info("Loading root file: {}".format(root_simulation.file_name))
+    logging.info("Dataset name: {}".format(dataset_name))
+    logging.info("Path: {}".format(path))
+    logging.info("Energy Cut: {}".format(energy_cut))
+    logging.info("Coordinate system of root file: {}".format(coordinate_system))
+    logging.info("\nCounting number of graphs to be created")
     k_graphs = 0
-    n_nodes = 0
-    m_edges = 0
+    n_nodes  = 0
+    m_edges  = 0
+    l_fibres = 0
+    logging.info("Starting iteration over root file to count graphs")
     for i, event in enumerate(
         root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)
     ):
@@ -162,10 +163,15 @@ def dSimulation_to_GraphSiPMCM(
             sipms_per_cluster = np.array(
                 [cluster.nSiPMs for cluster in event.SiPMClusters]
             )
+            fibres_per_cluster = np.array(
+                [cluster.nFibres for cluster in event.FibreClusters]
+            )
 
             k_graphs += event.nClusters
             n_nodes += np.sum(sipms_per_cluster)
             m_edges += np.sum(sipms_per_cluster**2)
+            l_fibres += np.sum(fibres_per_cluster)
+
             if not photon_set:
                 NeutronCount.append(event.MCNPrimaryNeutrons)
             PrimaryEnergies.append(event.MCEnergy_Primary)
@@ -173,11 +179,11 @@ def dSimulation_to_GraphSiPMCM(
     """if not photon_set:
         plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
     plot_primary_energy(PrimaryEnergies, neutron_key)"""
-    print("Total number of Graphs to be created: ", k_graphs)
-    print("Total number of nodes to be created: ", n_nodes)
-    print("Total number of edges to be created: ", m_edges)
-    print("Graph features: {}".format(10))
-    print("Graph targets: {}".format(9))
+    logging.info("Total number of Graphs to be created: ", k_graphs)
+    logging.info("Total number of nodes to be created: ", n_nodes)
+    logging.info("Total number of edges to be created: ", m_edges)
+    logging.info("Graph features: {}".format(10))
+    logging.info("Graph targets: {}".format(9))
 
     # creating final arrays
     # datatypes are chosen for minimal size possible (duh)
@@ -186,11 +192,13 @@ def dSimulation_to_GraphSiPMCM(
     ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float64)
     ary_graph_attributes = np.zeros(shape=(k_graphs, 4), dtype=np.float32)
     ary_event_indicator = np.zeros(shape=(k_graphs), dtype=np.int32)
+    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
     # meta data
     ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
     ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_fibre_multiplicity = np.zeros(shape=(k_graphs,), dtype=np.int16)
-    ary_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
+    ary_fibre_indicator = np.zeros(shape=(l_fibres,), dtype=np.int16)
+    ary_fibre_positions = np.zeros(shape=(l_fibres, 3), dtype=np.float16)
+
 
     # main iteration over root file, containing beta coincidence check
     # NOTE:
@@ -200,7 +208,9 @@ def dSimulation_to_GraphSiPMCM(
     graph_id = 0
     node_id = 0
     edge_id = 0
+    fibre_id = 0
 
+    logging.info("Starting iteration over root file to create datasets")
     for i, event in enumerate(
         root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)
     ):
@@ -255,7 +265,6 @@ def dSimulation_to_GraphSiPMCM(
 
             # grab target labels and attributes
             event.ph_method = 2
-            ##########################################################################
 
             ary_pe[graph_id] = event.MCEnergy_Primary
 
@@ -265,8 +274,26 @@ def dSimulation_to_GraphSiPMCM(
             ary_sp[graph_id] = event.MCPosition_source.x
 
             ary_event_indicator[graph_id] = i
-            ary_fibre_multiplicity[graph_id] = event.FibreClusters[cluster_id].nFibres
-            ary_labels[graph_id] = event.FibreClusters[cluster_id].hasFibres
+
+        # get fibre positions
+        for fibre_cluster in event.FibreClusters:
+            for j in range(fibre_cluster.nFibres):
+                if coordinate_system == "CRACOW":
+                    ary_fibre_positions[fibre_id, :] = [
+                        fibre_cluster.Fibres[j].FibrePosition.z,
+                        -fibre_cluster.Fibres[j].FibrePosition.y,
+                        fibre_cluster.Fibres[j].FibrePosition.x,
+                    ]
+                if coordinate_system == "AACHEN":
+                    ary_fibre_positions[fibre_id, :] = [
+                        fibre_cluster.Fibres[j].FibrePosition.x,
+                        fibre_cluster.Fibres[j].FibrePosition.y,
+                        fibre_cluster.Fibres[j].FibrePosition.z,
+                    ]
+                ary_fibre_indicator[fibre_id] = graph_id
+                fibre_id += 1
+
+            ary_graph_labels[graph_id] = event.FibreClusters[cluster_id].hasFibres
 
             # count up graph indexing
             graph_id += 1
@@ -277,7 +304,7 @@ def dSimulation_to_GraphSiPMCM(
         NeutronCount = np.array(NeutronCount)
     PrimaryEnergies = np.array(PrimaryEnergies)
 
-    # Name files:
+    # Name files for splitting using condor:
     name_additions = ""
     if n_start != 0:
         name_additions += "{}-".format(n_start)
@@ -287,6 +314,7 @@ def dSimulation_to_GraphSiPMCM(
         name_additions = name_additions + "_"
 
     # save up all files
+    logging.info("Saving files under: {}".format(path + "/" + name_additions))
     np.save(path + "/" + name_additions + "A.npy", ary_A)
     np.save(path + "/" + name_additions + "graph_indicator.npy", ary_graph_indicator)
     np.save(path + "/" + name_additions + "node_attributes.npy", ary_node_attributes)
@@ -295,9 +323,11 @@ def dSimulation_to_GraphSiPMCM(
     np.save(path + "/" + name_additions + "graph_sp.npy", ary_sp)
     np.save(path + "/" + name_additions + "event_indicator.npy", ary_event_indicator)
     np.save(
-        path + "/" + name_additions + "fibre_multiplicity.npy", ary_fibre_multiplicity
+        path + "/" + name_additions + "fibre_indicator.npy", ary_fibre_indicator
     )
-    np.save(path + "/" + name_additions + "graph_labels.npy", ary_labels)
+    np.save(path + "/" + name_additions + "graph_labels.npy", ary_graph_labels)
+    np.save(path + "/" + name_additions + "fibre_positions.npy", ary_fibre_positions)
+    logging.info("Datasets saved successfully")
 
 
 if __name__ == "__main__":

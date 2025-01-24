@@ -11,7 +11,8 @@ import pickle as pkl
 import json
 import tensorflow as tf
 import argparse
-import csv
+import logging
+from tqdm import tqdm
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -25,6 +26,7 @@ from SIFICCNN.utils import parent_directory
 # Import datasets
 from analysis.EdgeConvResNetSiPM.parameters import *
 from analysis.EdgeConvResNetSiPM.helper import *
+
 
 
 def main(
@@ -46,7 +48,7 @@ def main(
     datasets, output_dimensions = get_parameters(mode)
 
     if nOut == 0:
-        print("Setting output dimensions to default value set in parameters.py")
+        logging.info("Setting output dimensions to default value set in parameters.py")
         nOut = output_dimensions[task] 
 
     # Train-Test-Split configuration
@@ -132,6 +134,8 @@ def training(
     dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
     """
 
+    logging.info("Starting training of model on dataset: ", dataset_type)
+
     # load graph datasets
     data = DSGraphSiPM(
         type=dataset_type,
@@ -143,12 +147,14 @@ def training(
     )
 
     # set model
+    logging.info("Setting model")
     modelDict = get_models()
     tf_model = modelDict[model_type](F=5, **modelParameter)
 
-    print(tf_model.summary())
+    logging.info(tf_model.summary())
 
     # generate disjoint loader from datasets
+    logging.info("Creating disjoint loader for training and validation datasets")
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
     dataset_tr = data[:idx1]
@@ -157,6 +163,7 @@ def training(
     loader_valid = DisjointLoader(dataset_va, batch_size=batch_size)
 
     # Train model
+    logging.info("Training model")
     history = tf_model.fit(
         loader_train,
         epochs=nEpochs,
@@ -179,7 +186,7 @@ def training(
     # Save everything after training process
     os.chdir(path)
     # save model
-    print("Saving model at: ", run_name + "_regressionPosition.tf")
+    logging.info("Saving model at: ", run_name + "_regressionPosition.tf")
     tf_model.save(run_name + "_regressionPosition.tf")
     # save training history (not needed tbh)
     with open(run_name + "_regressionPosition_history" + ".hst", "wb") as f_hist:
@@ -189,6 +196,7 @@ def training(
     # save model parameter as json
     with open(run_name + "_regressionPosition_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
+    logging.info("Training finished")
 
 
 def evaluate(
@@ -198,6 +206,7 @@ def evaluate(
     dataset_name,
     mode,
 ):
+    logging.info("Starting evaluation of model on dataset: ", dataset_type)
     
     _, output_dimensions = get_parameters(mode)
 
@@ -205,6 +214,7 @@ def evaluate(
     os.chdir(path)
 
     # load model, model parameter, norm, history
+    logging.info("Loading model and model parameters")
     with open(RUN_NAME + "_regressionPosition_parameter.json", "r") as json_file:
         modelParameter = json.load(json_file)
 
@@ -223,12 +233,14 @@ def evaluate(
     norm_x = np.load(RUN_NAME + "_regressionPosition_norm_x.npy")
 
     # recompile model
+    logging.info("Recompiling model")
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
     loss = "mean_absolute_error"
     list_metrics = ["mean_absolute_error"]
     tf_model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     # load model history and plot
+    logging.info("Loading and plotting model history")
     with open(RUN_NAME + "_regressionPosition_history" + ".hst", "rb") as f_hist:
         history = pkl.load(f_hist)
     plot_history_regression(history, RUN_NAME + "_history_regression_position")
@@ -239,6 +251,7 @@ def evaluate(
     # load datasets
     # Here all events are loaded and evaluated,
     # the true compton events are filtered later for plot
+    logging.info("Loading test datasets")
     try:
         E_prim_path = parent_directory()
         E_prim_path = os.path.join(
@@ -250,9 +263,9 @@ def evaluate(
         )
         E_prim = np.load(E_prim_path)
     except FileNotFoundError:
-        print("No primary energies found!")
+        logging.error("No primary energies found!")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logging.error(f"An unexpected error occurred: {e}")
 
     data = DSGraphSiPM(
         type=dataset_type,
@@ -264,14 +277,16 @@ def evaluate(
     )
 
     # Create disjoint loader for test datasets
+    logging.info("Creating disjoint loader for test datasets")
     loader_test = DisjointLoader(data, batch_size=64, epochs=1, shuffle=False)
 
     # evaluation of test datasets (looks weird cause of bad tensorflow output
     # format)
+    logging.info("Evaluating test datasets")
     y_true = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
     y_pred = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
     index = 0
-    for batch in loader_test:
+    for batch in tqdm(loader_test, desc="Evaluating"):
         inputs, target = batch
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
@@ -287,6 +302,7 @@ def evaluate(
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
+    logging.info("Exporting results to .txt files")
     np.savetxt(
         fname=dataset_type + "_regP_pred.txt", X=y_pred, delimiter=",", newline="\n"
     )
@@ -297,7 +313,11 @@ def evaluate(
     labels = data.labels
 
     # evaluate model:
+    logging.info("Plotting evaluation results")
     plot_evaluation_position(mode, y_pred, y_true, labels)
+    
+    logging.info("Evaluation on dataset: ", dataset_type, " finished")
+
 
 
 if __name__ == "__main__":

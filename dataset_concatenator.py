@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import numpy as np
+import logging
 
 """
 This script is used to concatenate multiple .npy files into a single file.
@@ -44,13 +45,13 @@ class NumpyArrayConcatenator:
         elif suffix == "A":
             for i in range(len(arrays) - 1):
                 if np.max(arrays[i + 1]) == 0:
-                    print(
+                    logging.error(
                         f"Error in file number {i}: {np.max(arrays[i+1])} == 0")
                 arrays[i + 1] += np.max(arrays[i]) + 1
             # Control
             for i in range(len(arrays) - 1):
                 if np.max(arrays[i]) > np.min(arrays[i + 1]):
-                    print(
+                    logging.error(
                         f"Error: {np.max(arrays[i])} > {np.min(arrays[i+1])}")
         return np.concatenate(arrays, axis=0)
 
@@ -69,7 +70,7 @@ class NumpyArrayConcatenator:
         Saves the concatenated array to the specified output file.
         """
         np.save(os.path.join(self.directory, output_file), concatenated_array)
-        print(
+        logging.info(
             f"Saved concatenated array to {os.path.join(self.directory,output_file)}")
 
     def find_arrays(self, suffix):
@@ -99,8 +100,7 @@ class NumpyArrayConcatenator:
         list2 = np.sort(list2)
         completeness_check = np.all(list1[1:] == list2[:-1])
         if not completeness_check:
-            print("Missing files found: ", list2[np.where(list1[1:] != list2[:-1])], list1[np.where(list1[1:] != list2[:-1])], )
-        print(files)
+            logging.warning("Missing files found: ", list2[np.where(list1[1:] != list2[:-1])], list1[np.where(list1[1:] != list2[:-1])], )
 
 
         return files
@@ -111,17 +111,17 @@ def process_suffix(concatenator, suffix):
     try:
         concatenated_array = concatenator.concatenate_by_suffix(suffix)
         concatenator.save_concatenated_array(concatenated_array, output_file)
-        print(f"Successfully concatenated arrays with suffix '{suffix}'")
+        logging.info(f"Successfully concatenated arrays with suffix '{suffix}'")
     except ValueError as e:
-        print(
+        logging.error(
             f"Something went wrong while concatenating arrays with suffix '{suffix}':")
-        print(e)
+        logging.error(e)
 
 
 # Usage Example
 if __name__ == "__main__":
     suffixes = ["A", "graph_indicator", "node_attributes", "graph_attributes",
-                "graph_pe", "graph_sp", "event_indicator", "graph_labels", "debug_time"]#############################################################
+                "graph_pe", "graph_sp", "event_indicator", "graph_labels", "debug_time", "fibre_multiplicity"]#############################################################
     # Replace with your directory path
     directory = "./datasets/CMSimGraphSiPM/"
     """subdirectories = [
