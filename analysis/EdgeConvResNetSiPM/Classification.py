@@ -11,6 +11,8 @@ import pickle as pkl
 import json
 import tensorflow as tf
 import argparse
+import logging
+from tqdm import tqdm
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -42,6 +44,7 @@ from analysis.EdgeConvResNetSiPM.parameters import *
 from analysis.EdgeConvResNetSiPM.helper import *
 
 
+
 def main(
     run_name="ECRNSiPM_unnamed",
     epochs=50,
@@ -61,7 +64,7 @@ def main(
     datasets, output_dimensions = get_parameters(mode)
 
     if nOut == 0:
-        print("Setting output dimensions to default value set in parameters.py")
+        logging.info("Setting output dimensions to default value set in parameters.py")
         nOut = output_dimensions[task] 
 
     # Train-Test-Split configuration
@@ -147,6 +150,8 @@ def training(
     dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
     """
 
+    logging.info("Starting training of model on dataset: ", dataset_type)
+
     # load graph datasets
     data = DSGraphSiPM(
         type=dataset_type,
@@ -161,12 +166,14 @@ def training(
     class_weights = data.get_classweight_dict()
 
     # set model
+    logging.info("Setting model")
     modelDict = get_models()
     tf_model = modelDict[model_type](F=5, **modelParameter)
 
-    print(tf_model.summary())
+    logging.info(tf_model.summary())
 
     # generate disjoint loader from datasets
+    logging.info("Creating disjoint loader for training and validation datasets")
     idx1 = int(trainsplit * len(data))
     idx2 = int((trainsplit + valsplit) * len(data))
     dataset_tr = data[:idx1]
@@ -175,6 +182,7 @@ def training(
     loader_valid = DisjointLoader(dataset_va, batch_size=batch_size)
 
     # Train model
+    logging.info("Training model")
     history = tf_model.fit(
         loader_train,
         epochs=nEpochs,
@@ -198,7 +206,7 @@ def training(
     # Save everything after training process
     os.chdir(path)
     # save model
-    print("Saving model at: ", run_name + "_classifier.tf")
+    logging.info("Saving model at: ", run_name + "_classifier.tf")
     tf_model.save(run_name + "_classifier.tf")
     # save training history (not needed tbh)
     with open(run_name + "_classifier_history" + ".hst", "wb") as f_hist:
@@ -211,6 +219,8 @@ def training(
 
     # plot training history
     plot_history_classifier(history.history, run_name + "_history_classifier")
+    
+    logging.info("Training finished")
 
 
 def evaluate(
@@ -220,6 +230,7 @@ def evaluate(
     dataset_name,
     mode,
 ):
+    logging.info("Starting evaluation of model on dataset: ", dataset_type)
     
     _, output_dimensions = get_parameters(mode)
 
@@ -227,6 +238,7 @@ def evaluate(
     os.chdir(path)
 
     # load model, model parameter, norm, history
+    logging.info("Loading model and model parameters")
     with open(RUN_NAME + "_classifier_parameter.json", "r") as json_file:
         modelParameter = json.load(json_file)
 
@@ -245,12 +257,14 @@ def evaluate(
     norm_x = np.load(RUN_NAME + "_classifier_norm_x.npy")
 
     # recompile model
+    logging.info("Recompiling model")
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
     loss = "binary_crossentropy"
     list_metrics = ["Precision", "Recall"]
     tf_model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     # load model history and plot
+    logging.info("Loading and plotting model history")
     with open(RUN_NAME + "_classifier_history" + ".hst", "rb") as f_hist:
         history = pkl.load(f_hist)
     plot_history_classifier(history, RUN_NAME + "_history_classifier")
@@ -259,6 +273,7 @@ def evaluate(
     os.chdir(os.path.join(path, dataset_type))
 
     # load datasets
+    logging.info("Loading test datasets")
     data = DSGraphSiPM(
         type=dataset_type,
         norm_x=norm_x,
@@ -269,16 +284,16 @@ def evaluate(
     )
 
     # Create disjoint loader for test datasets
+    logging.info("Creating disjoint loader for test datasets")
     loader_test = DisjointLoader(data, batch_size=64, epochs=1, shuffle=False)
 
     # evaluation of test datasets (looks weird cause of bad tensorflow output
     # format)
-
+    logging.info("Evaluating test datasets")
     y_true = np.zeros((len(data),), dtype=bool)
     y_pred = np.zeros((len(data),), dtype=np.float32)
-
     index = 0
-    for batch in loader_test:
+    for batch in tqdm(loader_test, desc="Evaluating"):
         inputs, target = batch
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
@@ -290,6 +305,7 @@ def evaluate(
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
+    logging.info("Exporting results to .txt files")
     np.savetxt(
         fname=dataset_type + "_clas_pred.txt", X=y_pred, delimiter=",", newline="\n"
     )
@@ -299,38 +315,41 @@ def evaluate(
 
     # evaluate model:
     # write metrics to file
+    logging.info("Writing metrics to file")
     print_classifier_summary(y_pred, y_true, run_name=RUN_NAME)
     write_classifier_summary(y_pred, y_true, run_name=RUN_NAME)
 
     # ROC analysis
-    _, theta_opt, (list_fpr, list_tpr) = fastROCAUC(y_scores, y_true, return_score=True)
+    logging.info("Plotting evaluation results")
+    _, theta_opt, (list_fpr, list_tpr) = fastROCAUC(y_pred, y_true, return_score=True)
     plot_roc_curve(list_fpr, list_tpr, "rocauc_curve")
 
     # score distribution
-    plot_score_distribution(y_scores, y_true, "score_dist")
+    plot_score_distribution(y_pred, y_true, "score_dist")
 
     plot_efficiencymap(
-        y_pred=y_scores, y_true=y_true, y_sp=data.sp, figure_name="efficiencymap"
+        y_pred=y_pred, y_true=y_true, y_sp=data.sp, figure_name="efficiencymap"
     )
     plot_sp_distribution(
         ary_sp=data.sp,
-        ary_score=y_scores,
+        ary_score=y_pred,
         ary_true=y_true,
         figure_name="sp_distribution",
     )
     plot_pe_distribution(
         ary_pe=data.pe,
-        ary_score=y_scores,
+        ary_score=y_pred,
         ary_true=y_true,
         figure_name="pe_distribution",
     )
     plot_2dhist_sp_score(
-        sp=data.sp, y_score=y_scores, y_true=y_true, figure_name="2dhist_sp_score"
+        sp=data.sp, y_score=y_pred, y_true=y_true, figure_name="2dhist_sp_score"
     )
     plot_2dhist_ep_score(
-        pe=data.pe, y_score=y_scores, y_true=y_true, figure_name="2dhist_pe_score"
+        pe=data.pe, y_score=y_pred, y_true=y_true, figure_name="2dhist_pe_score"
     )
 
+    logging.info("Evaluation on dataset: ", dataset_type, " finished")
 
 if __name__ == "__main__":
     # configure argument parser

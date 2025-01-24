@@ -13,6 +13,7 @@ from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
+import logging
 
 matplotlib.use("Agg")
 
@@ -186,7 +187,7 @@ def plot_roc_curve(list_fpr, list_tpr, figure_name, weighted=False):
         # lowest
         auc_score += area * (-1)
 
-    print("Plotting ROC curve and {}...".format(auc_label))
+    logging.info("Plotting ROC curve and {}...".format(auc_label))
     plt.figure()
     plt.title("ROC Curve | " + auc_label)
     plt.plot(
@@ -327,7 +328,7 @@ def max_super_function(x):
     return (0.1 + np.exp((0.5 * (x + 3)) / 2)) / (1 + np.exp((8 * x + 5) / 3)) / 6
 
 
-def plot_energy_error(y_pred, y_true, figure_name):
+def plot_energy_error(y_pred, y_true, figure_name, mode):
     plt.rcParams.update({"font.size": 16})
     width = 0.1
     bins_err = np.arange(-2.0, 2.0, width)
@@ -336,15 +337,17 @@ def plot_energy_error(y_pred, y_true, figure_name):
     bins_err_center = bins_err[:-1] + (width / 2)
 
     hist0, _ = np.histogram((y_pred[:, 0] - y_true[:, 0]) / y_true[:, 0], bins=bins_err)
-    hist1, _ = np.histogram((y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1], bins=bins_err)
+    if mode != "CM-4to1":
+        hist1, _ = np.histogram((y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1], bins=bins_err)
 
     # fitting energy resolution
     popt0, pcov0 = curve_fit(
         gaussian, bins_err_center, hist0, p0=[0.0, 1.0, np.sum(hist0) * width]
     )
-    popt1, pcov1 = curve_fit(
-        gaussian, bins_err_center, hist1, p0=[0.0, 1.0, np.sum(hist1) * width]
-    )
+    if mode != "CM-4to1":
+        popt1, pcov1 = curve_fit(
+            gaussian, bins_err_center, hist1, p0=[0.0, 1.0, np.sum(hist1) * width]
+        )
     ary_x = np.linspace(min(bins_err), max(bins_err), 1000)
 
     plt.figure(figsize=(8, 5))
@@ -375,33 +378,34 @@ def plot_energy_error(y_pred, y_true, figure_name):
     plt.savefig(figure_name + "_electron.png")
     plt.close()
 
-    plt.figure(figsize=(8, 5))
-    plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-    plt.xlabel(r"$(E_{Pred} - E_{True}) / E_{True}$")
-    plt.ylabel("counts")
-    plt.hist(
-        (y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1],
-        bins=bins_err,
-        histtype="step",
-        color="blue",
-    )
-    plt.plot(
-        ary_x,
-        gaussian(ary_x, *popt1),
-        color="green",
-        label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
-        "\n"
-        r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
-            popt1[0], np.sqrt(pcov1[0, 0]), popt1[1], np.sqrt(pcov1[1, 1])
-        ),
-    )
-    plt.legend()
-    plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
-    plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
-    plt.minorticks_on()
-    plt.tight_layout()
-    plt.savefig(figure_name + "_photon.png")
-    plt.close()
+    if mode != "CM-4to1":
+        plt.figure(figsize=(8, 5))
+        plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+        plt.xlabel(r"$(E_{Pred} - E_{True}) / E_{True}$")
+        plt.ylabel("counts")
+        plt.hist(
+            (y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1],
+            bins=bins_err,
+            histtype="step",
+            color="blue",
+        )
+        plt.plot(
+            ary_x,
+            gaussian(ary_x, *popt1),
+            color="green",
+            label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
+            "\n"
+            r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
+                popt1[0], np.sqrt(pcov1[0, 0]), popt1[1], np.sqrt(pcov1[1, 1])
+            ),
+        )
+        plt.legend()
+        plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
+        plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
+        plt.minorticks_on()
+        plt.tight_layout()
+        plt.savefig(figure_name + "_photon.png")
+        plt.close()
 
     plt.figure()
     plt.xlabel("$E_{True}$ [MeV]")
@@ -420,22 +424,23 @@ def plot_energy_error(y_pred, y_true, figure_name):
     plt.savefig(figure_name + "_electron_relative.png")
     plt.close()
 
-    plt.figure()
-    plt.xlabel("$E_{True}$ [MeV]")
-    plt.ylabel(r"$\frac{E_{Pred} - E_{True}}{E_{True}}$")
-    plt.hist2d(
-        x=y_true[:, 1],
-        y=(y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1],
-        bins=[bins_energy, bins_err],
-        norm=LogNorm(vmin=1, vmax=1000),
-    )
-    plt.colorbar(norm=LogNorm())
-    plt.tight_layout()
-    plt.grid(which="major", color="#DDDDDD", linewidth=0.8)
-    plt.grid(which="minor", color="#EEEEEE", linestyle=":", linewidth=0.5)
-    plt.minorticks_on()
-    plt.savefig(figure_name + "_photon_relative.png")
-    plt.close()
+    if mode != "CM-4to1":
+        plt.figure()
+        plt.xlabel("$E_{True}$ [MeV]")
+        plt.ylabel(r"$\frac{E_{Pred} - E_{True}}{E_{True}}$")
+        plt.hist2d(
+            x=y_true[:, 1],
+            y=(y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1],
+            bins=[bins_energy, bins_err],
+            norm=LogNorm(vmin=1, vmax=1000),
+        )
+        plt.colorbar(norm=LogNorm())
+        plt.tight_layout()
+        plt.grid(which="major", color="#DDDDDD", linewidth=0.8)
+        plt.grid(which="minor", color="#EEEEEE", linestyle=":", linewidth=0.5)
+        plt.minorticks_on()
+        plt.savefig(figure_name + "_photon_relative.png")
+        plt.close()
 
 
 def plot_position_error(y_pred, y_true, figure_name):
@@ -1053,8 +1058,8 @@ def plot_history_regression(history, figure_name):
 
     loss = history["loss"]
     val_loss = history["val_loss"]
-    mse = history["mean_absolute_error"]
-    val_mse = history["val_mean_absolute_error"]
+    #mse = history["mean_absolute_error"]
+    #val_mse = history["val_mean_absolute_error"]
 
     plt.figure(figsize=(7, 6))
     plt.plot(loss, label="Loss", linestyle="-", color="blue")
@@ -1077,13 +1082,13 @@ def plot_history_regression_fancy(historyE, historyP, figure_name):
 
     lossE = historyE["loss"]
     val_lossE = historyE["val_loss"]
-    mseE = historyE["mean_absolute_error"]
-    val_mseE = historyE["val_mean_absolute_error"]
+    #mseE = historyE["mean_absolute_error"]
+    #val_mseE = historyE["val_mean_absolute_error"]
 
     lossP = historyP["loss"]
     val_lossP = historyP["val_loss"]
-    mseP = historyP["mean_absolute_error"]
-    val_mseP = historyP["val_mean_absolute_error"]
+    #mseP = historyP["mean_absolute_error"]
+    #val_mseP = historyP["val_mean_absolute_error"]
 
     fig, axs = plt.subplots(figsize=(8, 8), nrows=2, sharex=True)
     axs[0].plot(lossE, label="Energy loss", linestyle="-", color="blue")
@@ -1155,7 +1160,7 @@ def plot_2dhist_ep_score(pe, y_score, y_true, figure_name):
     plt.close()
 
 
-def plot_energy_resolution(y_pred, y_true, figure_name):
+def plot_energy_resolution(y_pred, y_true, figure_name, mode):
     # general settings
     plt.rcParams.update({"font.size": 16})
 
@@ -1213,216 +1218,226 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
             for i in range(len(bins_energy_e) - 1)
         ]
     )
-
-    bins_energy_p = np.concatenate(
-        [
-            [0.0, 0.3, 0.5],
-            np.arange(0.6, 1.0, 0.1),
-            np.arange(1.0, 4.6, 0.2),
-            [4.6, 5.0, 6.0, 7.0, 30.0],
-        ]
-    )
-    bin_energy_p_center = np.array(
-        [
-            bins_energy_p[i] + (bins_energy_p[i + 1] - bins_energy_p[i]) / 2
-            for i in range(len(bins_energy_p) - 1)
-        ]
-    )
-    bin_energy_p_center_err = np.array(
-        [
-            (bins_energy_p[i + 1] - bins_energy_p[i]) / 2
-            for i in range(len(bins_energy_p) - 1)
-        ]
-    )
-
     ary_res_e = np.zeros(shape=(len(bin_energy_e_center),))
     ary_res_e_err = np.zeros(shape=(len(bin_energy_e_center),))
-    ary_res_p = np.zeros(shape=(len(bin_energy_p_center),))
-    ary_res_p_err = np.zeros(shape=(len(bin_energy_p_center),))
 
+
+    if mode != "CM-4to1":
+        bins_energy_p = np.concatenate(
+            [
+                [0.0, 0.3, 0.5],
+                np.arange(0.6, 1.0, 0.1),
+                np.arange(1.0, 4.6, 0.2),
+                [4.6, 5.0, 6.0, 7.0, 30.0],
+            ]
+        )
+        bin_energy_p_center = np.array(
+            [
+                bins_energy_p[i] + (bins_energy_p[i + 1] - bins_energy_p[i]) / 2
+                for i in range(len(bins_energy_p) - 1)
+            ]
+        )
+        bin_energy_p_center_err = np.array(
+            [
+                (bins_energy_p[i + 1] - bins_energy_p[i]) / 2
+                for i in range(len(bins_energy_p) - 1)
+            ]
+        )
+        ary_res_p = np.zeros(shape=(len(bin_energy_p_center),))
+        ary_res_p_err = np.zeros(shape=(len(bin_energy_p_center),))
+
+
+
+    
     # main iteration over energy bins for electron energy
     for i in range(len(bins_energy_e) - 1):
-        ary_ee_cut = np.where(
-            (bins_energy_e[i] < y_true[:, 0]) & (bins_energy_e[i + 1] > y_true[:, 0]),
-            y_true[:, 0],
-            y_true[:, 0] * 0,
-        )
+        try:
+            ary_ee_cut = np.where(
+                (bins_energy_e[i] < y_true[:, 0]) & (bins_energy_e[i + 1] > y_true[:, 0]),
+                y_true[:, 0],
+                y_true[:, 0] * 0,
+            )
 
-        # initialization
-        bins = bins_err_4
-        a = 3
-        b = 5
-
-        if i in [0, 1, 2, 3]:
-            bins = bins_err_1
-            a = 20
-            b = 20
-
-        if i in [4, 5, 6, 7, 8]:
-            bins = bins_err_1
-            a = 5
+            # initialization
+            bins = bins_err_4
+            a = 3
             b = 5
 
-        if i in [30]:
+            if i in [0, 1, 2, 3]:
+                bins = bins_err_1
+                a = 20
+                b = 20
+
+            if i in [4, 5, 6, 7, 8]:
+                bins = bins_err_1
+                a = 5
+                b = 5
+
+            if i in [30]:
+                bins = bins_err_4
+                a = -5
+                b = -5
+
+            bins_center = np.array(
+                [bins[i] + (bins[i + 1] - bins[i]) / 2 for i in range(len(bins) - 1)]
+            )
+            width = bins[1] - bins[0]
+
+            # electron energy resolution fitting plots
+            plt.figure()
+            plt.xlabel("Energy [MeV]")
+            plt.ylabel("Counts")
+            plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
+            plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
+            plt.minorticks_on()
+            hist_ee, _, _ = plt.hist(
+                (y_pred[:, 0] - y_true[:, 0])[ary_ee_cut != 0],
+                bins=bins,
+                histtype="step",
+                color="blue",
+                label=r"{:.1f} < $E_e$ <= {:.1f}".format(
+                    bins_energy_e[i], bins_energy_e[i + 1]
+                ),
+            )
+
+            # get optimized fitting range
+            # (frl = fit range left, frr = fit range right)
+            e_frl, e_frr = get_fit_range(hist_ee, a=a, b=b)
+
+            # calc additional quantities for better fitting estimation
+            y0 = hist_ee[e_frl]
+            print("-----------------------------------")
+            print("hist shape:", hist_ee.shape)
+            print("hist_size:", hist_ee.size)
+            print("e_frr:", e_frr)
+            if hist_ee.size <= e_frr:
+                e_frr = hist_ee.size - 1
+            print("hist_ee:", hist_ee.size)
+            print("-----------------------------------")
+            y1 = hist_ee[e_frr]
+            p0_m = (y1 - y0) / (bins_center[e_frr] - bins_center[e_frl])
+            p0_b = (y1 - y0) / 2
+
+            logging.info("fit iteration {} [{}, {}]".format(i, e_frl, e_frr))
+            # fit gaussian to histogram
+            popt_e, pcov_e = curve_fit(
+                gaussian_lin_bg,
+                bins_center[e_frl:e_frr],
+                hist_ee[e_frl:e_frr],
+                p0=[0.0, 1.0, np.sum(hist_ee[e_frl:e_frr]) * width, p0_m, p0_b],
+                maxfev=100000,
+            )
+            plt.plot(
+                bins_center[e_frl:e_frr],
+                gaussian_lin_bg(bins_center[e_frl:e_frr], *popt_e),
+                color="deeppink",
+                label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
+                "\n"
+                r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
+                    popt_e[0], np.sqrt(pcov_e[0, 0]), popt_e[1], np.sqrt(pcov_e[1, 1])
+                ),
+            )
+
+            plt.legend(loc="upper left")
+            plt.tight_layout()
+            plt.savefig(figure_name + "_ee_{}".format(i))
+            plt.close()
+
+            ary_res_e[i] = abs(popt_e[1])
+            ary_res_e_err[i] = abs(np.sqrt(pcov_e[1, 1]))
+        except:
+            logging.error("Error in electron energy resolution fitting")
+            ary_res_e[i] = 0
+            ary_res_e_err[i] = 0
+
+    if mode != "CM-4to1":
+        # main iteration over energy bins for photon energy
+        for i in range(len(bins_energy_p) - 1):
+            ary_ep_cut = np.where(
+                (bins_energy_p[i] < y_true[:, 1]) & (bins_energy_p[i + 1] > y_true[:, 1]),
+                y_true[:, 1],
+                y_true[:, 1] * 0,
+            )
+
+            # initialization
             bins = bins_err_4
-            a = -5
-            b = -5
-
-        bins_center = np.array(
-            [bins[i] + (bins[i + 1] - bins[i]) / 2 for i in range(len(bins) - 1)]
-        )
-        width = bins[1] - bins[0]
-
-        # electron energy resolution fitting plots
-        plt.figure()
-        plt.xlabel("Energy [MeV]")
-        plt.ylabel("Counts")
-        plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
-        plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
-        plt.minorticks_on()
-        hist_ee, _, _ = plt.hist(
-            (y_pred[:, 0] - y_true[:, 0])[ary_ee_cut != 0],
-            bins=bins,
-            histtype="step",
-            color="blue",
-            label=r"{:.1f} < $E_e$ <= {:.1f}".format(
-                bins_energy_e[i], bins_energy_e[i + 1]
-            ),
-        )
-
-        # get optimized fitting range
-        # (frl = fit range left, frr = fit range right)
-        e_frl, e_frr = get_fit_range(hist_ee, a=a, b=b)
-
-        # calc additional quantities for better fitting estimation
-        y0 = hist_ee[e_frl]
-        print("-----------------------------------")
-        print("hist shape:", hist_ee.shape)
-        print("hist_size:", hist_ee.size)
-        print("e_frr:", e_frr)
-        if hist_ee.size <= e_frr:
-            e_frr = hist_ee.size - 1
-        print("hist_ee:", hist_ee.size)
-        print("-----------------------------------")
-        y1 = hist_ee[e_frr]
-        p0_m = (y1 - y0) / (bins_center[e_frr] - bins_center[e_frl])
-        p0_b = (y1 - y0) / 2
-
-        print("fit iteration {} [{}, {}]".format(i, e_frl, e_frr))
-        # fit gaussian to histogram
-        popt_e, pcov_e = curve_fit(
-            gaussian_lin_bg,
-            bins_center[e_frl:e_frr],
-            hist_ee[e_frl:e_frr],
-            p0=[0.0, 1.0, np.sum(hist_ee[e_frl:e_frr]) * width, p0_m, p0_b],
-            maxfev=100000,
-        )
-        plt.plot(
-            bins_center[e_frl:e_frr],
-            gaussian_lin_bg(bins_center[e_frl:e_frr], *popt_e),
-            color="deeppink",
-            label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
-            "\n"
-            r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
-                popt_e[0], np.sqrt(pcov_e[0, 0]), popt_e[1], np.sqrt(pcov_e[1, 1])
-            ),
-        )
-
-        plt.legend(loc="upper left")
-        plt.tight_layout()
-        plt.savefig(figure_name + "_ee_{}".format(i))
-        plt.close()
-
-        ary_res_e[i] = abs(popt_e[1])
-        ary_res_e_err[i] = abs(np.sqrt(pcov_e[1, 1]))
-
-    # main iteration over energy bins for electron energy
-    for i in range(len(bins_energy_p) - 1):
-        ary_ep_cut = np.where(
-            (bins_energy_p[i] < y_true[:, 1]) & (bins_energy_p[i + 1] > y_true[:, 1]),
-            y_true[:, 1],
-            y_true[:, 1] * 0,
-        )
-
-        # initialization
-        bins = bins_err_4
-        a = 2
-        b = 5
-
-        if i in [0, 1, 2, 3]:
-            bins = bins_err_4
-            a = 4
-
-        if i in [8, 9, 10, 11, 12, 13, 14, 15, 16]:
-            bins = bins_err_3
             a = 2
+            b = 5
 
-        if i in [31]:
-            bins = bins_err_4
-            a = -20
-            b = -20
+            if i in [0, 1, 2, 3]:
+                bins = bins_err_4
+                a = 4
 
-        bins_center = np.array(
-            [bins[i] + (bins[i + 1] - bins[i]) / 2 for i in range(len(bins) - 1)]
-        )
-        width = bins[1] - bins[0]
+            if i in [8, 9, 10, 11, 12, 13, 14, 15, 16]:
+                bins = bins_err_3
+                a = 2
 
-        # photon energy resolution fitting plots
-        plt.figure()
-        plt.xlabel("Energy [MeV]")
-        plt.ylabel("Counts")
-        plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
-        plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
-        plt.minorticks_on()
-        hist_ep, _, _ = plt.hist(
-            (y_pred[:, 1] - y_true[:, 1])[ary_ep_cut != 0],
-            bins=bins,
-            histtype="step",
-            color="blue",
-            label="{:.1f} < {} <= {:.1f}".format(
-                bins_energy_p[i], r"$E_{\gamma}$", bins_energy_p[i + 1]
-            ),
-        )
+            if i in [31]:
+                bins = bins_err_4
+                a = -20
+                b = -20
 
-        # get optimized fitting range
-        # (frl = fit range left, frr = fit range right)
-        p_frl, p_frr = get_fit_range(hist_ep, a=a, b=b)
+            bins_center = np.array(
+                [bins[i] + (bins[i + 1] - bins[i]) / 2 for i in range(len(bins) - 1)]
+            )
+            width = bins[1] - bins[0]
 
-        # calc additional quantities for better fitting estimation
-        y0 = hist_ep[p_frl]
-        if hist_ee.size <= p_frr:
-            p_frr = hist_ee.size - 1
-        y1 = hist_ep[p_frr]
-        p0_m = (y1 - y0) / (bins_center[p_frr] - bins_center[p_frl])
-        p0_b = (y1 - y0) / 2
+            # photon energy resolution fitting plots
+            plt.figure()
+            plt.xlabel("Energy [MeV]")
+            plt.ylabel("Counts")
+            plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
+            plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)
+            plt.minorticks_on()
+            hist_ep, _, _ = plt.hist(
+                (y_pred[:, 1] - y_true[:, 1])[ary_ep_cut != 0],
+                bins=bins,
+                histtype="step",
+                color="blue",
+                label="{:.1f} < {} <= {:.1f}".format(
+                    bins_energy_p[i], r"$E_{\gamma}$", bins_energy_p[i + 1]
+                ),
+            )
 
-        print("fit iteration {} [{}, {}]".format(i, p_frl, p_frr))
-        # fit gaussian to histogram
-        popt_p, pcov_p = curve_fit(
-            gaussian_lin_bg,
-            bins_center[p_frl:p_frr],
-            hist_ep[p_frl:p_frr],
-            p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
-            maxfev=100000,
-        )
-        plt.plot(
-            bins_center[p_frl:p_frr],
-            gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p),
-            color="deeppink",
-            label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
-            "\n"
-            r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
-                popt_p[0], np.sqrt(pcov_p[0, 0]), popt_p[1], np.sqrt(pcov_p[1, 1])
-            ),
-        )
+            # get optimized fitting range
+            # (frl = fit range left, frr = fit range right)
+            p_frl, p_frr = get_fit_range(hist_ep, a=a, b=b)
 
-        plt.legend(loc="upper left")
-        plt.tight_layout()
-        plt.savefig(figure_name + "_ep_{}".format(i))
-        plt.close()
+            # calc additional quantities for better fitting estimation
+            y0 = hist_ep[p_frl]
+            if hist_ee.size <= p_frr:
+                p_frr = hist_ee.size - 1
+            y1 = hist_ep[p_frr]
+            p0_m = (y1 - y0) / (bins_center[p_frr] - bins_center[p_frl])
+            p0_b = (y1 - y0) / 2
 
-        ary_res_p[i] = abs(popt_p[1])
-        ary_res_p_err[i] = abs(np.sqrt(pcov_p[1, 1]))
+            logging.info("fit iteration {} [{}, {}]".format(i, p_frl, p_frr))
+            # fit gaussian to histogram
+            popt_p, pcov_p = curve_fit(
+                gaussian_lin_bg,
+                bins_center[p_frl:p_frr],
+                hist_ep[p_frl:p_frr],
+                p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
+                maxfev=100000,
+            )
+            plt.plot(
+                bins_center[p_frl:p_frr],
+                gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p),
+                color="deeppink",
+                label=r"$\mu$ = {:.2f} $\pm$ {:.2f}"
+                "\n"
+                r"$\sigma$ = {:.2f} $\pm$ {:.2f}".format(
+                    popt_p[0], np.sqrt(pcov_p[0, 0]), popt_p[1], np.sqrt(pcov_p[1, 1])
+                ),
+            )
+
+            plt.legend(loc="upper left")
+            plt.tight_layout()
+            plt.savefig(figure_name + "_ep_{}".format(i))
+            plt.close()
+
+            ary_res_p[i] = abs(popt_p[1])
+            ary_res_p_err[i] = abs(np.sqrt(pcov_p[1, 1]))
 
     plt.figure(figsize=(12, 6))
     plt.xlabel("Energy [MeV]")
@@ -1438,15 +1453,16 @@ def plot_energy_resolution(y_pred, y_true, figure_name):
         color="deeppink",
         label=r"$E_e$",
     )
-    plt.errorbar(
-        bin_energy_p_center,
-        ary_res_p / bin_energy_p_center * 100,
-        ary_res_p_err / bin_energy_p_center * 100,
-        bin_energy_p_center_err,
-        fmt=".",
-        color="blue",
-        label=r"$E_{\gamma}}$",
-    )
+    if mode != "CM-4to1":
+        plt.errorbar(
+            bin_energy_p_center,
+            ary_res_p / bin_energy_p_center * 100,
+            ary_res_p_err / bin_energy_p_center * 100,
+            bin_energy_p_center_err,
+            fmt=".",
+            color="blue",
+            label=r"$E_{\gamma}}$",
+        )
     plt.legend(loc="upper right")
     plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
     plt.grid(which="minor", color="#DDDDDD", linestyle=":", linewidth=0.8)

@@ -16,6 +16,7 @@ from .parameters import get_parameters
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse
 from tqdm import tqdm
+import logging
 
 
 class DSGraphSiPM(Dataset):
@@ -72,7 +73,7 @@ class DSGraphSiPM(Dataset):
         Returns:
             None
         """
-        print("Missing download method!")
+        logging.error("Missing download method!")
     
     def _check_edges(self, el_list, n_nodes):
         # Check if shape and number of nodes are correct
@@ -85,14 +86,14 @@ class DSGraphSiPM(Dataset):
                 pbar.update(1)
         number_of_nodes = maxs - mins + 1
         if not np.all(number_of_nodes == n_nodes):
-            print("Error: Number of nodes in edge list does not match the number of nodes in the node list")
+            logging.error("Number of nodes in edge list does not match the number of nodes in the node list")
             idxs = np.where(number_of_nodes != n_nodes)[0]
-            print("Number of nodes in edge list:", number_of_nodes[idxs])
-            print("Number of nodes in node list:", n_nodes[idxs])
-            print("Index of the graphs with wrong number of nodes:", idxs)
+            logging.info("Number of nodes in edge list:", number_of_nodes[idxs])
+            logging.info("Number of nodes in node list:", n_nodes[idxs])
+            logging.info("Index of the graphs with wrong number of nodes:", idxs)
             raise ValueError("Number of nodes in edge list does not match the number of nodes in the node list")
         else:
-            print("Number of nodes in edge list matches the number of nodes in the node list")
+            logging.info("Number of nodes in edge list matches the number of nodes in the node list")
 
     def read(self):
         """
@@ -118,7 +119,7 @@ class DSGraphSiPM(Dataset):
         # lexicographic order
         a_e_list = []
         total_matrices = len(n_nodes)
-        print(
+        logging.info(
             f"Total number of adjacency matrices to be created: {total_matrices}")
         
         self._check_edges(el_list, n_nodes)
@@ -132,10 +133,10 @@ class DSGraphSiPM(Dataset):
                                                     edge_features=e,
                                                     shape=(n, n))
                 except:
-                    print("Error in creating adjacency matrix")
-                    print("Edge index:", el)
-                    print("Edge features:", e)
-                    print("Shape:", n)
+                    logging.error("Error in creating adjacency matrix")
+                    logging.info("Edge index:", el)
+                    logging.info("Edge features:", e)
+                    logging.info("Shape:", n)
                     a = sparse.edge_index_to_matrix(edge_index=el,
                                                     edge_weight=np.ones(
                                                         el.shape[0]),
@@ -154,7 +155,7 @@ class DSGraphSiPM(Dataset):
 
         # At this point the full dataset is loaded and filtered according to the settings
         # Limited to True positives only if needed
-        print("Successfully loaded {}.".format(self.type))
+        logging.info("Successfully loaded {}.".format(self.type))
         if self.regression is None:
             return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(
                 zip(x_list, a_list, labels), desc="Creating graphs for classification")]
@@ -185,7 +186,7 @@ class DSGraphSiPM(Dataset):
         n_nodes = np.bincount(node_batch_index)
         # Cumulative sum of nodes to determine the starting index of each graph
         n_nodes_cum = np.concatenate(([0], np.cumsum(n_nodes)[:-1]))
-        print("Graph indicator loaded succesfully.")
+        logging.info("Graph indicator loaded succesfully.")
         return node_batch_index, n_nodes_cum, n_nodes
             
     def _get_el_list(self, node_batch_index, n_nodes_cum):
@@ -198,7 +199,7 @@ class DSGraphSiPM(Dataset):
         n_edges_cum = np.cumsum(n_edges[:-1])
         el_list = np.split(
             edges - n_nodes_cum[edge_batch_idx, None], n_edges_cum)
-        print("Edges loaded successfully.")
+        logging.info("Edges loaded successfully.")
         return el_list
 
     def _get_x_list(self, n_nodes_cum):
@@ -219,7 +220,7 @@ class DSGraphSiPM(Dataset):
         self._standardize(x_attr, self.norm_x)
         # Split node features into separate lists for each graph
         x_list = np.split(x_attr, n_nodes_cum[1:])
-        print("Node attributes loaded successfully.")
+        logging.info("Node attributes loaded successfully.")
 
         return x_list
 
@@ -261,7 +262,7 @@ class DSGraphSiPM(Dataset):
             elif self.regression == "Position":
                 y_list = graph_attributes[:, self.graph_attribute_slice_edge:]
             else:
-                print("Warning: Regression type not set correctly")
+                logging.error("Regression type not set correctly")
                 return None
         else:
             # Return class labels for classification tasks
