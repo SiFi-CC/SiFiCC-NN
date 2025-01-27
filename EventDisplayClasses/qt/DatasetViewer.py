@@ -1,6 +1,4 @@
-import sys
 from PyQt5.QtWidgets import (
-    QApplication,
     QMainWindow,
     QVBoxLayout,
     QHBoxLayout,
@@ -16,107 +14,12 @@ from PyQt5.QtWidgets import (
     QSplitter,
     QCheckBox,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from utils import DatasetReader, Detector
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
+from PyQt5.QtCore import Qt
 import logging
-
-
-class NumericTableWidgetItem(QTableWidgetItem):
-    """
-    A custom QTableWidgetItem that allows for numeric comparison.
-
-    This class overrides the less-than operator to enable sorting of table items
-    based on their numeric value rather than their string representation.
-
-    Methods:
-        __lt__(other): Compares the numeric value of this item with another NumericTableWidgetItem.
-    """
-
-    def __lt__(self, other):
-        if isinstance(other, NumericTableWidgetItem):
-            return int(self.text()) < int(other.text())
-        return super().__lt__(other)
-
-
-class PlotCanvas(FigureCanvas):
-    """
-    A custom Matplotlib canvas for plotting 3D event displays.
-
-    Attributes:
-        axes (Axes3D): The 3D axes for plotting.
-
-    Methods:
-        __init__(parent=None):
-            Initializes the PlotCanvas with a 3D subplot.
-
-        plot_event(event, detector, event_idx, show_sipms=True, show_cluster_area=True, show_photon_hits=True):
-            Plots a given event on the 3D canvas.
-            Args:
-                event: The event data to be plotted.
-                detector: The detector configuration.
-                event_idx: The index of the event to be plotted.
-                show_sipms (bool): Whether to show SiPMs in the plot. Default is True.
-                show_cluster_area (bool): Whether to show the cluster area in the plot. Default is True.
-                show_photon_hits (bool): Whether to show photon hits in the plot. Default is True.
-    """
-
-    def __init__(self, parent=None):
-        fig = Figure()
-        self.axes = fig.add_subplot(111, projection="3d")
-        super().__init__(fig)
-        self.setParent(parent)
-
-    def plot_event(
-        self,
-        event,
-        detector,
-        event_idx,
-        show_sipms=True,
-        show_cluster_area=True,
-        show_compton_hits=True,
-        show_CMphoton_hits=True,
-    ):
-        self.axes.clear()
-        event.plot(
-            detector,
-            event_idx=event_idx,
-            ax=self.axes,
-            show_sipms=show_sipms,
-            show_cluster_area=show_cluster_area,
-            show_compton_hits=show_compton_hits,
-			show_CMphoton_hits=show_CMphoton_hits,
-        )
-        self.draw()
-
-
-class DatasetLoaderThread(QThread):
-    """
-    A QThread subclass that loads a dataset in a separate thread.
-
-    Attributes:
-        dataset_loaded (pyqtSignal): Signal emitted when the dataset is loaded.
-        dataset_path (str): Path to the dataset file.
-
-    Methods:
-        __init__(dataset_path):
-            Initializes the DatasetLoaderThread with the given dataset path.
-        run():
-            Reads the dataset using DatasetReader and emits the dataset_loaded signal.
-    """
-
-    dataset_loaded = pyqtSignal(object)
-
-    def __init__(self, dataset_path, mode):
-        super().__init__()
-        self.dataset_path = dataset_path
-        self.mode = mode
-
-    def run(self):
-        reader = DatasetReader(self.dataset_path, mode=self.mode)
-        self.dataset_loaded.emit(reader)
+from .PlotCanvas import PlotCanvas
+from .DatasetLoaderThread import DatasetLoaderThread
+from .NumericTableWidgetItem import NumericTableWidgetItem
+from EventDisplayClasses.geometry.Detector import Detector
 
 
 class DatasetViewer(QMainWindow):
@@ -157,18 +60,19 @@ class DatasetViewer(QMainWindow):
         update_plot(): Updates the plot based on the selected checkboxes.
     """
 
-    def __init__(self):
+    def __init__(self, dataset_path, mode):
         super().__init__()
         self.setWindowTitle("Dataset Viewer")
         self.resize(800, 600)
 
-        # HARDCODED MODE SELECTION
-        self.mode = "CM-4to1"
+        # Mode and path
+        self.mode = mode
+        self.dataset_path = dataset_path
+        logging.info(f"Dataset path: {self.dataset_path}")
+        logging.info(f"Mode: {self.mode}")
 
-        # DatasetReader and Detector
-        self.dataset_path = None
+        # DatasetReader
         self.reader = None
-        self.detector = Detector(self.mode)
 
         # State
         self.current_block = []
@@ -191,6 +95,9 @@ class DatasetViewer(QMainWindow):
         path_layout.addWidget(self.path_label, stretch=1)
         path_layout.addWidget(self.browse_button)
         main_layout.addLayout(path_layout)
+
+        # Detector
+        self.detector = Detector(self.mode)
 
         # Checkboxes for plot options
         self.show_sipms_checkbox = QCheckBox("Show SiPMs")
@@ -228,6 +135,8 @@ class DatasetViewer(QMainWindow):
             interaction_string = "Is Compton Event"
         elif self.mode == "CM-4to1":
             interaction_string = "Constains Coupling Hit"
+        if self.mode not in ["CC-4to1", "CM-4to1"]:
+            raise ValueError(f"Invalid mode: {self.mode}")
         self.table_widget.setHorizontalHeaderLabels(
             ["Event Index", "Num Clusters", interaction_string]
         )
@@ -258,6 +167,12 @@ class DatasetViewer(QMainWindow):
         self.prev_button.clicked.connect(self.load_previous)
         self.next_button.clicked.connect(self.load_next)
         self.table_widget.cellDoubleClicked.connect(self.view_event)
+
+        # Set the initial path label
+        self.path_label.setText(f"Current Dataset Path: {self.dataset_path}")
+
+        # Load Dataset
+        self.load_dataset()
 
     def select_dataset(self):
         """
@@ -293,7 +208,7 @@ class DatasetViewer(QMainWindow):
         connects the dataset_loaded signal to the on_dataset_loaded slot, and starts
         the thread to load the dataset asynchronously.
         """
-        self.loader_thread = DatasetLoaderThread(self.dataset_path , self.mode)
+        self.loader_thread = DatasetLoaderThread(self.dataset_path)
         self.loader_thread.dataset_loaded.connect(self.on_dataset_loaded)
         self.loader_thread.start()
 
@@ -370,6 +285,7 @@ class DatasetViewer(QMainWindow):
         Raises:
         Exception: If there is an error while loading the block, a critical message box is displayed and None is returned.
         """
+
         if not self.reader:
             QMessageBox.warning(
                 self, "No Dataset Selected", "Please select a dataset path first."
@@ -541,10 +457,3 @@ class DatasetViewer(QMainWindow):
         selected_row = self.table_widget.currentRow()
         # Call the view_plot method with the selected row number
         self.view_event(selected_row, 0)
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    viewer = DatasetViewer()
-    viewer.show()
-    sys.exit(app.exec_())
