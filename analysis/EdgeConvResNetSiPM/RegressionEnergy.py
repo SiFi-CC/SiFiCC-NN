@@ -72,7 +72,7 @@ def main(
 
     # create subdirectory for run output
     if not os.path.isdir(path_results):
-        os.mkdir(path_results)
+        os.makedirs(path_results, exist_ok=True)
     for dataset in datasets.values():
         dataset_path = os.path.join(path_results, dataset)
         os.makedirs(dataset_path, exist_ok=True)

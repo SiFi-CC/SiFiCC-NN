@@ -166,6 +166,7 @@ def dSimulation_to_GraphSiPM(
             k_graphs += 1
             n_nodes += len(event.SiPMHit.SiPMId)
             m_edges += len(event.SiPMHit.SiPMId) ** 2
+            l_fibres += len(event.FibreHit.FibreId)
 
             if not photon_set:
                 NeutronCount.append(event.MCNPrimaryNeutrons)
