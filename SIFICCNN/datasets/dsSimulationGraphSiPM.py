@@ -11,7 +11,7 @@ import numpy as np
 
 from SIFICCNN.utils import parent_directory
 
-from .parameters import get_parameters
+from analysis.EdgeConvResNetSiPM.parameters import get_parameters
 
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse

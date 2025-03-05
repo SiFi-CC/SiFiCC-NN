@@ -206,4 +206,5 @@ def get_fwhm(data_slice, i):
         plt.close()
         return fwhm
     else:
+        return 0
   
