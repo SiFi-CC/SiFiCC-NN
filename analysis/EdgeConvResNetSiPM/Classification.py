@@ -1,8 +1,51 @@
 ##########################################################################
-# ### ClassificationEdgeConvResNetCluster.py
+#Classification.py
+#This script implements the training and evaluation pipeline for the SiPM Image Feature Classification Convolutional Neural Network (SIFICCNN) using EdgeConv-based ResNet architectures. It is specifically designed for use with Compton camera data and should not be used for coded mask setups.
+#Main Functionalities:
+#---------------------
+#- Loads and preprocesses graph-based SiPM datasets for classification tasks.
+#- Configures and trains EdgeConv-based neural network models with optional progressive training for large datasets.
+#- Evaluates trained models on test/validation datasets, computes metrics, and generates various diagnostic plots.
+#- Handles model saving/loading, normalization, and training history export.
+#- Provides command-line interface for flexible configuration of training and evaluation runs.
+#Key Components:
+#---------------
+#- `generator(data)`: Converts batches from a data loader into TensorFlow-compatible input/output tuples, ensuring adjacency matrices are in sparse format.
+#- `main(...)`: Orchestrates the workflow, including dataset preparation, model parameter setup, training, and evaluation based on user-specified flags.
+#- `training(...)`: Handles the training loop, including progressive training, model checkpointing, and export of training artifacts.
+#- `evaluate(...)`: Loads a trained model and associated artifacts, performs predictions on a specified dataset, computes metrics, and generates evaluation plots.
+#Command-Line Arguments:
+#-----------------------
+#- `--name`: Run name for output directories and files.
+#- `--epochs`: Number of training epochs.
+#- `--batch_size`: Batch size for training and evaluation.
+#- `--dropout`: Dropout rate for model layers.
+#- `--nFilter`: Number of filters per convolutional layer.
+#- `--nOut`: Number of output nodes (default: use value from parameters).
+#- `--activation`: Activation function for hidden layers.
+#- `--activation_out`: Activation function for output layer.
+#- `--training`: Flag to enable training mode.
+#- `--evaluation`: Flag to enable evaluation mode.
+#- `--prediction`: Flag to enable prediction mode (not implemented in this script).
+#- `--export_root`: Flag to export results in ROOT file format (not implemented in this script).
+#- `--model_type`: Model architecture to use (from available models).
+#- `--dataset_name`: Name of the dataset to use.
+#- `--mode`: Experimental setup/mode (choices: CM-4to1, CC-4to1, CMbeamtime).
+#- `--progressive`: Enable progressive training for large datasets.
+#Dependencies:
+#-------------
+#- TensorFlow, Spektral, NumPy, tqdm, and custom SIFICCNN modules.
+#Usage:
+#------
+#Run the script from the command line with the desired arguments, e.g.:
+#    python Classification.py --mode CC-4to1 --training --epochs 50 --name my_run
+#Note:
+#-----
+#- This script assumes the presence of supporting modules and datasets as specified in the import statements.
+#- Only use this script for Compton camera data; it is not suitable for coded mask setups.
+# 
 #
-# Example script for classifier training on the SiFi-CC data in graph configuration
-#
+# Only use script for Compton camera! Coded mask does not need classification!
 ##########################################################################
 
 import numpy as np
@@ -13,6 +56,7 @@ import tensorflow as tf
 import argparse
 import logging
 from tqdm import tqdm
+import random
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -39,9 +83,59 @@ from SIFICCNN.utils.plotter import (
     plot_2dhist_sp_score,
 )
 
-# Import datasets
+# Import helper functions and parameters
 from analysis.EdgeConvResNetSiPM.parameters import *
-from analysis.EdgeConvResNetSiPM.helper import *
+from analysis.EdgeConvResNetSiPM.plotter import *
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+
+def generator(data, no_y=False):
+    """
+    A generator function that yields batches of data with adjacency matrices converted to tf.SparseTensor of type float32.
+
+    Args:
+        data (iterable): An iterable of batches. Each batch is either a tuple ((x, a, i), y) if no_y is False,
+            or a tuple (x, a, i) if no_y is True, where:
+                x: Input features.
+                a: Adjacency matrix (dense or tf.SparseTensor).
+                i: Additional input (e.g., graph indices).
+                y: Target values (only if no_y is False).
+        no_y (bool, optional): If True, yields only inputs (x, a, i). If False, yields ((x, a, i), y). Default is False.
+
+        tuple: 
+            - If no_y is False: ((x, a_sparse, i), y), where
+                x: Input features,
+                a_sparse: Adjacency matrix as a tf.SparseTensor (converted to float32 if necessary),
+                i: Graph indices,
+                y: Targets/labels.
+            - If no_y is True: (x, a_sparse, i), omitting the targets.
+
+    Notes:
+        - The adjacency matrix 'a' is converted to a tf.SparseTensor of type float32 if it is not already in that format.
+        - This generator is compatible with Keras model training and evaluation loops.
+    """
+    if not no_y:
+        for batch in data:
+            (x, a, i), y = batch  # Unpack the inputs and targets
+            # If 'a' is already a SparseTensor, cast it; otherwise, convert from dense.
+            if isinstance(a, tf.SparseTensor):
+                a_sparse = tf.sparse.SparseTensor(a.indices, tf.cast(a.values, tf.float32), a.dense_shape)
+            else:
+                a_sparse = tf.sparse.from_dense(tf.cast(a, tf.float32))
+            yield ((x, a_sparse, i), y)
+    else:
+        for batch in data:
+            (x, a, i) = batch
+            # If 'a' is already a SparseTensor, cast it; otherwise, convert from dense.
+            if isinstance(a, tf.SparseTensor):
+                a_sparse = tf.sparse.SparseTensor(a.indices, tf.cast(a.values, tf.float32), a.dense_shape)
+            else:
+                a_sparse = tf.sparse.from_dense(tf.cast(a, tf.float32))
+            yield (x, a_sparse, i)
 
 
 
@@ -56,10 +150,43 @@ def main(
     activation_out="sigmoid",
     do_training=False,
     do_evaluation=False,
+    do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
     mode="CC-4to1",
+    progressive=False,
 ):
+    """
+    Main function to orchestrate training, evaluation, and prediction workflows for the EdgeConvResNetSiPM classification task.
+
+    Parameters:
+        run_name (str): Name of the current run, used for organizing output directories and results.
+        epochs (int): Number of training epochs.
+        batch_size (int): Size of each training batch.
+        dropout (float): Dropout rate for the model.
+        nFilter (int): Number of filters (channels) in the model layers.
+        nOut (int): Number of output units/classes. If 0, uses default from parameters.
+        activation (str): Activation function for hidden layers.
+        activation_out (str): Activation function for the output layer.
+        do_training (bool): Whether to perform model training.
+        do_evaluation (bool): Whether to perform model evaluation.
+        do_prediction (bool): Whether to perform model prediction (currently unused).
+        model_type (str): Type of model architecture to use.
+        dataset_name (str): Name of the dataset to use.
+        mode (str): Mode of operation, determines dataset and output dimensions.
+        progressive (bool): Whether to use progressive training (if supported).
+
+    Workflow:
+        - Loads dataset and output dimensions based on the selected mode.
+        - Sets up model parameters and output signatures for TensorFlow datasets.
+        - Creates necessary directories for storing results.
+        - If do_training is True, trains the model on the specified dataset.
+        - If do_evaluation is True, evaluates the model on all datasets except the training set.
+
+    Returns:
+        None
+    """
+
     task = "classification"
     datasets, output_dimensions = get_parameters(mode)
 
@@ -80,6 +207,18 @@ def main(
         "dropout": dropout,
         "task": task,
     }
+    # logging parameters
+    logging.info("Model parameters: %s", modelParameter)
+
+    # Define output signature for the dataset
+    output_signature = (
+        (
+        tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
+        tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
+        tf.TensorSpec(shape=(None,), dtype=tf.int64)                            # i
+        ),
+    tf.TensorSpec(shape=(None, modelParameter["n_out"]), dtype=tf.float32)      # y
+    )
 
     # Navigate to the main repository directory
     path = parent_directory()
@@ -88,7 +227,7 @@ def main(
 
     # create subdirectory for run output
     if not os.path.isdir(path_results):
-        os.mkdir(path_results)
+        os.makedirs(path_results, exist_ok=True)
     for dataset in datasets.values():
         dataset_path = os.path.join(path_results, dataset)
         os.makedirs(dataset_path, exist_ok=True)
@@ -108,6 +247,8 @@ def main(
             model_type=model_type,
             dataset_name=dataset_name,
             mode=mode,
+            progressive=progressive,
+            output_signature=output_signature,
         )
 
     if do_evaluation:
@@ -116,8 +257,24 @@ def main(
                 dataset_type=file,
                 RUN_NAME=run_name,
                 path=path_results,
-                dataset_name=dataset_name,
                 mode=mode,
+                output_signature=output_signature,
+            )
+    
+
+    if do_prediction:
+        output_signature = (
+            tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
+            tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
+            tf.TensorSpec(shape=(None,), dtype=tf.int64)                            # i
+            )
+        for file in {k: v for k, v in datasets.items() if k != "continuous"}.values():
+            predict(
+                dataset_type=file,
+                RUN_NAME=run_name,
+                path=path_results,
+                mode=mode,
+                output_signature=output_signature,
             )
 
 
@@ -133,24 +290,40 @@ def training(
     model_type,
     dataset_name,
     mode,
+    progressive,
+    output_signature,
 ):
     """
-    Train the model on the given dataset.
-
-    Parameters:
-    dataset_type (str): Type of the dataset to be used for training.
-    run_name (str): Name of the run for saving results.
-    trainsplit (float): Fraction of the data to be used for training.
-    valsplit (float): Fraction of the data to be used for validation.
-    batch_size (int): Number of samples per batch.
-    nEpochs (int): Number of epochs for training.
-    path (str): Path to save the results.
-    modelParameter (dict): Dictionary of model parameters.
-    model_type (str): Type of the model to be used.
-    dataset_name (str): Name of the dataset. Default is "SimGraphSiPM".
+    Trains a classification model on a specified dataset, handling data loading, model configuration, and training process.
+    This function sets up the training environment, loads the dataset, configures the model, and executes the training loop.
+    Args:
+        dataset_type (str): The type of dataset to train on (e.g., 'continuous').
+        run_name (str): The name of the run, used for saving model and results.
+        trainsplit (float): Fraction of the dataset to use for training.
+        valsplit (float): Fraction of the dataset to use for validation.
+        batch_size (int): The size of the batches for training and validation.
+        nEpochs (int): The number of epochs to train the model.
+        path (str): The directory path where results and models will be saved.
+        modelParameter (dict): Dictionary containing model parameters such as number of filters, activation functions,
+                              dropout rate, and output dimensions.
+        model_type (str): The type of model to use for training (e.g., 'SiFiECRNShort').
+        dataset_name (str): The name of the dataset to be loaded for training.
+        mode (str): The mode or configuration used for the model and dataset.
+        progressive (bool): If True, enables progressive training with varying dataset fractions.
+        output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
+    Side Effects:
+        - Changes the current working directory to the specified path.
+        - Loads the specified dataset and prepares it for training.
+        - Configures and compiles the model based on the provided parameters.
+        - Trains the model on the dataset, saving the model and training history after completion.
+    Raises:
+        FileNotFoundError: If the specified dataset or model files are not found.
+        Exception: For errors during model training or data processing.
+    Logging:
+        Logs progress and key steps throughout the training process.
     """
 
-    logging.info("Starting training of model on dataset: ", dataset_type)
+    logging.info("Starting training of model on dataset: %s"+ dataset_type)
 
     # load graph datasets
     data = DSGraphSiPM(
@@ -174,43 +347,81 @@ def training(
 
     # generate disjoint loader from datasets
     logging.info("Creating disjoint loader for training and validation datasets")
-    idx1 = int(trainsplit * len(data))
-    idx2 = int((trainsplit + valsplit) * len(data))
-    dataset_tr = data[:idx1]
-    dataset_va = data[idx1:idx2]
-    loader_train = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=nEpochs)
-    loader_valid = DisjointLoader(dataset_va, batch_size=batch_size)
+    # shuffle data list for training
+    random.shuffle(data)
+    if progressive:
+        fractions = [0.01, 0.05,  0.25, 0.5, 1.0]
+        # Define epochs per phase: fewer for small fractions, more as the fraction increases
+        epoch_settings = {0.01: int(np.ceil(0.3*nEpochs)),
+                           0.05: int(np.ceil(0.5*nEpochs)) , 
+                           0.25: int(np.ceil(0.75*nEpochs)), 
+                           0.5: int(np.ceil(0.9*nEpochs)), 
+                           1.0: nEpochs}
+    else:
+        fractions = [1.0]
+        epoch_settings = {1.0: nEpochs}
+    all_phase_histories = []  # List to store the history from each phase
+    for fraction in fractions:
+        epochs_phase = epoch_settings[fraction]
+        idx1 = int((trainsplit * len(data)) * fraction)
+        idx2 = int(((trainsplit + valsplit) * len(data)) * fraction)
+        dataset_tr = data[:idx1]
+        dataset_va = data[idx1:idx2]
+        loader_train = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=epochs_phase, shuffle=True)
+        loader_valid = DisjointLoader(dataset_va, batch_size=batch_size)
 
-    # Train model
-    logging.info("Training model")
-    history = tf_model.fit(
-        loader_train,
-        epochs=nEpochs,
-        steps_per_epoch=loader_train.steps_per_epoch,
-        validation_data=loader_valid,
-        validation_steps=loader_valid.steps_per_epoch,
-        class_weight=class_weights,
-        verbose=1,
-        callbacks=[
-            tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_loss",
-                factor=1.0 / 3.0,
-                patience=4,
-                min_delta=1e-2,
-                min_lr=1e-6,
-                verbose=0,
-            )
-        ],
-    )
+
+
+        train_dataset = tf.data.Dataset.from_generator(
+            lambda: generator(loader_train),
+            output_signature=output_signature,
+        )
+        valid_dataset = tf.data.Dataset.from_generator(
+            lambda: generator(loader_valid),
+            output_signature=output_signature,
+        )
+
+
+        callbacks = [
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_loss",
+                    factor=1.0 / 3.0,
+                    patience=4,
+                    min_delta=1e-2,
+                    min_lr=1e-6,
+                    verbose=0,
+                )
+            ]
+        if fraction == 1.0:
+            callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
+        logging.info("Training model with %f percent of the dataset", int(fraction * 100))
+        phase_history = tf_model.fit(
+            train_dataset,
+            epochs=epochs_phase,
+            steps_per_epoch=loader_train.steps_per_epoch,
+            validation_data=valid_dataset,
+            validation_steps=loader_valid.steps_per_epoch,
+            class_weight=class_weights,
+			verbose=1,
+            callbacks=callbacks,
+        )
+        all_phase_histories.append(phase_history.history)
+    
+    history = {}
+    for phase in all_phase_histories:
+        for key, values in phase.items():
+            if key not in history:
+                history[key] = []
+            history[key].extend(values)
 
     # Save everything after training process
     os.chdir(path)
     # save model
-    logging.info("Saving model at: ", run_name + "_classifier.tf")
-    tf_model.save(run_name + "_classifier.tf")
+    logging.info("Saving model at: ", run_name + "_classifier.keras")
+    tf_model.save(run_name + "_classifier.keras", save_format="keras")
     # save training history (not needed tbh)
     with open(run_name + "_classifier_history" + ".hst", "wb") as f_hist:
-        pkl.dump(history.history, f_hist)
+        pkl.dump(history, f_hist)
     # save norm
     np.save(run_name + "_classifier" + "_norm_x", data.norm_x)
     # save model parameter as json
@@ -227,12 +438,37 @@ def evaluate(
     dataset_type,
     RUN_NAME,
     path,
-    dataset_name,
     mode,
+    output_signature,
 ):
-    logging.info("Starting evaluation of model on dataset: ", dataset_type)
+    """
+        Evaluates a trained classification model on a specified dataset, computes metrics, and generates evaluation plots.
+        This function loads a trained TensorFlow model and its associated parameters, normalizations, and training history.
+        It then loads the specified test dataset, performs predictions, saves the results, computes evaluation metrics,
+        and generates various plots for analysis.
+        Args:
+            dataset_type (str): The type of dataset to evaluate on (e.g., 'test', 'validation').
+            RUN_NAME (str): The base name used for saving/loading model files and results.
+            path (str): The directory path where model files and results are stored.
+            dataset_name (str): The name of the dataset to be loaded for evaluation.
+            mode (str): The mode or configuration used for the model and dataset.
+            output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
+        Side Effects:
+            - Changes the current working directory to the specified path.
+            - Loads model, parameters, normalization, and history files from disk.
+            - Saves prediction results and true labels to .txt files.
+            - Writes evaluation metrics to a summary file.
+            - Generates and saves various evaluation plots (ROC curve, score distribution, efficiency map, etc.).
+        Raises:
+            FileNotFoundError: If any of the required model or data files are missing.
+            Exception: For errors during model loading, data processing, or evaluation.
+        Logging:
+            Logs progress and key steps throughout the evaluation process.
+    """
+
+    logging.info("Starting evaluation of model on dataset: %s", dataset_type)
     
-    _, output_dimensions = get_parameters(mode)
+    _, output_dimensions, dataset_name = get_parameters(mode)
 
     # Change path to results directory to make sure the right model is loaded
     os.chdir(path)
@@ -245,7 +481,7 @@ def evaluate(
     # load tensorflow model
     # Custom layers have to be stated to load accordingly
     tf_model = tf.keras.models.load_model(
-        RUN_NAME + "_classifier.tf",
+        RUN_NAME + "_classifier.keras",
         custom_objects={
             "EdgeConv": EdgeConv,
             "GlobalMaxPool": GlobalMaxPool,
@@ -262,6 +498,7 @@ def evaluate(
     loss = "binary_crossentropy"
     list_metrics = ["Precision", "Recall"]
     tf_model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    tf_model.summary()
 
     # load model history and plot
     logging.info("Loading and plotting model history")
@@ -285,15 +522,18 @@ def evaluate(
 
     # Create disjoint loader for test datasets
     logging.info("Creating disjoint loader for test datasets")
-    loader_test = DisjointLoader(data, batch_size=64, epochs=1, shuffle=False)
+    loader_test = DisjointLoader(data, batch_size=65536, epochs=1, shuffle=False)
 
-    # evaluation of test datasets (looks weird cause of bad tensorflow output
-    # format)
+    test_dataset = tf.data.Dataset.from_generator(
+        lambda: generator(loader_test),
+        output_signature=output_signature,
+    )
+
     logging.info("Evaluating test datasets")
     y_true = np.zeros((len(data),), dtype=bool)
     y_pred = np.zeros((len(data),), dtype=np.float32)
     index = 0
-    for batch in tqdm(loader_test, desc="Evaluating"):
+    for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
         inputs, target = batch
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
@@ -306,11 +546,19 @@ def evaluate(
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
     logging.info("Exporting results to .txt files")
-    np.savetxt(
-        fname=dataset_type + "_clas_pred.txt", X=y_pred, delimiter=",", newline="\n"
+    #np.savetxt(
+    #    fname=dataset_type + "_clas_pred.txt", X=y_pred, delimiter=",", newline="\n"
+    #)
+    #np.savetxt(
+    #    fname=dataset_type + "_clas_true.txt", X=y_true, delimiter=",", newline="\n"
+    #)
+
+    logging.info("Exporting results to .npy files")
+    np.save(
+        file=dataset_type + "_clas_pred.npy", arr=y_pred
     )
-    np.savetxt(
-        fname=dataset_type + "_clas_true.txt", X=y_true, delimiter=",", newline="\n"
+    np.save(
+        file=dataset_type + "_clas_true.npy", arr=y_true
     )
 
     # evaluate model:
@@ -351,6 +599,30 @@ def evaluate(
 
     logging.info("Evaluation on dataset: ", dataset_type, " finished")
 
+def predict(
+    dataset_type,
+    RUN_NAME,
+    path,
+    mode,
+    output_signature,
+):
+    """
+    Placeholder function for prediction functionality.
+    Currently not implemented, but can be extended in the future.
+    
+    Args:
+        dataset_type (str): The type of dataset to predict on.
+        RUN_NAME (str): The name of the run, used for saving/loading model files and results.
+        path (str): The directory path where model files and results are stored.
+        mode (str): The mode or configuration used for the model and dataset.
+        output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
+    
+    Returns:
+        None
+    """
+    logging.warning("Prediction functionality is not implemented yet.")
+    pass
+
 if __name__ == "__main__":
     # configure argument parser
     parser = argparse.ArgumentParser(description="Trainings script ECRNCluster model")
@@ -374,10 +646,13 @@ if __name__ == "__main__":
         help="Activation function of output node",
     )
     parser.add_argument(
-        "--training", type=bool, default=False, help="If true, do training process"
+        "--training", action="store_true", help="If set, do training process"
     )
     parser.add_argument(
-        "--evaluation", type=bool, default=False, help="If true, do evaluation process"
+        "--evaluation", action="store_true", help="If set, do evaluation process"
+    )
+    parser.add_argument(
+        "--prediction", action="store_true", help="If set, do prediction process"
     )
     parser.add_argument(
         "--model_type",
@@ -391,9 +666,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["CM-4to1", "CC-4to1"],
+        choices=["CM-4to1", "CC-4to1", "CMbeamtime"],
         required=True,
-        help="Select the setup: CM-4to1 or CC-4to1",
+        help="Select the setup: CM-4to1, CC-4to1 or CMbeamtime",
+    )
+    parser.add_argument(
+        "--progressive", action="store_true", help="If set, use progressive training. (For large datasets)"
     )
     args = parser.parse_args()
 
@@ -408,7 +686,9 @@ if __name__ == "__main__":
         activation_out=args.activation_out,
         do_training=args.training,
         do_evaluation=args.evaluation,
+        do_prediction=args.prediction,
         model_type=args.model_type,
         dataset_name=args.dataset_name,
         mode=args.mode,
+        progressive=args.progressive,
     )

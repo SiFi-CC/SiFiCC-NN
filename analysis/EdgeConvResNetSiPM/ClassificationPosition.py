@@ -1,52 +1,52 @@
 ##########################################################################
-#RegressionPosition.py
-#This script provides a framework for training, evaluating, and predicting with a graph neural network model (EdgeConvResNet) for position regression tasks on SiFi-CC data in a graph configuration. It leverages the Spektral library for graph neural networks and TensorFlow for model training and evaluation.
-#Main Functionalities:
-#---------------------
-#- Data loading and preprocessing for graph-based SiPM datasets.
-#- Model selection and instantiation using custom and Spektral layers.
-#- Training with optional progressive data fractioning for large datasets.
-#- Evaluation and prediction with result export and plotting utilities.
-#- Command-line interface for flexible configuration of runs.
+#ClassificationPosition.py
+#This script provides functionality for training, evaluating, and predicting with a graph-based neural network model for position classification or regression on SiFi-CC data using TensorFlow and Spektral. The model leverages EdgeConv layers and is designed for use with SiPM (Silicon Photomultiplier) detector data.
+#Main Features:
+#---------------
+#- Data loading and preprocessing for graph-structured SiPM datasets.
+#- Model instantiation using configurable architectures (e.g., SiFiECRNShort) with customizable hyperparameters.
+#- Progressive training support for large datasets, allowing staged training on increasing data fractions.
+#- Training workflow with early stopping and learning rate scheduling.
+#- Evaluation workflow with prediction export, confusion matrix, class multiplicity, and classification report generation.
+#- Prediction workflow for generating and saving model outputs on new datasets.
+#- Comprehensive logging and result saving (models, histories, normalization parameters, plots).
 #Key Functions:
 #--------------
-#- generator(data): Ensures adjacency matrices are always in sparse format for model input.
-#- main(...): Orchestrates the workflow based on command-line arguments (training, evaluation, prediction).
-#- training(...): Handles model training, including progressive training and checkpointing.
-#- evaluate(...): Loads a trained model, evaluates it on test data, and exports results.
-#- predict(...): Loads a trained model and generates predictions for a given dataset.
+#- generator(data, no_y=False): Yields batches of data in the required format for model training or inference.
+#- main(...): Orchestrates the workflow for training, evaluation, and prediction based on user arguments.
+#- training(...): Handles the full training process, including dataset loading, model fitting, and result saving.
+#- evaluate(...): Loads a trained model and evaluates it on a specified dataset, generating predictions and evaluation plots.
+#- predict(...): Runs inference using a trained model on a specified dataset and saves the results.
 #Command-Line Arguments:
 #----------------------
-#- --name: Run name for saving results.
+#- --name: Run name for saving results and models.
 #- --epochs: Number of training epochs.
 #- --batch_size: Batch size for training.
-#- --dropout: Dropout rate for the model.
+#- --dropout: Dropout rate for model layers.
 #- --nFilter: Number of filters per layer.
 #- --nOut: Number of output nodes.
-#- --activation: Activation function for layers.
-#- --activation_out: Activation function for output node.
+#- --activation: Activation function for model layers.
+#- --activation_out: Activation function for the output layer.
 #- --training: Flag to enable training.
 #- --evaluation: Flag to enable evaluation.
 #- --prediction: Flag to enable prediction.
-#- --export_root: Flag to export root file (not implemented in this script).
 #- --model_type: Model architecture to use.
 #- --dataset_name: Name of the dataset.
-#- --mode: Experimental setup (CM-4to1, CC-4to1, CMbeamtime).
-#- --progressive: Enable progressive training for large datasets.
+#- --mode: Experimental setup or data mode (e.g., CM-4to1, CC-4to1, CMbeamtime).
+#- --progressive: Flag to enable progressive training.
+#Usage Example:
+#--------------
+#python ClassificationPosition.py --mode CC-4to1 --training --epochs 50 --batch_size 64
 #Dependencies:
 #-------------
 #- numpy, os, pickle, json, tensorflow, argparse, logging, tqdm, random
-#- spektral (for graph neural network layers and data loaders)
-#- SIFICCNN (custom layers, datasets, models, and utilities)
-#- analysis.EdgeConvResNetSiPM.parameters (experiment parameters)
-#- analysis.EdgeConvResNetSiPM.plotter (plotting utilities)
-#Usage Example:
-#--------------
-#python RegressionPosition.py --mode CC-4to1 --training --epochs 50 --batch_size 64
+#- spektral
+#- SIFICCNN (custom package with utils, datasets, models, analysis, and plotter modules)
+#Note:
+#-----
+#This script assumes the presence of the SIFICCNN package and its modules, as well as the appropriate dataset files and directory structure.
 #
-# ### ClassificationEdgeConvResNetCluster.py
-#
-# ONLY USE FOR COMPTON DATASETS! CM positions are discrete and not continuous!
+# ONLY USE SCRIPT FOR CODED MASK! Fibre positions are discrete and treated as classification problem.
 #
 ##########################################################################
 
@@ -67,6 +67,19 @@ from SIFICCNN.utils.layers import ReZero
 from SIFICCNN.datasets import DSGraphSiPM
 from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
+
+from SIFICCNN.analysis import (
+    fastROCAUC,
+    print_classifier_summary,
+    write_classifier_summary,
+)
+
+from SIFICCNN.utils.plotter import (
+    plot_history_regression,
+    plot_confusion_matrix,
+    plot_class_multiplicity,
+    get_classification_report
+)
 
 # Import helper functions and parameters
 from analysis.EdgeConvResNetSiPM.parameters import *
@@ -132,7 +145,7 @@ def main(
     nFilter=32,
     nOut=0,
     activation="relu",
-    activation_out="linear",
+    activation_out="sigmoid",
     do_training=False,
     do_evaluation=False,
     do_prediction=False,
@@ -142,38 +155,34 @@ def main(
     progressive=False,
 ):
     """
-    Main entry point for training, evaluating, or predicting with the EdgeConvResNetSiPM regression model.
-
-    This function configures the model parameters, prepares dataset paths, and orchestrates the workflow for training,
-    evaluation, and prediction based on the provided flags. It supports flexible configuration for model architecture,
-    dataset selection, and training hyperparameters.
-
-    Parameters:
-        run_name (str): Name for the current run, used for organizing output directories and results.
+    Main entry point for training, evaluating, or predicting with the EdgeConvResNetSiPM model.
+    This function configures model and dataset parameters, manages output directories, and delegates
+    to the appropriate training, evaluation, or prediction routines based on the provided flags.
+    Args:
+        run_name (str): Name for the current run, used for organizing output files and directories.
         epochs (int): Number of training epochs.
         batch_size (int): Batch size for training.
-        dropout (float): Dropout rate applied in the model.
-        nFilter (int): Number of filters (channels) in the model layers.
-        nOut (int): Number of output dimensions. If set to 0, uses the default from parameters.
+        dropout (float): Dropout rate for the model.
+        nFilter (int): Number of filters (channels) in the model's convolutional layers.
+        nOut (int): Number of output dimensions; if 0, uses default from parameters.
         activation (str): Activation function for hidden layers.
         activation_out (str): Activation function for the output layer.
         do_training (bool): If True, performs model training.
         do_evaluation (bool): If True, performs model evaluation.
-        do_prediction (bool): If True, performs model prediction.
+        do_prediction (bool): If True, performs prediction on test/validation data.
         model_type (str): String identifier for the model architecture to use.
         dataset_name (str): Name of the dataset to use.
-        mode (str): Mode of operation, e.g., "CC-4to1" or others, affecting task and dataset selection.
+        mode (str): Mode or configuration string for dataset/model selection.
         progressive (bool): If True, enables progressive training (if supported).
-
-    Notes:
-        - Only one dataset is loaded into memory at a time to reduce memory usage.
-        - Output directories are created automatically if they do not exist.
-        - The function relies on external helper functions such as `get_parameters`, `parent_directory`, `training`, `evaluate`, and `predict`.
+    Returns:
+        None
+    Side Effects:
+        - Creates output directories for results and datasets if they do not exist.
+        - Logs model and run parameters.
+        - Calls training, evaluation, or prediction routines as specified.
     """
 
-    task = "position"
-    if mode != "CC-4to1":
-        task = "y-position"
+    task = "x-z-position"
     datasets, output_dimensions, dataset_name = get_parameters(mode)
 
     logging.info("Task, nOutput dimensions and dataset name: %s, %d, %s", task, output_dimensions[task], dataset_name)
@@ -282,28 +291,36 @@ def training(
     output_signature,
 ):
     """
-    Trains a neural network model on a graph-based dataset for position regression using TensorFlow and Spektral.
-    This function supports both standard and progressive training regimes, allowing for staged training on increasing fractions of the dataset. It handles dataset loading, model instantiation, data shuffling, training/validation split, data loader creation, model training with callbacks, and saving of the trained model and training artifacts.
-        dataset_type (str): Type of the dataset to be used for training (e.g., "train", "test").
-        run_name (str): Name of the run, used for saving results and model artifacts.
+    Train a neural network model on a graph-based dataset for position classification or regression.
+    This function handles the full training workflow, including dataset loading, model instantiation,
+    progressive training (if enabled), and saving of results such as the trained model, normalization
+    parameters, training history, and model parameters.
+        dataset_type (str): Type of the dataset to be used for training (e.g., 'train', 'test').
+        run_name (str): Name of the run, used for saving results and model files.
         trainsplit (float): Fraction of the data to be used for training (between 0 and 1).
         valsplit (float): Fraction of the data to be used for validation (between 0 and 1).
         batch_size (int): Number of samples per batch during training.
         nEpochs (int): Total number of epochs for training.
-        path (str): Directory path where results and model artifacts will be saved.
+        path (str): Directory path where results and models will be saved.
         modelParameter (dict): Dictionary containing model hyperparameters.
         model_type (str): Key specifying which model architecture to use from the model dictionary.
         dataset_name (str): Name of the dataset (default is "SimGraphSiPM").
-        mode (str): Mode for dataset loading (e.g., "train", "eval").
-        progressive (bool): If True, enables progressive training on increasing dataset fractions.
+        mode (str): Mode for dataset loading (e.g., data preprocessing or augmentation mode).
+        progressive (bool): If True, enables progressive training with increasing dataset fractions.
         output_signature (tf.TypeSpec): Output signature for TensorFlow dataset generator.
     Returns:
         None. The function saves the trained model, training history, normalization parameters, and model parameters to disk.
     Side Effects:
-        - Trains the specified model and saves the trained model, training history, normalization parameters, and model parameters to disk.
+        - Trains the specified model on the provided dataset.
+        - Saves the trained model, normalization parameters, training history, and model parameters to disk.
+        - Plots and saves the training history.
         - Logs progress and key events during training.
-    Raises:
-        Any exceptions raised by TensorFlow, file I/O, or dataset/model loading will propagate.
+    Notes:
+        - The function supports progressive training, where the model is trained on increasing fractions
+          of the dataset with different epoch settings.
+        - Early stopping and learning rate reduction callbacks are used to improve training efficiency.
+        - The function assumes the existence of helper functions and classes such as DSGraphSiPM,
+          get_models, DisjointLoader, generator, plot_history_regression, and required imports.
     """
 
     logging.info("Starting training of model on dataset: %s", dataset_type)
@@ -314,9 +331,12 @@ def training(
         norm_x=None,
         mode=mode,
         positives=True,
-        regression="Position",
+        regression="PositionXZ",
         name=dataset_name,
     )
+
+    # set class-weights
+    class_weights = data.get_classweight_dict()
 
     # set model
     logging.info("Setting model")
@@ -381,7 +401,8 @@ def training(
             steps_per_epoch=loader_train.steps_per_epoch,
             validation_data=valid_dataset,
             validation_steps=loader_valid.steps_per_epoch,
-            verbose=1,
+            class_weight=class_weights,
+			verbose=1,
             callbacks=callbacks,
         )
         all_phase_histories.append(phase_history.history)
@@ -396,18 +417,18 @@ def training(
     # Save everything after training process
     os.chdir(path)
     # save model
-    logging.info("Saving model at: " + str(run_name) + "_regressionPosition.keras")
-    tf_model.save(run_name + "_regressionPosition.keras", save_format="keras")
+    logging.info("Saving model at: " + run_name + "_position_classifier.keras")
+    tf_model.save(run_name + "_position_classifier.keras", save_format="keras")
     # save training history (not needed tbh)
-    with open(run_name + "_regressionPosition_history" + ".hst", "wb") as f_hist:
+    with open(run_name + "_position_classifier_history" + ".hst", "wb") as f_hist:
         pkl.dump(history, f_hist)
     # save norm
-    np.save(run_name + "_regressionPosition" + "_norm_x", data.norm_x)
+    np.save(run_name + "_position_classifier" + "_norm_x", data.norm_x)
     # save model parameter as json
-    with open(run_name + "_regressionPosition_parameter.json", "w") as json_file:
+    with open(run_name + "_position_classifier_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
     # plot training history
-    plot_history_regression(history, run_name + "_history_regression_position")
+    plot_history_regression(history, run_name + "_history_position_classifier")
     
     logging.info("Training finished")
 
@@ -420,26 +441,25 @@ def evaluate(
     output_signature,
 ):
     """
-    Evaluates a trained regression model on a specified dataset, saves predictions and true values, and generates evaluation plots.
+    Evaluates a trained position classification model on a specified dataset, generates predictions, 
+    exports results, and produces evaluation plots and reports.
     Args:
         dataset_type (str): The type of dataset to evaluate on (e.g., 'test', 'validation').
-        RUN_NAME (str): The base name used for loading model files and saving results.
-        path (str): The directory path where model files and results are stored.
+        RUN_NAME (str): The base name used for loading model files and related artifacts.
+        path (str): The directory path where the model and results are stored.
+        dataset_name (str): The name of the dataset to be loaded for evaluation.
         mode (str): The mode or configuration used for the model and dataset.
         output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
 
     Side Effects:
-        - Changes the current working directory to the specified path and dataset subdirectory.
-        - Loads model parameters, normalization data, and training history from disk.
-        - Loads the trained TensorFlow model with custom layers.
-        - Loads the test dataset and primary energies.
-        - Evaluates the model on the test dataset and saves predictions and true values to .txt files.
-        - Plots training history and evaluation results.
-    Raises:
-        FileNotFoundError: If required files (e.g., primary energies) are not found.
-        Exception: For unexpected errors during file loading.
-    Logging:
-        Logs progress and errors throughout the evaluation process.
+        - Loads model, normalization parameters, and training history from disk.
+        - Compiles the model with specified optimizer, loss, and metrics.
+        - Loads the evaluation dataset and generates predictions.
+        - Exports prediction and ground truth results to .txt and .npy files.
+        - Plots training history, confusion matrix, class multiplicity, and predicted positions.
+        - Generates and saves a classification report.
+    Returns:
+        None
     """
 
     logging.info("Starting evaluation of model on dataset: %s", dataset_type)
@@ -451,13 +471,13 @@ def evaluate(
 
     # load model, model parameter, norm, history
     logging.info("Loading model and model parameters")
-    with open(RUN_NAME + "_regressionPosition_parameter.json", "r") as json_file:
+    with open(RUN_NAME + "_position_classifier_parameter.json", "r") as json_file:
         modelParameter = json.load(json_file)
 
     # load tensorflow model
     # Custom layers have to be stated to load accordingly
     tf_model = tf.keras.models.load_model(
-        RUN_NAME + "_regressionPosition.keras",
+        RUN_NAME + "_position_classifier.keras",
         custom_objects={
             "EdgeConv": EdgeConv,
             "GlobalMaxPool": GlobalMaxPool,
@@ -466,50 +486,33 @@ def evaluate(
     )
 
     # load norm
-    norm_x = np.load(RUN_NAME + "_regressionPosition_norm_x.npy")
+    norm_x = np.load(RUN_NAME + "_position_classifier_norm_x.npy")
 
     # recompile model
     logging.info("Recompiling model")
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
-    loss = "mean_absolute_error"
-    list_metrics = ["mean_absolute_error"]
+    loss = "categorical_crossentropy"
+    list_metrics = ["Precision", "Recall"]
     tf_model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
     tf_model.summary()
 
     # load model history and plot
     logging.info("Loading and plotting model history")
-    with open(RUN_NAME + "_regressionPosition_history" + ".hst", "rb") as f_hist:
+    with open(RUN_NAME + "_position_classifier_history" + ".hst", "rb") as f_hist:
         history = pkl.load(f_hist)
-    plot_history_regression(history, RUN_NAME + "_history_regression_position")
+    plot_history_regression(history, RUN_NAME + "_history_position_classifier")
 
     # predict test datasets
     os.chdir(os.path.join(path, dataset_type))
 
     # load datasets
-    # Here all events are loaded and evaluated,
-    # the true compton events are filtered later for plot
     logging.info("Loading test datasets")
-    try:
-        E_prim_path = parent_directory()
-        E_prim_path = os.path.join(
-            E_prim_path,
-            "datasets",
-            "SimGraphSiPM",
-            dataset_type,
-            "ComptonPrimaryEnergies.npy",
-        )
-        E_prim = np.load(E_prim_path)
-    except FileNotFoundError:
-        logging.error("No primary energies found!")
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}")
-
     data = DSGraphSiPM(
         type=dataset_type,
         norm_x=norm_x,
         mode=mode,
         positives=False,
-        regression="Position",
+        regression="PositionXZ",
         name=dataset_name,
     )
 
@@ -523,8 +526,8 @@ def evaluate(
     )
 
     logging.info("Evaluating test datasets")
-    y_true = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
-    y_pred = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
+    y_true = np.zeros((len(data),385), dtype=bool) # 385 is the number of classes
+    y_pred = np.zeros((len(data),385), dtype=np.float32)
     index = 0
     for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
         inputs, target = batch
@@ -533,35 +536,53 @@ def evaluate(
         y_true[index:index + batch_size] = target.numpy()
         y_pred[index:index + batch_size] = p.numpy()
         index += batch_size
-    y_true = np.reshape(
-        y_true, newshape=(y_true.shape[0], output_dimensions["position"])
-    )
-    y_pred = np.reshape(
-        y_pred, newshape=(y_pred.shape[0], output_dimensions["position"])
-    )
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
+    # only save the highest score for each event
+    y_true_scores = np.max(y_true, axis=1)
+    y_pred_scores = np.max(y_pred, axis=1)
+    y_true_entries = np.argmax(y_true, axis=1)
+    y_pred_entries = np.argmax(y_pred, axis=1)
+    y_true = np.column_stack((y_true_scores, y_true_entries))
+    y_pred = np.column_stack((y_pred_scores, y_pred_entries))
+
     #logging.info("Exporting results to .txt files")
     #np.savetxt(
-    #    fname=dataset_type + "_regP_pred.txt", X=y_pred, delimiter=",", newline="\n"
+    #    fname=dataset_type + "_pos_clas_pred.txt", X=y_pred, delimiter=",", newline="\n"
     #)
     #np.savetxt(
-    #    fname=dataset_type + "_regP_true.txt", X=y_true, delimiter=",", newline="\n"
+    #    fname=dataset_type + "_pos_clas_true.txt", X=y_true, delimiter=",", newline="\n"
     #)
 
     logging.info("Exporting results to .npy files")
-    np.save(file=dataset_type + "_regP_pred.npy", arr=y_pred)
-    np.save(file=dataset_type + "_regP_true.npy", arr=y_true)
+    np.save(dataset_type + "_pos_clas_pred.npy", y_pred)
+    np.save(dataset_type + "_pos_clas_true.npy", y_true)
 
-    labels = data.labels
+    logging.info("Plotting results")
+    # plot confusion matrix
+    plot_confusion_matrix(
+        y_true_entries,
+        y_pred_entries,
+        dataset_type + "_pos_clas_confusion_matrix",
+        classes=np.arange(385),
+    )
+    # plot class multiplicity
+    plot_class_multiplicity(
+        y_true_entries,
+        y_pred_entries,
+        dataset_type + "_pos_clas_class_multiplicity",
+    )
+    # get classification report
+    get_classification_report(
+        y_true_entries,
+        y_pred_entries,
+        dataset_type + "_pos_clas_classification_report",)
+    
+    plot_predicted_xzposition(y_pred)
 
-    # evaluate model:
-    logging.info("Plotting evaluation results")
-    plot_evaluation_position(mode, y_pred, y_true, labels)
 
-    logging.info("Evaluation on dataset: "+ str(dataset_type)+ " finished")
-
+    logging.info("Evaluation on dataset: " + dataset_type + " finished")
 
 def predict(
     dataset_type,
@@ -571,23 +592,24 @@ def predict(
     output_signature,  
 ):
     """
-    Evaluates a trained regression model on a specified dataset and exports predictions.
-    This function loads a trained TensorFlow model, its parameters, and normalization data,
-    then evaluates the model on a dataset of the specified type. The predictions are saved
-    to a .npy file for further analysis.
+    Runs prediction using a trained position classification model on a specified dataset.
+    This function loads a trained TensorFlow model and its associated parameters, normalization data,
+    and training history. It then prepares the test dataset, performs predictions, and saves the results
+    to a file. Additionally, it plots the training history and the predicted positions.
     Args:
-        dataset_type (str): The type of dataset to evaluate on (e.g., 'test', 'validation').
-        RUN_NAME (str): The base name used to locate model files and parameters.
-        path (str): The directory path where model files and datasets are stored.
-        mode (str): The mode or configuration used for the model and dataset.
+        dataset_type (str): The type of dataset to use for prediction (e.g., 'test', 'validation').
+        RUN_NAME (str): The base name used for model files and outputs.
+        path (str): The directory path where model files and datasets are located.
+        mode (str): The mode or configuration for the dataset/model (used to retrieve parameters).
         output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
     Returns:
         None
     Side Effects:
         - Loads model and normalization files from disk.
-        - Changes the current working directory to access model and dataset files.
-        - Saves the predicted results as a .npy file in the dataset directory.
-        - Logs progress and status messages.
+        - Changes the current working directory.
+        - Saves prediction results as a .npy file.
+        - Plots and saves training history and prediction results.
+        - Logs progress and status information.
     """
     
     logging.info("Starting prediction of model on dataset: %s", dataset_type)
@@ -599,13 +621,13 @@ def predict(
 
     # load model, model parameter, norm, history
     logging.info("Loading model and model parameters")
-    with open(RUN_NAME + "_regressionPosition_parameter.json", "r") as json_file:
+    with open(RUN_NAME + "_position_classifier_parameter.json", "r") as json_file:
         modelParameter = json.load(json_file)
 
     # load tensorflow model
     # Custom layers have to be stated to load accordingly
     tf_model = tf.keras.models.load_model(
-        RUN_NAME + "_regressionPosition.keras",
+        RUN_NAME + "_position_classifier.keras",
         custom_objects={
             "EdgeConv": EdgeConv,
             "GlobalMaxPool": GlobalMaxPool,
@@ -614,28 +636,33 @@ def predict(
     )
 
     # load norm
-    norm_x = np.load(RUN_NAME + "_regressionPosition_norm_x.npy")
+    norm_x = np.load(RUN_NAME + "_position_classifier_norm_x.npy")
 
     # recompile model
     logging.info("Recompiling model")
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
-    loss = "mean_absolute_error"
-    list_metrics = ["mean_absolute_error"]
+    loss = "categorical_crossentropy"
+    list_metrics = ["Precision", "Recall"]
     tf_model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
     tf_model.summary()
 
+    # load model history and plot
+    logging.info("Loading and plotting model history")
+    with open(RUN_NAME + "_position_classifier_history" + ".hst", "rb") as f_hist:
+        history = pkl.load(f_hist)
+    plot_history_regression(history, RUN_NAME + "_history_position_classifier")
+
+    # predict test datasets
     os.chdir(os.path.join(path, dataset_type))
 
     # load datasets
-    # Here all events are loaded and evaluated,
-    # the true compton events are filtered later for plot
     logging.info("Loading test datasets")
     data = DSGraphSiPM(
         type=dataset_type,
         norm_x=norm_x,
         mode=mode,
         positives=False,
-        regression="Position",
+        regression="PositionXZ",
         name=dataset_name,
     )
 
@@ -650,23 +677,28 @@ def predict(
     )
 
     logging.info("Predicting...")
-    y_pred = np.zeros((len(data), output_dimensions["position"]), dtype=np.float32)
+    y_pred = np.zeros((len(data),385), dtype=np.float32)
     index = 0
     for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
         inputs = batch
         batch_size = inputs[2][-1]+1  # Get the batch size 
         p = tf_model(inputs, training=False)
-        y_pred[index : index + batch_size] = p.numpy()
+        y_pred[index:index + batch_size] = p.numpy()
         index += batch_size
-    y_pred = np.reshape(y_pred, newshape=(y_pred.shape[0], output_dimensions["position"]))
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
-    logging.info("Exporting results to .npy file")
+    # only save the highest score for each event
+    y_pred_scores = np.max(y_pred, axis=1)
+    y_pred_entries = np.argmax(y_pred, axis=1)
+    y_pred = np.column_stack((y_pred_scores, y_pred_entries))
+    #y_pred = y_pred[y_pred[:,0] > 0]  # Filter out entries with score 0
+
+    logging.info("Exporting results to .npy files")
     np.save(
-        file=dataset_type + "_regP_pred.npy", arr=y_pred
+        file=dataset_type + "_ClassXZ_pred.npy", arr=y_pred
     )
-    logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
+    plot_predicted_xzposition(y_pred)
 
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
 if __name__ == "__main__":
@@ -688,7 +720,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--activation_out",
         type=str,
-        default="linear",
+        default="softmax",
         help="Activation function of output node",
     )
     parser.add_argument(
