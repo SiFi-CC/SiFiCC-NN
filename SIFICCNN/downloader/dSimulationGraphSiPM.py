@@ -5,49 +5,29 @@
 #
 ##########################################################################
 
-
 import numpy as np
 import os
 import argparse
 import logging
 import matplotlib.pyplot as plt
+import awkward as ak
 
+from SIFICCNN.utils import parent_directory
+from SIFICCNN.utils.numba import make_all_edges
 
-from SIFICCNN.utils import TVector3, tVector_list, parent_directory
-
+logging.basicConfig(level=logging.INFO)
 
 def dSimulation_to_GraphSiPM(
-    root_simulation,
-    dataset_name,
-    path="",
-    coordinate_system="CRACOW",
-    energy_cut=None,
-    neutrons=0,
-    n_start=0,
-    n_stop=None,
+     root_simulation,
+        dataset_name,
+        path="",
+        coordinate_system="CRACOW",
+        energy_cut=None,
+        neutrons=0,
+        n_start=0,
+        n_stop=None,
 ):
-    """
-    Script to generate a datasets in graph basis. Inspired by the TUdataset "PROTEIN"
 
-    Two iterations over the root file are needed: one to determine the array size, one to read the
-    data. Final data is stored as npy files, separated by their usage.
-
-    Args:
-        root_simulation (RootSimulation):   root file container object
-        dataset_name (str):                 final name of datasets for storage
-        path (str):                         destination path, if not given it will default to
-                                            /datasets in parent directory
-        n_stop (int or None):               Iteration stopped at event n_stop
-                                            if None all events are used
-        energy_cut (float or None):         Energy cut applied to sum of all cluster energies,
-                                            if None, no energy cut is applied
-        coordinate_system (str):            Coordinate system of the given root file, everything
-                                            will be converted to Aachen coordinate system
-        with_neutrons (bool):               Include events with neutrons
-        photon_set (bool):                  Include photon set
-        n_start (int):                      Start iteration at event n_start
-
-    """
     if neutrons == 0:
         photon_set = True
         with_neutrons = False
@@ -58,64 +38,6 @@ def dSimulation_to_GraphSiPM(
         if neutrons == 3:
             with_neutrons = False
 
-    # DEBUG
-    PrimaryEnergies = list()
-    NeutronCount = list()
-
-    def plot_neutrons_vs_energy(NeutronCount, NeutronPrimaryEnergies, key):
-
-        # Create a histogram
-        plt.figure(figsize=(8, 6))
-        plt.hist2d(NeutronCount, NeutronPrimaryEnergies, bins=30, cmap="Reds")
-        plt.title(key + " Count vs Primary Energies")
-        plt.xlabel(key + " Count")
-        plt.ylabel(key + " Primary Energies")
-        plt.colorbar(label="Counts")
-
-        # Show the plot
-        plt.savefig("EnergyNeutronHist_" + neutron_key + ".png")
-        plt.close()
-
-    def plot_primary_energy(NeutronPrimaryEnergies, neutron_key, compton=False):
-        if compton:
-            end = "Compton"
-        else:
-            end = ""
-        # Create a histogram
-        plt.figure(figsize=(8, 6))
-        plt.hist(NeutronPrimaryEnergies, bins=np.arange(0, 20, 0.2))
-        plt.title("Primary Energies" + " " + neutron_key + " " + end)
-        plt.xlabel("Energies / MeV")
-        plt.ylabel("Primary Energies")
-        plt.grid()
-        plt.xlim(left=0, right=20)
-
-        # Show the plot
-        plt.savefig("EnergySpectrum_" + neutron_key + end + ".png")
-        plt.close()
-
-    def stacked_primary_energy(compton, not_compton, neutron_key):
-        plt.figure(figsize=(8, 6))
-
-        # Create the histogram with stacking
-        plt.hist(
-            [compton, not_compton],
-            bins=np.arange(0, 20, 0.2),
-            stacked=True,
-            label=["Compton", "Not Compton"],
-        )
-
-        plt.title("Primary Energies " + neutron_key)
-        plt.xlabel("Energies / MeV")
-        plt.ylabel("Primary Energies")
-        plt.grid()
-        plt.xlim(left=0, right=20)
-        plt.legend()
-
-        # Save the plot
-        plt.savefig("EnergySpectrumStacked_" + neutron_key + ".png")
-        plt.close()
-
     # generate directory and finalize path
     if with_neutrons:
         neutron_key = "Neutrons"
@@ -125,203 +47,11 @@ def dSimulation_to_GraphSiPM(
         neutron_key = "Photons"
 
     if path == "":
-        path = parent_directory() + "/datasets/"
+        path = parent_directory() + "/datasetsdebug/"
         path = os.path.join(path, "SimGraphSiPM", neutron_key, dataset_name)
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
-
-    # Pre-determine the final array size.
-    # Total number of graphs needed (n samples)
-    # Total number of nodes (Iteration over root file needed)
-    logging.info("Loading root file: {}".format(root_simulation.file_name))
-    logging.info("Dataset name: {}".format(dataset_name))
-    logging.info("Path: {}".format(path))
-    logging.info("Energy Cut: {}".format(energy_cut))
-    logging.info("Coordinate system of root file: {}".format(coordinate_system))
-    logging.info("\nCounting number of graphs to be created")
-    k_graphs = 0
-    n_nodes  = 0
-    m_edges  = 0
-    l_fibres = 0
-    logging.info("Starting iteration over root file to count graphs")
-    for i, event in enumerate(
-        root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)
-    ):
-        if event is None:
-            continue
-        if (
-            (event.MCNPrimaryNeutrons == 0 and not with_neutrons)
-            or (event.MCNPrimaryNeutrons != 0 and with_neutrons)
-            or photon_set
-        ):
-            idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
-            if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
-                continue
-            """
-            # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS
-            if energy_cut is not None:
-                if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
-                    continue
-            """
-            k_graphs += 1
-            n_nodes += len(event.SiPMHit.SiPMId)
-            m_edges += len(event.SiPMHit.SiPMId) ** 2
-
-            if not photon_set:
-                NeutronCount.append(event.MCNPrimaryNeutrons)
-            PrimaryEnergies.append(event.MCEnergy_Primary)
-
-    if not photon_set:
-        plot_neutrons_vs_energy(NeutronCount, PrimaryEnergies, neutron_key)
-    plot_primary_energy(PrimaryEnergies, neutron_key)
-    logging.info("Total number of Graphs to be created: ", k_graphs)
-    logging.info("Total number of nodes to be created: ", n_nodes)
-    logging.info("Total number of edges to be created: ", m_edges)
-    logging.info("Graph features: {}".format(10))
-    logging.info("Graph targets: {}".format(9))
-
-    # creating final arrays
-    # datatypes are chosen for minimal size possible (duh)
-    ary_A = np.zeros(shape=(m_edges, 2), dtype=np.int32)
-    ary_graph_indicator = np.zeros(shape=(n_nodes,), dtype=np.int32)
-    ary_graph_labels = np.zeros(shape=(k_graphs,), dtype=np.bool_)
-    ary_node_attributes = np.zeros(shape=(n_nodes, 5), dtype=np.float32)
-    ary_graph_attributes = np.zeros(shape=(k_graphs, 8), dtype=np.float32)
-    # meta data
-    ary_pe = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_sp = np.zeros(shape=(k_graphs,), dtype=np.float32)
-    ary_fibre_indicator = np.zeros(shape=(l_fibres,), dtype=np.int16)
-    ary_fibre_positions = np.zeros(shape=(l_fibres, 3), dtype=np.float16)
-
-
-    # main iteration over root file, containing beta coincidence check
-    # NOTE:
-    # "id" are here used for indexing instead of using the iteration variables i,j,k since some
-    # events are skipped due to cuts or filters, therefore more controlled
-    # indexing is needed
-    graph_id = 0
-    node_id = 0
-    edge_id = 0
-    fibre_id = 0
-
-    distcompton_tags = list()
-    logging.info("Starting iteration over root file to create datasets")
-    for i, event in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
-        # get number of cluster
-        if event is None:
-            continue
-        if (
-            (event.MCNPrimaryNeutrons == 0 and not with_neutrons)
-            or (event.MCNPrimaryNeutrons != 0 and with_neutrons)
-            or photon_set
-        ):
-            n_sipm = int(len(event.SiPMHit.SiPMId))
-            n_fibres = int(len(event.FibreHit.FibreId))
-
-            # coincidence check
-            idx_scat, idx_abs = event.SiPMHit.sort_sipm_by_module()
-            if not (len(idx_scat) >= 1 and len(idx_abs) >= 1):
-                continue
-            """
-            # DISABLED FOR NOW AS NO RECO AVAILABLE TO FORM ENERGY FROM SIPM HITS
-            # energy cut if applied
-            if energy_cut is not None:
-                if sum(event.RecoCluster.RecoClusterEnergies_values) < energy_cut:
-                    continue
-            """
-            # collect node attributes for each node
-            for j in range(n_sipm):
-                for k in range(n_sipm):
-                    ary_A[edge_id, :] = [node_id, node_id - j + k]
-                    edge_id += 1
-                if coordinate_system == "CRACOW":
-                    attributes = np.array(
-                        [
-                            event.SiPMHit.SiPMPosition[j].z,
-                            -event.SiPMHit.SiPMPosition[j].y,
-                            event.SiPMHit.SiPMPosition[j].x,
-                            event.SiPMHit.SiPMTimeStamp[j],
-                            event.SiPMHit.SiPMPhotonCount[j],
-                        ]
-                    )
-                    ary_node_attributes[node_id, :] = attributes
-                if coordinate_system == "AACHEN":
-                    attributes = np.array(
-                        [
-                            event.SiPMHit.SiPMPosition[j].x,
-                            event.SiPMHit.SiPMPosition[j].y,
-                            event.SiPMHit.SiPMPosition[j].z,
-                            event.SiPMHit.SiPMTimeStamp[j],
-                            event.SiPMHit.SiPMPhotonCount[j],
-                        ]
-                    )
-                    ary_node_attributes[node_id, :] = attributes
-
-                # Graph indicator counts up which node belongs to which graph
-                ary_graph_indicator[node_id] = graph_id
-
-                # count up node indexing
-                node_id += 1
-            
-            # collect fibre positions
-            for j in range(n_fibres):
-                if coordinate_system == "CRACOW":
-                    ary_fibre_positions[fibre_id, :] = [
-                        event.FibreHit.FibrePosition[j].z,
-                        -event.FibreHit.FibrePosition[j].y,
-                        event.FibreHit.FibrePosition[j].x,
-                    ]
-                if coordinate_system == "AACHEN":
-                    ary_fibre_positions[fibre_id, :] = [
-                        event.FibreHit.FibrePosition[j].x,
-                        event.FibreHit.FibrePosition[j].y,
-                        event.FibreHit.FibrePosition[j].z,
-                    ]
-                ary_fibre_indicator[fibre_id] = graph_id
-                fibre_id += 1
-
-            # grab target labels and attributes
-            event.ph_method = 2
-            distcompton_tag = event.get_distcompton_tag()
-            target_energy_e, target_energy_p = event.get_target_energy()
-            target_position_e, target_position_p = event.get_target_position()
-            ary_graph_labels[graph_id] = distcompton_tag * 1
-            ary_pe[graph_id] = event.MCEnergy_Primary
-
-            distcompton_tags.append(distcompton_tag)
-
-            if coordinate_system == "CRACOW":
-                ary_graph_attributes[graph_id, :] = [
-                    target_energy_e,
-                    target_energy_p,
-                    target_position_e.z,
-                    -target_position_e.y,
-                    target_position_e.x,
-                    target_position_p.z,
-                    -target_position_p.y,
-                    target_position_p.x,
-                ]
-                ary_sp[graph_id] = event.MCPosition_source.z
-            if coordinate_system == "AACHEN":
-                ary_graph_attributes[graph_id, :] = [
-                    target_energy_e,
-                    target_energy_p,
-                    target_position_e.x,
-                    target_position_e.y,
-                    target_position_e.z,
-                    target_position_p.x,
-                    target_position_p.y,
-                    target_position_p.z,
-                ]
-                ary_sp[graph_id] = event.MCPosition_source.x
-
-            # count up graph indexing
-            graph_id += 1
-
-    if not photon_set:
-        NeutronCount = np.array(NeutronCount)
-    PrimaryEnergies = np.array(PrimaryEnergies)
-
+    
     # Name files for splitting using condor:
     name_additions = ""
     if n_start != 0:
@@ -331,17 +61,173 @@ def dSimulation_to_GraphSiPM(
     if name_additions != "":
         name_additions = name_additions + "_"
 
-    distcompton_tags = np.array(distcompton_tags)
-    ComptonPrimaryEnergies = PrimaryEnergies[distcompton_tags]
-    NotComptonPrimaryEnergies = PrimaryEnergies[np.logical_not(distcompton_tags)]
-    plot_primary_energy(ComptonPrimaryEnergies, neutron_key, compton=True)
-    stacked_primary_energy(
-        ComptonPrimaryEnergies, NotComptonPrimaryEnergies, neutron_key
-    )
-    logging.info("Saving datasets to: {}".format(path + "/" + name_additions))
-    np.save(path + "/" + "ComptonPrimaryEnergies.npy", ComptonPrimaryEnergies)
+    logging.info("Loading root file: {}".format(root_simulation.file_name))
+    logging.info("Dataset name: {}".format(dataset_name))
+    logging.info("Path: {}".format(path))
+    logging.info("Energy Cut: {}".format(energy_cut))
+    logging.info("Coordinate system of root file: {}".format(coordinate_system))
+    logging.info("Starting to load events")
 
-    # save up all files
+    # Create lists to store data for each batch of the iteration
+    ary_A = []
+    ary_graph_indicator = []
+    ary_node_attributes = []
+    ary_graph_attributes = []
+    ary_graph_labels = []
+    ary_fibre_positions = []
+    ary_fibre_indicator = []
+    ary_pe = []
+    ary_sp = []
+
+    for i, batch in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
+    
+        # --- filter valid events ---
+        if photon_set:
+            valid_mask = ak.ones_like(batch.EventNumber, dtype=bool)
+        else:
+            valid_mask = batch.MCNPrimaryNeutrons == (0 if not with_neutrons else batch.MCNPrimaryNeutrons)
+        """# Optionally, apply energy cut if RecoCluster is available
+        if energy_cut is not None:
+            energy = ak.sum(batch.RecoCluster.RecoClusterEnergies_values, axis=1)
+            valid_mask = valid_mask & (energy >= energy_cut)"""
+        logging.info(f"Found {ak.sum(valid_mask)} valid events in batch")
+        event_data  = batch.batch[valid_mask]
+        sipm_data   = batch.sipm_hit[valid_mask]
+        fibre_data  = batch.fibre_hit[valid_mask]
+
+        n_events = ak.num(event_data["EventNumber"], axis=0)
+        n_nodes = ak.sum(ak.num(sipm_data["SiPMId"]))
+        n_edges = ak.sum(ak.num(sipm_data["SiPMId"]) ** 2)
+        
+        logging.info(f"Total number of graphs to be created: {n_events}")
+        logging.info(f"Total number of nodes to be created: {n_nodes}")
+        logging.info(f"Total number of edges to be created: {n_edges}")
+
+        # counting SiPMs per event
+        nodes_per_event = ak.num(sipm_data["SiPMId"], axis=1).to_numpy()
+
+        # --- build node attributes ---
+        # Map SiPMHit positions to attribute arrays according to coordinate system.
+        if coordinate_system.upper() == "CRACOW":
+            x = ak.flatten(sipm_data["SiPMPosition"]["z"])
+            y = -ak.flatten(sipm_data["SiPMPosition"]["y"])
+            z = ak.flatten(sipm_data["SiPMPosition"]["x"])
+        else:  # AACHEN
+            x = ak.flatten(sipm_data["SiPMPosition"]["x"])
+            y = ak.flatten(sipm_data["SiPMPosition"]["y"])
+            z = ak.flatten(sipm_data["SiPMPosition"]["z"])
+
+        timestamp = ak.flatten(sipm_data["SiPMTimeStamp"])
+        photon_count = ak.flatten(sipm_data["SiPMPhotonCount"])
+
+        # Convert each flattened array to NumPy
+        x_np = ak.to_numpy(x)
+        y_np = ak.to_numpy(y)
+        z_np = ak.to_numpy(z)
+        timestamp_np = ak.to_numpy(timestamp)
+        photon_count_np = ak.to_numpy(photon_count)
+
+        # Stack the arrays column-wise
+        batch_node_attributes = np.column_stack((x_np, y_np, z_np, timestamp_np, photon_count_np))
+        logging.info("Created node attributes")
+
+        # --- graph indicator: assign each node its event id ---
+        # First create a ragged array of event indices, then flatten.
+        event_ids = ak.from_numpy(np.arange(len(sipm_data["SiPMId"])))
+        batch_graph_indicator = ak.ravel(ak.broadcast_arrays(ak.local_index(sipm_data["SiPMId"]),
+                                                    event_ids)[1]).to_numpy()
+        logging.info("Created graph indicator")
+        
+        batch_A = make_all_edges(np.ma.filled(nodes_per_event, fill_value=0))
+        logging.info("Created adjacency matrix")
+
+        # --- fibre positions ---
+        # Assume FibreHit contains FibreId and FibrePosition which are vectorized in each event.
+        if coordinate_system.upper() == "CRACOW":
+            x = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["z"]))
+            y = -ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["y"]))
+            z = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["x"]))
+        else:
+            x = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["x"]))
+            y = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["y"]))
+            z = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["z"]))
+
+        batch_fibre_positions = np.column_stack((x, y, z))
+        logging.info("Created fibre positions")
+        # Build fibre indicator (graph id per fibre)
+        batch_fibre_indicator = ak.to_numpy(ak.ravel(ak.broadcast_arrays(ak.local_index(fibre_data["FibreId"]),
+                                                    event_ids)[1]))
+        logging.info("Created fibre indicator")
+        
+        # --- graph-level attributes and labels ---
+        # For each event, call the (vectorized) target getters.
+        # Note: get_target_energy() and get_target_position() are assumed vectorized on events.
+        target_energy_e = event_data["MCEnergy_e"]
+        target_energy_p = event_data["MCEnergy_p"]
+        target_position_e, target_position_p = batch.target_position_e, batch.target_position_p
+        target_position_e = target_position_e[valid_mask]
+        target_position_p = target_position_p[valid_mask]
+        #distcompton_tag = batch.get_distcompton_tag()[valid_mask]  # boolean array per event
+        distcompton_tag = batch.distcompton_tag[valid_mask]
+        logging.info("Calculated graph attributes and labels")
+        
+        # Preallocate graph attributes array
+        batch_graph_attributes = np.empty((n_events, 8), dtype=np.float64)
+        if coordinate_system.upper() == "CRACOW":
+            batch_graph_attributes[:, 0] = target_energy_e
+            batch_graph_attributes[:, 1] = target_energy_p
+            batch_graph_attributes[:, 2] = target_position_e[:, 2]           # e_z
+            batch_graph_attributes[:, 3] = -target_position_e[:, 1]          # e_y
+            batch_graph_attributes[:, 4] = target_position_e[:, 0]           # e_x
+            batch_graph_attributes[:, 5] = target_position_p[:, 2]           # p_z
+            batch_graph_attributes[:, 6] = -target_position_p[:, 1]          # p_y
+            batch_graph_attributes[:, 7] = target_position_p[:, 0]           # p_x
+            batch_sp = target_position_e[:, 2]
+        else:
+            batch_graph_attributes[:, 0] = target_energy_e
+            batch_graph_attributes[:, 1] = target_energy_p
+            batch_graph_attributes[:, 2] = target_position_e[:, 0]           # e_x
+            batch_graph_attributes[:, 3] = target_position_e[:, 1]           # e_y
+            batch_graph_attributes[:, 4] = target_position_e[:, 2]           # e_z
+            batch_graph_attributes[:, 5] = target_position_p[:, 0]           # p_x
+            batch_graph_attributes[:, 6] = target_position_p[:, 1]           # p_y
+            batch_graph_attributes[:, 7] = target_position_p[:, 2]           # p_z
+            batch_sp = target_position_e[:, 1]
+        logging.info("Created graph attributes")
+
+        # Primary energies per event
+        batch_pe = np.ma.filled((ak.to_numpy(event_data["MCEnergyPrimary"])),0) # fill missing values with 0
+        
+        # Graph labels as boolean (convert tag to int if desired)
+        batch_graph_labels = distcompton_tag 
+
+        len_MCInteraction_p = ak.num(event_data["MCInteractions_p"], axis = 1).to_numpy()
+        len_MCInteraction_e = ak.num(event_data["MCInteractions_e"], axis = 1).to_numpy()
+
+        # Append data to lists
+        ary_A.append(batch_A)
+        ary_graph_indicator.append(batch_graph_indicator)
+        ary_node_attributes.append(batch_node_attributes)
+        ary_graph_attributes.append(batch_graph_attributes)
+        ary_graph_labels.append(batch_graph_labels)
+        ary_fibre_positions.append(batch_fibre_positions)
+        ary_fibre_indicator.append(batch_fibre_indicator)
+        ary_pe.append(batch_pe)
+        ary_sp.append(batch_sp)
+
+    # Concatenate lists to arrays
+    ary_A = np.concatenate(ary_A, axis=0)
+    ary_graph_indicator = np.concatenate(ary_graph_indicator, axis=0)
+    ary_node_attributes = np.concatenate(ary_node_attributes, axis=0)
+    ary_graph_attributes = np.concatenate(ary_graph_attributes, axis=0)
+    ary_graph_labels = np.concatenate(ary_graph_labels, axis=0)
+    ary_fibre_indicator = np.concatenate(ary_fibre_indicator, axis=0)
+    ary_fibre_positions = np.concatenate(ary_fibre_positions, axis=0)
+    ary_pe = np.concatenate(ary_pe, axis=0)
+    ary_sp = np.concatenate(ary_sp, axis=0)
+
+
+    # Save datasets as .npy files 
     np.save(path + "/" + name_additions + "A.npy", ary_A)
     np.save(path + "/" + name_additions + "graph_indicator.npy", ary_graph_indicator)
     np.save(path + "/" + name_additions + "node_attributes.npy", ary_node_attributes)
@@ -355,6 +241,19 @@ def dSimulation_to_GraphSiPM(
     np.save(path + "/" + name_additions + "fibre_positions.npy", ary_fibre_positions)
     logging.info("Datasets saved successfully")
 
+    ######################################################################
+    # DEBUG
+    ######################################################################
+    #flatten and save MCINteractions_p_full
+    #interactions_p = ak.flatten(events.MCInteractions_p_full)
+    #interactions_p = ak.to_numpy(interactions_p)
+    #np.save(path + "/" + name_additions + "interactions_p.npy", interactions_p)
+    np.save(path + "/" + name_additions + "happen.npy", batch.happen_tag)
+    len_MCInteraction_p = np.ma.filled(len_MCInteraction_p, fill_value=0)
+    len_MCInteraction_e = np.ma.filled(len_MCInteraction_e, fill_value=0)
+    np.save(path + "/" + name_additions + "len_MCInteraction_p.npy", len_MCInteraction_p)
+    np.save(path + "/" + name_additions + "len_MCInteraction_e.npy", len_MCInteraction_e)
+    
 
 if __name__ == "__main__":
     # configure argument parser
