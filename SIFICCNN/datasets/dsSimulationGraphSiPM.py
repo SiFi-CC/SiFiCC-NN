@@ -16,8 +16,10 @@ from .parameters import get_parameters
 from spektral.data import Dataset, Graph
 from spektral.utils import io, sparse
 from tqdm import tqdm
+from sklearn.utils.class_weight import compute_class_weight
 import logging
 
+logging.basicConfig(level=logging.INFO)
 
 class DSGraphSiPM(Dataset):
 
@@ -108,12 +110,12 @@ class DSGraphSiPM(Dataset):
 
 
         # Get edge lists (el_list)
-        el_list = self._get_el_list(node_batch_index, n_nodes_cum)
+        #el_list = self._get_el_list(node_batch_index, n_nodes_cum)
 
         # Get node attributes (x_list)
         x_list = self._get_x_list(n_nodes_cum=n_nodes_cum)
         # Get edge attributes (e_list), in this case edge features are disabled
-        e_list = np.array([None] * len(n_nodes))
+        #e_list = np.array([None] * len(n_nodes))
 
         # Create sparse adjacency matrices and re-sort edge attributes in
         # lexicographic order
@@ -122,9 +124,15 @@ class DSGraphSiPM(Dataset):
         logging.info(
             f"Total number of adjacency matrices to be created: {total_matrices}")
         
-        self._check_edges(el_list, n_nodes)
-
+        # Check if the number of nodes in the edge list matches the number of nodes in the node list
+        # Only for debugging purposes
+        # self._check_edges(el_list, n_nodes)
+                    # for interconnected graphs
+        """
         with tqdm(total=total_matrices, desc="Creating adjacency matrices") as pbar:
+            
+            
+            Implementation for non-interconnected graphs
             for el, e, n in zip(el_list, e_list, n_nodes):
                 try:
                     a = sparse.edge_index_to_matrix(edge_index=el,
@@ -142,42 +150,46 @@ class DSGraphSiPM(Dataset):
                                                         el.shape[0]),
                                                     edge_features=e,
                                                     shape=(n, n))
+
                 a_e_list.append(a)
                 pbar.update(1)
 
-        a_list = a_e_list
+        a_list = a_e_list"""
         # If edge features are used, use this: a_list, e_list =
         # list(zip(*a_e_list))
 
         # Set dataset targets (classification / regression)
-        y_list = self._get_y_list()
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        if self.mode == "CMbeamtime":
+            y_list = [None] * len(x_list)
+            labels = [None] * len(x_list)
+        else:
+            y_list = self._get_y_list()
+            labels = np.load(self.path + "/" + "graph_labels.npy")
+
 
         # At this point the full dataset is loaded and filtered according to the settings
         # Limited to True positives only if needed
         logging.info("Successfully loaded {}.".format(self.type))
+        logging.info(f"Mode: {self.mode}, Regression: {self.regression}")
         if self.regression is None:
-            return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(
-                zip(x_list, a_list, labels), desc="Creating graphs for classification")]
+            return [Graph(x=x, a=np.ones(shape=(x.shape[0], x.shape[0])), y=y) for x, y in tqdm(
+                zip(x_list, labels), desc="Creating graphs for classification", total=len(x_list))]
         else:
             if self.positives:
                 return [
                     Graph(
                         x=x,
-                        a=a,
-                        y=y) for x,
-                    a,
-                    y,
-                    label in tqdm(
+                        a=np.ones(shape=(x.shape[0], x.shape[0])),
+                        y=y) 
+                        for x, y, label in tqdm(
                         zip(
                             x_list,
-                            a_list,
                             y_list,
                             labels),
-                        desc="Creating graphs for regression (positives only)") if label]
+                        desc="Creating graphs for regression (positives only)", total=np.sum(labels)) if label]
             else:
-                return [Graph(x=x, a=a, y=y) for x, a, y in tqdm(
-                    zip(x_list, a_list, y_list), desc="Creating graphs for regression")]
+                return [Graph(x=x, a=np.ones(shape=(x.shape[0], x.shape[0])), y=y) for x, y in tqdm(
+                    zip(x_list, y_list), desc="Creating graphs for regression", total=len(x_list))]
             
     def _get_n_nodes(self):
         # Load the batch index for nodes
@@ -253,17 +265,31 @@ class DSGraphSiPM(Dataset):
         Returns:
             array: Array of targets.
         """
-        if self.regression is not None:
+        logging.info("Loading targets...")
+        if self.regression is not None and self.mode != "CMbeamtime":
             # Load graph attributes for regression tasks
             graph_attributes = np.load(
                 self.path + "/" + "graph_attributes.npy")
-            if self.regression == "Energy":
-                y_list = graph_attributes[:, :self.graph_attribute_slice_edge]
-            elif self.regression == "Position":
-                y_list = graph_attributes[:, self.graph_attribute_slice_edge:]
+            logging.info("Graph attributes loaded successfully.")
+            if self.mode == "CC-4to1":
+                if self.regression == "Energy":
+                    y_list = graph_attributes[:, :self.graph_attribute_slice_edge]
+                elif self.regression == "Position":
+                    y_list = graph_attributes[:, self.graph_attribute_slice_edge:]
+                else:
+                    logging.error("Regression type not set correctly")
+                    return None
             else:
-                logging.error("Regression type not set correctly")
-                return None
+                if self.regression == "Energy":
+                    y_list = graph_attributes[:, :self.graph_attribute_slice_edge]
+                elif self.regression == "PositionY":
+                    y_list = graph_attributes[:, self.graph_attribute_slice_edge+1] # Regression for y-coordinate
+                elif self.regression == "PositionXZ":
+                    flat_y_list = graph_attributes[:, -1]
+                    y_list = np.eye(385, dtype=np.bool_)[flat_y_list.astype(int)]
+                    logging.info(f"Shape of y_list: {y_list.shape}")
+                else:
+                    raise ValueError(f"Unknown regression type: {self.regression}")
         else:
             # Return class labels for classification tasks
             y_list = np.load(self.path + "/" + "graph_labels.npy")
@@ -276,13 +302,23 @@ class DSGraphSiPM(Dataset):
         Returns:
             dict: Dictionary with class weights.
         """
-        labels = np.load(self.path + "/" + "graph_labels.npy")
+        if self.regression is None and self.positives==False:
+            labels = np.load(self.path + "/" + "graph_labels.npy")
 
-        _, counts = np.unique(labels, return_counts=True)
-        class_weights = {0: len(labels) / (2 * counts[0]),
-                         1: len(labels) / (2 * counts[1])}
-
-        return class_weights
+            _, counts = np.unique(labels, return_counts=True)
+            class_weights = {0: len(labels) / (2 * counts[0]),
+                             1: len(labels) / (2 * counts[1])}
+        else:
+            # Multi-class classification case
+            graph_attributes = np.load(self.path + "/" + "graph_attributes.npy")
+            classes = graph_attributes[:, -1]
+            unique_classes = np.unique(classes)
+            
+            # Compute class weights using sklearn's method
+            class_weights = compute_class_weight('balanced', classes=unique_classes, y=classes)
+            class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
+            
+        return class_weight_dict
 
     @staticmethod
     def _get_standardization(x):
