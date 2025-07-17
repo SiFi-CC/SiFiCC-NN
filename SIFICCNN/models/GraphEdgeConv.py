@@ -10,7 +10,7 @@ import inspect
 import types
 
 
-def SiFiECRNShort(
+def SiFiECRN3V2(
     F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
@@ -45,7 +45,7 @@ def SiFiECRNShort(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNShort")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -57,16 +57,20 @@ def SiFiECRNShort(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
 
-def SiFiECRNShortOld(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+def SiFiECRN3V1(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -100,7 +104,7 @@ def SiFiECRNShortOld(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNShort")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -108,20 +112,24 @@ def SiFiECRNShortOld(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def SiFiECRN4(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+def SiFiECRN4V2(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -156,7 +164,7 @@ def SiFiECRN4(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN4")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN4V2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -164,20 +172,24 @@ def SiFiECRN4(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def SiFiECRN5(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+def SiFiECRN5V2(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -213,7 +225,7 @@ def SiFiECRN5(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN5")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN5V2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -221,20 +233,24 @@ def SiFiECRN5(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def SiFiECRNShortBN(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+def SiFiECRN3V2BN(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -268,7 +284,7 @@ def SiFiECRNShortBN(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNShort")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V2BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -276,20 +292,29 @@ def SiFiECRNShortBN(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def SiFiECRNOldBN(
-    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0
+##########################################
+# names updates up until this point
+##########################################
+
+
+def SiFiECRN3V1BN(
+    F=10, nFilter=32, activation="relu", n_out=1, activation_out="sigmoid", dropout=0.0, task=None,
 ):
     """
     Graph EdgeConv model used in the paper: "To be released"
@@ -323,7 +348,7 @@ def SiFiECRNOldBN(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNShort")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -331,20 +356,24 @@ def SiFiECRNOldBN(
     # Since the model can be universally used for classification and regression it is helpful to
     # make an exception here
     # binary classification setup
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    else:
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_res2net(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECR2N3V1(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvRes2NetBlock layers.
@@ -366,23 +395,28 @@ def create_model_edgeconv_res2net(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2Net")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECR2N3V1")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_res2net_bn(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECR2N3V1BN(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvRes2NetBlockBN layers.
@@ -404,23 +438,28 @@ def create_model_edgeconv_res2net_bn(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetBN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECR2N3V1BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_res2net_v2(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECR2N3V2(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvRes2NetBlockV2 layers.
@@ -442,23 +481,28 @@ def create_model_edgeconv_res2net_v2(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetV2")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECR2N3V2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_res2net_v2_bn(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECR2N3V2BN(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvRes2NetBlockV2BN layers.
@@ -480,23 +524,28 @@ def create_model_edgeconv_res2net_v2_bn(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvRes2NetV2BN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECR2N3V2BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_resnext_v2(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECRNx3V2(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvResNeXtBlockV2 layers.
@@ -518,23 +567,28 @@ def create_model_edgeconv_resnext_v2(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtV2")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNx3V2")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_resnext_v2_bn(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECRNx3V2BN(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvResNeXtBlockV2BN layers.
@@ -556,23 +610,28 @@ def create_model_edgeconv_resnext_v2_bn(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtV2BN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNx3V2BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_resnext(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECRNx3V1(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvResNeXtBlock layers.
@@ -594,23 +653,28 @@ def create_model_edgeconv_resnext(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXt")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNx3V1")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
 
 
-def create_model_edgeconv_resnext_bn(
-    F, nFilter, activation, n_out, activation_out, dropout
+def SiFiECRNx3V1BN(
+    F, nFilter, activation, n_out, activation_out, dropout, task=None
 ):
     """
     Create a model using EdgeConvResNeXtBlockBN layers.
@@ -632,16 +696,21 @@ def create_model_edgeconv_resnext_bn(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="EdgeConvResNeXtBN")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRNx3V1BN")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
-    if n_out == 1:
+    if task == "classification":
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
-    else:
+    # regression setup
+    elif task == "regression":
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
+    # multi-class classification setup
+    elif task == "x-z-position":
+        loss = "categorical_crossentropy"
+        list_metrics = ["categorical_accuracy"]
     model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
 
     return model
