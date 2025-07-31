@@ -36,10 +36,7 @@ def get_parameters(mode):
         }
         dataset_name = "CMSimGraphSiPM"
     elif mode == "CMbeamtime":
-        datasets = {"run00582": "run00582_sifi",
-            "run00583": "run00583_sifi",
-            "run00584": "run00584_sifi",}
-        """{
+        datasets = {
             "run00596": "run00596_sifi_1M_TESTING",
             "run00566": "run00566_sifi",
             "run00567": "run00567_sifi",
@@ -54,7 +51,11 @@ def get_parameters(mode):
             "run00579": "run00579_sifi",
             "run00580": "run00580_sifi",
             "run00581": "run00581_sifi",
-        }"""
+        }
+
+        """{"run00582": "run00582_sifi",
+            "run00583": "run00583_sifi",
+            "run00584": "run00584_sifi",}"""
 
             
         output_dimensions = {

@@ -57,6 +57,7 @@ import argparse
 import logging
 from tqdm import tqdm
 import random
+import gc
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -86,6 +87,12 @@ from SIFICCNN.utils.plotter import (
 # Import helper functions and parameters
 from analysis.EdgeConvResNetSiPM.parameters import *
 from analysis.EdgeConvResNetSiPM.plotter import *
+
+# disable XLA compilation for TensorFlow
+# This is necessary to avoid issues with certain operations in the model.
+os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices=false"
+os.environ["TF_XLA_AUTO_JIT"] = "0"
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -153,7 +160,7 @@ def main(
     do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
-    mode="CC-4to1",
+    mode="CC",
     progressive=False,
 ):
     """
@@ -188,7 +195,9 @@ def main(
     """
 
     task = "classification"
-    datasets, output_dimensions = get_parameters(mode)
+    datasets, output_dimensions, dataset_name = get_parameters(mode)
+
+    logging.info("Task, nOutput dimensions and dataset name: %s, %d, %s", task, output_dimensions[task], dataset_name)
 
     if nOut == 0:
         logging.info("Setting output dimensions to default value set in parameters.py")
@@ -263,6 +272,12 @@ def main(
     
 
     if do_prediction:
+        if mode == "CC":
+            logging.error("Prediction mode is not implemented for Compton camera data.")
+            return
+        elif mode == "CM":
+            mode == "CMbeamtime"
+        datasets, output_dimensions, dataset_name = get_parameters(mode)
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -276,6 +291,7 @@ def main(
                 mode=mode,
                 output_signature=output_signature,
             )
+            gc.collect()
 
 
 def training(
@@ -323,7 +339,7 @@ def training(
         Logs progress and key steps throughout the training process.
     """
 
-    logging.info("Starting training of model on dataset: %s"+ dataset_type)
+    logging.info("Starting training of model on dataset: %s", dataset_type)
 
     # load graph datasets
     data = DSGraphSiPM(
@@ -392,8 +408,8 @@ def training(
                     verbose=0,
                 )
             ]
-        if fraction == 1.0:
-            callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
+        #if fraction == 1.0:
+        #    callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
         logging.info("Training model with %f percent of the dataset", int(fraction * 100))
         phase_history = tf_model.fit(
             train_dataset,
@@ -417,7 +433,7 @@ def training(
     # Save everything after training process
     os.chdir(path)
     # save model
-    logging.info("Saving model at: ", run_name + "_classifier.keras")
+    logging.info("Saving model at: "+ run_name + "_classifier.keras")
     tf_model.save(run_name + "_classifier.keras", save_format="keras")
     # save training history (not needed tbh)
     with open(run_name + "_classifier_history" + ".hst", "wb") as f_hist:
@@ -429,7 +445,7 @@ def training(
         json.dump(modelParameter, json_file)
 
     # plot training history
-    plot_history_classifier(history.history, run_name + "_history_classifier")
+    plot_history_classifier(history, run_name + "_history_classifier")
     
     logging.info("Training finished")
 
@@ -522,7 +538,7 @@ def evaluate(
 
     # Create disjoint loader for test datasets
     logging.info("Creating disjoint loader for test datasets")
-    loader_test = DisjointLoader(data, batch_size=65536, epochs=1, shuffle=False)
+    loader_test = DisjointLoader(data, batch_size=1024, epochs=1, shuffle=False)
 
     test_dataset = tf.data.Dataset.from_generator(
         lambda: generator(loader_test),
@@ -616,7 +632,6 @@ def predict(
         path (str): The directory path where model files and results are stored.
         mode (str): The mode or configuration used for the model and dataset.
         output_signature (tf.TypeSpec): The output signature for the TensorFlow dataset generator.
-    
     Returns:
         None
     """
@@ -657,7 +672,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_type",
         type=str,
-        default="SiFiECRNShort",
+        default="SiFiECRN3V2",
         help="Model type: {}".format(get_models().keys()),
     )
     parser.add_argument(
@@ -666,9 +681,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["CM-4to1", "CC-4to1", "CMbeamtime"],
+        choices=["CM", "CC"],
         required=True,
-        help="Select the setup: CM-4to1, CC-4to1 or CMbeamtime",
+        help="Select the setup: CM or CC",
     )
     parser.add_argument(
         "--progressive", action="store_true", help="If set, use progressive training. (For large datasets)"

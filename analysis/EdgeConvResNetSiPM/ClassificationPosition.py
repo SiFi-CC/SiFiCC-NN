@@ -59,6 +59,7 @@ import argparse
 import logging
 from tqdm import tqdm
 import random
+import gc
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -77,9 +78,9 @@ from SIFICCNN.analysis import (
 from SIFICCNN.utils.plotter import (
     plot_history_regression,
     plot_confusion_matrix,
-    plot_class_multiplicity,
-    get_classification_report
-)
+    plot_class_multiplicity,)
+    #get_classification_report
+#)
 
 # Import helper functions and parameters
 from analysis.EdgeConvResNetSiPM.parameters import *
@@ -151,7 +152,7 @@ def main(
     do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
-    mode="CC-4to1",
+    mode="CC",
     progressive=False,
 ):
     """
@@ -260,6 +261,12 @@ def main(
     
 
     if do_prediction:
+        if mode == "CC":
+            logging.error("Prediction mode is not implemented for Compton camera data.")
+            return
+        elif mode == "CM":
+            mode == "CMbeamtime"
+        datasets, output_dimensions, dataset_name = get_parameters(mode)
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -273,6 +280,7 @@ def main(
                 mode=mode,
                 output_signature=output_signature,
             )
+            gc.collect()
 
 
 def training(
@@ -386,14 +394,14 @@ def training(
                 tf.keras.callbacks.ReduceLROnPlateau(
                     monitor="val_loss",
                     factor=1.0 / 3.0,
-                    patience=4,
+                    patience=2, #4
                     min_delta=1e-2,
                     min_lr=1e-6,
                     verbose=0,
                 )
             ]
-        if fraction == 1.0:
-            callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
+        #if fraction == 1.0:
+        #    callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
         logging.info("Training model with %f percent of the dataset", int(fraction * 100))
         phase_history = tf_model.fit(
             train_dataset,
@@ -427,6 +435,7 @@ def training(
     # save model parameter as json
     with open(run_name + "_position_classifier_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
+
     # plot training history
     plot_history_regression(history, run_name + "_history_position_classifier")
     
@@ -573,11 +582,11 @@ def evaluate(
         y_pred_entries,
         dataset_type + "_pos_clas_class_multiplicity",
     )
-    # get classification report
+    """# get classification report
     get_classification_report(
         y_true_entries,
         y_pred_entries,
-        dataset_type + "_pos_clas_classification_report",)
+        dataset_type + "_pos_clas_classification_report",)"""
     
     plot_predicted_xzposition(y_pred)
 
@@ -588,8 +597,8 @@ def predict(
     dataset_type,
     RUN_NAME,
     path,
-    mode,  
-    output_signature,  
+    mode,
+    output_signature,
 ):
     """
     Runs prediction using a trained position classification model on a specified dataset.
@@ -668,7 +677,7 @@ def predict(
 
     # Create disjoint loader for test datasets
     logging.info("Creating disjoint loader for test datasets")
-    batch_size = 65536
+    batch_size = 16384
     loader_test = DisjointLoader(data, batch_size=batch_size, epochs=1, shuffle=False)
 
     test_dataset = tf.data.Dataset.from_generator(
@@ -735,7 +744,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_type",
         type=str,
-        default="SiFiECRNShort",
+        default="SiFiECRN3V2",
         help="Model type: {}".format(get_models().keys()),
     )
     parser.add_argument(
@@ -744,9 +753,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["CM-4to1", "CC-4to1", "CMbeamtime"],
+        choices=["CM", "CC"],
         required=True,
-        help="Select the setup: CM-4to1, CC-4to1 or CMbeamtime",
+        help="Select the setup: CM or CC",
     )
     parser.add_argument(
         "--progressive", action="store_true", help="If set, use progressive training. (For large datasets)"

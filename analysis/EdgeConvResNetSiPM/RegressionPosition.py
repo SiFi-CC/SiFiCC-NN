@@ -59,6 +59,7 @@ import argparse
 import logging
 from tqdm import tqdm
 import random
+import gc
 
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
@@ -138,7 +139,7 @@ def main(
     do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
-    mode="CC-4to1",
+    mode="CC",
     progressive=False,
 ):
     """
@@ -251,6 +252,12 @@ def main(
     
 
     if do_prediction:
+        if mode == "CC":
+            logging.error("Prediction mode is not implemented for Compton camera data.")
+            return
+        elif mode == "CM":
+            mode == "CMbeamtime"
+        datasets, output_dimensions, dataset_name = get_parameters(mode)
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -264,6 +271,7 @@ def main(
                 mode=mode,
                 output_signature=output_signature,
             )
+            gc.collect()
 
 
 def training(
@@ -372,8 +380,8 @@ def training(
                     verbose=0,
                 )
             ]
-        if fraction == 1.0:
-            callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
+        #if fraction == 1.0:
+        #    callbacks.append(tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5))
         logging.info("Training model with %f percent of the dataset", int(fraction * 100))
         phase_history = tf_model.fit(
             train_dataset,
@@ -406,6 +414,7 @@ def training(
     # save model parameter as json
     with open(run_name + "_regressionPosition_parameter.json", "w") as json_file:
         json.dump(modelParameter, json_file)
+
     # plot training history
     plot_history_regression(history, run_name + "_history_regression_position")
     
@@ -567,8 +576,8 @@ def predict(
     dataset_type,
     RUN_NAME,
     path,
-    mode,  
-    output_signature,  
+    mode,
+    output_signature,
 ):
     """
     Evaluates a trained regression model on a specified dataset and exports predictions.
@@ -703,7 +712,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_type",
         type=str,
-        default="SiFiECRNShort",
+        default="SiFiECRN3V2",
         help="Model type: {}".format(get_models().keys()),
     )
     parser.add_argument(
@@ -712,9 +721,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["CM-4to1", "CC-4to1", "CMbeamtime"],
+        choices=["CM", "CC"],
         required=True,
-        help="Select the setup: CM-4to1, CC-4to1 or CMbeamtime",
+        help="Select the setup: CM or CC",
     )
     parser.add_argument(
         "--progressive", action="store_true", help="If set, use progressive training. (For large datasets)"
