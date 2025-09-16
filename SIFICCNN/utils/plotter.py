@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 import logging
+from sklearn.metrics import confusion_matrix
 
 matplotlib.use("Agg")
 
@@ -120,7 +121,7 @@ def plot_efficiencymap(y_pred, y_true, y_sp, figure_name, theta=0.5, sr=100):
     ary_bin_err = np.ones(shape=(len(ary_bin) - 1,)) * width / 2
 
     # Create histogram from prediction and truth
-    hist0, _ = np.histogram(y_sp, bins=ary_bin, weights=y_true)
+    hist0, _ = np.histogram(y_sp, bins=ary_bin, weights=y_true.astype(int))
     hist1, _ = np.histogram(y_sp, bins=ary_bin, weights=ary_w)
 
     # determine efficiency from histogram
@@ -143,7 +144,7 @@ def plot_efficiencymap(y_pred, y_true, y_sp, figure_name, theta=0.5, sr=100):
         y_sp,
         bins=ary_bin,
         histtype="step",
-        weights=y_true,
+        weights=y_true.astype(int),
         color="black",
         alpha=0.5,
         label="Dist. Compton",
@@ -337,16 +338,16 @@ def plot_energy_error(y_pred, y_true, figure_name, mode):
     bins_err_center = bins_err[:-1] + (width / 2)
 
     hist0, _ = np.histogram((y_pred[:, 0] - y_true[:, 0]) / y_true[:, 0], bins=bins_err)
-    if mode != "CM-4to1":
+    if mode != "CM":
         hist1, _ = np.histogram((y_pred[:, 1] - y_true[:, 1]) / y_true[:, 1], bins=bins_err)
 
     # fitting energy resolution
     popt0, pcov0 = curve_fit(
-        gaussian, bins_err_center, hist0, p0=[0.0, 1.0, np.sum(hist0) * width]
+        gaussian, bins_err_center, hist0, p0=[0.0, 1.0, np.sum(hist0) * width], maxfev=1000000
     )
-    if mode != "CM-4to1":
+    if mode != "CM":
         popt1, pcov1 = curve_fit(
-            gaussian, bins_err_center, hist1, p0=[0.0, 1.0, np.sum(hist1) * width]
+            gaussian, bins_err_center, hist1, p0=[0.0, 1.0, np.sum(hist1) * width], maxfev=1000000
         )
     ary_x = np.linspace(min(bins_err), max(bins_err), 1000)
 
@@ -378,7 +379,7 @@ def plot_energy_error(y_pred, y_true, figure_name, mode):
     plt.savefig(figure_name + "_electron.png")
     plt.close()
 
-    if mode != "CM-4to1":
+    if mode != "CM":
         plt.figure(figsize=(8, 5))
         plt.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
         plt.xlabel(r"$(E_{Pred} - E_{True}) / E_{True}$")
@@ -424,7 +425,7 @@ def plot_energy_error(y_pred, y_true, figure_name, mode):
     plt.savefig(figure_name + "_electron_relative.png")
     plt.close()
 
-    if mode != "CM-4to1":
+    if mode != "CM":
         plt.figure()
         plt.xlabel("$E_{True}$ [MeV]")
         plt.ylabel(r"$\frac{E_{Pred} - E_{True}}{E_{True}}$")
@@ -990,10 +991,10 @@ def plot_history_classifier(history, figure_name):
     val_loss = history["val_loss"]
     # mse = nn_classifier.history["accuracy"]
     # val_mse = nn_classifier.history["val_accuracy"]
-    eff = history["recall"]
-    val_eff = history["val_recall"]
-    pur = history["precision"]
-    val_pur = history["val_precision"]
+    eff = history["Recall"]
+    val_eff = history["val_Recall"]
+    pur = history["Precision"]
+    val_pur = history["val_Precision"]
 
     fig, ax1 = plt.subplots(figsize=(14, 8))
     ax1.plot(loss, label="Loss", linestyle="-", color="blue")
@@ -1222,7 +1223,7 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
     ary_res_e_err = np.zeros(shape=(len(bin_energy_e_center),))
 
 
-    if mode != "CM-4to1":
+    if mode != "CM":
         bins_energy_p = np.concatenate(
             [
                 [0.0, 0.3, 0.5],
@@ -1350,7 +1351,7 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
             ary_res_e[i] = 0
             ary_res_e_err[i] = 0
 
-    if mode != "CM-4to1":
+    if mode != "CM":
         # main iteration over energy bins for photon energy
         for i in range(len(bins_energy_p) - 1):
             ary_ep_cut = np.where(
@@ -1413,13 +1414,18 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
 
             logging.info("fit iteration {} [{}, {}]".format(i, p_frl, p_frr))
             # fit gaussian to histogram
-            popt_p, pcov_p = curve_fit(
-                gaussian_lin_bg,
-                bins_center[p_frl:p_frr],
-                hist_ep[p_frl:p_frr],
-                p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
-                maxfev=100000,
-            )
+            try:
+                popt_p, pcov_p = curve_fit(
+                    gaussian_lin_bg,
+                    bins_center[p_frl:p_frr],
+                    hist_ep[p_frl:p_frr],
+                    p0=[0.0, 1.0, np.sum(hist_ep[p_frl:p_frr]) * width, p0_m, p0_b],
+                    maxfev=100000,
+                )
+            except RuntimeError:
+                logging.error("Error in photon energy resolution fitting")
+                popt_p = [0.0, 0.0, 0.0, 0.0, 0.0]
+                pcov_p = np.zeros((5, 5))
             plt.plot(
                 bins_center[p_frl:p_frr],
                 gaussian_lin_bg(bins_center[p_frl:p_frr], *popt_p),
@@ -1453,7 +1459,7 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
         color="deeppink",
         label=r"$E_e$",
     )
-    if mode != "CM-4to1":
+    if mode != "CM":
         plt.errorbar(
             bin_energy_p_center,
             ary_res_p / bin_energy_p_center * 100,
@@ -1461,7 +1467,7 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
             bin_energy_p_center_err,
             fmt=".",
             color="blue",
-            label=r"$E_{\gamma}}$",
+            label=r"$E_{\gamma}$",
         )
     plt.legend(loc="upper right")
     plt.grid(which="major", color="#CCCCCC", linewidth=0.8)
@@ -1469,3 +1475,76 @@ def plot_energy_resolution(y_pred, y_true, figure_name, mode):
     plt.minorticks_on()
     plt.tight_layout()
     plt.savefig(figure_name)
+
+
+########################################################################### 
+# Position classification for CM
+############################################################################
+
+def plot_confusion_matrix(y_pred, y_true, figure_name, classes):
+    """
+    Plots a confusion matrix for multi-class classification with a large number of classes.
+    Uses a color mesh instead of text annotations to avoid overloading the plot.
+
+    Args:
+        y_pred: predicted class indices (1D array-like)
+        y_true: true class indices (1D array-like)
+        figure_name: output file name (without extension)
+        classes: list of class labels (length = number of classes)
+    """
+
+    cm = confusion_matrix(y_true, y_pred, labels=range(len(classes)))
+    plt.figure(figsize=(12, 10))
+    im = plt.imshow(cm, interpolation='nearest', aspect='auto', cmap="viridis", norm=LogNorm(vmin=1, vmax=np.max(cm)))
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted label")
+    plt.ylabel("True label")
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+    # Show only a subset of ticks to avoid clutter
+    n_classes = len(classes)
+    step = max(1, n_classes // 20)
+    ticks = np.arange(0, n_classes, step)
+    plt.xticks(ticks, [classes[i] for i in ticks], rotation=90, fontsize=8)
+    plt.yticks(ticks, [classes[i] for i in ticks], fontsize=8)
+    plt.tight_layout()
+    plt.savefig(figure_name + ".png")
+    plt.close()
+
+def plot_class_multiplicity(y_true, y_pred, figure_name):
+    """
+    Plots the class multiplicity for both true and predicted labels as a bar plot,
+    with a bottom subplot showing their difference (residue).
+    """
+    import matplotlib.pyplot as plt
+
+    # Get unique classes and their counts
+    classes = np.unique(np.concatenate([y_true, y_pred]))
+    true_counts = np.array([np.sum(y_true == c) for c in classes])
+    pred_counts = np.array([np.sum(y_pred == c) for c in classes])
+    residue = pred_counts - true_counts
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]}, sharex=True)
+
+    width = 0.4
+    x = np.arange(len(classes))
+
+    # Top: True and Predicted counts
+    ax1.bar(x - width/2, true_counts, width=width, label='True', color='tab:blue', alpha=0.7)
+    ax1.bar(x + width/2, pred_counts, width=width, label='Predicted', color='tab:orange', alpha=0.7)
+    ax1.set_ylabel('Counts')
+    ax1.legend()
+    ax1.set_title('Class Multiplicity')
+    ax1.grid(axis='y', linestyle=':', alpha=0.5)
+
+    # Bottom: Residue
+    ax2.bar(x, residue, width=width, color='tab:green', alpha=0.7)
+    ax2.axhline(0, color='black', linewidth=1)
+    ax2.set_ylabel('Residue')
+    ax2.set_xlabel('Class')
+    ax2.set_title('Residue (Predicted - True)')
+    ax2.grid(axis='y', linestyle=':', alpha=0.5)
+
+    plt.xticks(x, classes, rotation=90)
+    plt.tight_layout()
+    plt.savefig(figure_name + ".png")
+    plt.close()
