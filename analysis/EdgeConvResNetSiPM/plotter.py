@@ -29,7 +29,7 @@ from SIFICCNN.utils.plotter import plot_history_regression, plot_position_error
 
 
 def plot_evaluation_energy(mode, y_pred, y_true, labels):
-    if mode == "CC-4to1":
+    if mode == "CC":
         plot_energy_error(
             y_pred=y_pred[labels],
             y_true=y_true[labels],
@@ -71,7 +71,7 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
             file_name="2dhist_energy_electron_residual_relative_vs_true.png",
             title="Relative electron energy residual",
         )
-        if mode != "CM-4to1":
+        if mode != "CM":
             plot_1dhist_energy_residual(
                 y_pred=y_pred[labels, 1],
                 y_true=y_true[labels, 1],
@@ -106,7 +106,7 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
         # Collect the fit result into a dictionary
         fit_results = {"fit_e_E_rel": fit_e_E_rel, "fit_p_E_rel": fit_p_E_rel}
 
-    elif mode == "CM-4to1":
+    elif mode == "CM":
         plot_energy_error(
             y_pred=y_pred[labels],
             y_true=y_true[labels],
@@ -162,7 +162,7 @@ def plot_evaluation_energy(mode, y_pred, y_true, labels):
 
 
 def plot_evaluation_position(mode, y_pred, y_true, labels):
-    if mode == "CC-4to1":
+    if mode == "CC":
         # plot_position_error(y_pred=y_pred[labels],
         #                    y_true=y_true[labels],
         #                    figure_name="position_error_new_function")
@@ -242,7 +242,7 @@ def plot_evaluation_position(mode, y_pred, y_true, labels):
                 coordinate=r,
                 file_name="2dhist_position_gamma_{}_residual_vs_true.png".format(r),
             )
-    elif mode == "CM-4to1":
+    elif mode == "CM":
         # plot_position_error(y_pred=y_pred[labels],
         #                    y_true=y_true[labels],
         #                    figure_name="position_error_new_function")
