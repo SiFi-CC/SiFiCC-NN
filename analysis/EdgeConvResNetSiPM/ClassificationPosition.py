@@ -149,6 +149,7 @@ def main(
     activation_out="sigmoid",
     do_training=False,
     do_evaluation=False,
+    evaluate_training_set=False,
     do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
@@ -184,6 +185,12 @@ def main(
     """
 
     task = "x-z-position"
+
+    # Handle prediciton mode
+    only_prediction = do_prediction and not (do_training or do_evaluation)
+    if only_prediction:
+        mode = "CMbeamtime"  # Set mode to CMbeamtime for prediction
+
     datasets, output_dimensions, dataset_name = get_parameters(mode)
 
     logging.info("Task, nOutput dimensions and dataset name: %s, %d, %s", task, output_dimensions[task], dataset_name)
@@ -259,14 +266,23 @@ def main(
                 output_signature=output_signature,
             )
     
+    if evaluate_training_set:
+        evaluate(
+            dataset_type=datasets["continuous"],
+            RUN_NAME=run_name,
+            path=path_results,
+            mode=mode,
+            output_signature=output_signature,
+            system_matrix_bins=True,
+        )
+    
 
     if do_prediction:
         if mode == "CC":
             logging.error("Prediction mode is not implemented for Compton camera data.")
             return
         elif mode == "CM":
-            mode == "CMbeamtime"
-        datasets, output_dimensions, dataset_name = get_parameters(mode)
+            datasets, output_dimensions, dataset_name = get_parameters("CMbeamtime")
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -277,7 +293,7 @@ def main(
                 dataset_type=file,
                 RUN_NAME=run_name,
                 path=path_results,
-                mode=mode,
+                mode="CMbeamtime",
                 output_signature=output_signature,
             )
             gc.collect()
@@ -448,6 +464,7 @@ def evaluate(
     path,
     mode,
     output_signature,
+    system_matrix_bins=False,
 ):
     """
     Evaluates a trained position classification model on a specified dataset, generates predictions, 
@@ -535,26 +552,32 @@ def evaluate(
     )
 
     logging.info("Evaluating test datasets")
-    y_true = np.zeros((len(data),385), dtype=bool) # 385 is the number of classes
-    y_pred = np.zeros((len(data),385), dtype=np.float32)
+    #y_true = np.zeros((len(data),385), dtype=bool) # 385 is the number of classes
+    #y_pred = np.zeros((len(data),385), dtype=np.float16)
+    y_true_scores = np.zeros((len(data),), dtype=np.float16)
+    y_pred_scores = np.zeros((len(data),), dtype=np.float16)
+    y_true_entries = np.zeros((len(data),), dtype=np.int16)
+    y_pred_entries = np.zeros((len(data),), dtype=np.int16)
     index = 0
+    gc.collect()
     for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
         inputs, target = batch
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
-        y_true[index:index + batch_size] = target.numpy()
-        y_pred[index:index + batch_size] = p.numpy()
+        y_true = target.numpy()
+        y_pred = tf.cast(p, tf.float16).numpy()
+        y_true_scores[index:index + batch_size] = np.max(y_true, axis=1)
+        y_pred_scores[index:index + batch_size] = np.max(y_pred, axis=1)
+        y_true_entries[index:index + batch_size] = np.argmax(y_true, axis=1)
+        y_pred_entries[index:index + batch_size] = np.argmax(y_pred, axis=1)
         index += batch_size
+        del p
+        del inputs, target
+        del y_pred, y_true
+
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
-    # only save the highest score for each event
-    y_true_scores = np.max(y_true, axis=1)
-    y_pred_scores = np.max(y_pred, axis=1)
-    y_true_entries = np.argmax(y_true, axis=1)
-    y_pred_entries = np.argmax(y_pred, axis=1)
-    y_true = np.column_stack((y_true_scores, y_true_entries))
-    y_pred = np.column_stack((y_pred_scores, y_pred_entries))
 
     #logging.info("Exporting results to .txt files")
     #np.savetxt(
@@ -565,30 +588,43 @@ def evaluate(
     #)
 
     logging.info("Exporting results to .npy files")
-    np.save(dataset_type + "_pos_clas_pred.npy", y_pred)
-    np.save(dataset_type + "_pos_clas_true.npy", y_true)
+    if system_matrix_bins:
+        del y_true_scores, y_pred_scores
+        gc.collect()
+        # Bin true position into 200 bins between 0 and 200
+        true_bins = np.linspace(0, 200, 201)
+        y_true_binned = np.digitize(y_true_entries, bins=true_bins)
+        # Split predicted energies along true position bins
+        for i in range(1, len(true_bins)):
+            bin_mask = y_true_binned == i
+            np.save(dataset_type + f"_pos_clas_pred_bin_{i:03d}.npy", y_pred_entries[bin_mask])
+    else:
+        y_true = np.column_stack((y_true_scores, y_true_entries))
+        y_pred = np.column_stack((y_pred_scores, y_pred_entries))
+        np.save(dataset_type + "_pos_clas_pred.npy", y_pred)
+        np.save(dataset_type + "_pos_clas_true.npy", y_true)
 
-    logging.info("Plotting results")
-    # plot confusion matrix
-    plot_confusion_matrix(
-        y_true_entries,
-        y_pred_entries,
-        dataset_type + "_pos_clas_confusion_matrix",
-        classes=np.arange(385),
-    )
-    # plot class multiplicity
-    plot_class_multiplicity(
-        y_true_entries,
-        y_pred_entries,
-        dataset_type + "_pos_clas_class_multiplicity",
-    )
-    """# get classification report
-    get_classification_report(
-        y_true_entries,
-        y_pred_entries,
-        dataset_type + "_pos_clas_classification_report",)"""
-    
-    plot_predicted_xzposition(y_pred)
+        logging.info("Plotting results")
+        # plot confusion matrix
+        plot_confusion_matrix(
+            y_true_entries,
+            y_pred_entries,
+            dataset_type + "_pos_clas_confusion_matrix",
+            classes=np.arange(385),
+        )
+        # plot class multiplicity
+        plot_class_multiplicity(
+            y_true_entries,
+            y_pred_entries,
+            dataset_type + "_pos_clas_class_multiplicity",
+        )
+        """# get classification report
+        get_classification_report(
+            y_true_entries,
+            y_pred_entries,
+            dataset_type + "_pos_clas_classification_report",)"""
+        
+        plot_predicted_xzposition(y_pred)
 
 
     logging.info("Evaluation on dataset: " + dataset_type + " finished")
@@ -739,6 +775,9 @@ if __name__ == "__main__":
         "--evaluation", action="store_true", help="If set, do evaluation process"
     )
     parser.add_argument(
+        "--evaluate_training_set", action="store_true", help="If set, evaluate the training set (needed for SM)"
+    )
+    parser.add_argument(
         "--prediction", action="store_true", help="If set, do prediction process"
     )
     parser.add_argument(
@@ -773,6 +812,7 @@ if __name__ == "__main__":
         activation_out=args.activation_out,
         do_training=args.training,
         do_evaluation=args.evaluation,
+        evaluate_training_set=args.evaluate_training_set,
         do_prediction=args.prediction,
         model_type=args.model_type,
         dataset_name=args.dataset_name,

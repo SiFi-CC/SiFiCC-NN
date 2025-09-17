@@ -128,6 +128,7 @@ def main(
     do_training=False,
     do_evaluation=False,
     do_prediction=False,
+    evaluate_training_set=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
     mode="CC",
@@ -243,13 +244,23 @@ def main(
                 output_signature=output_signature,
             )
     
+    if evaluate_training_set:
+        evaluate(
+            dataset_type=datasets["continuous"],
+            RUN_NAME=run_name,
+            path=path_results,
+            mode=mode,
+            output_signature=output_signature,
+            system_matrix_bins=True,
+        )
+    
 
     if do_prediction:
         if mode == "CC":
             logging.error("Prediction mode is not implemented for Compton camera data.")
             return
         elif mode == "CM":
-            mode == "CMbeamtime"
+            mode = "CMbeamtime"
         datasets, output_dimensions, dataset_name = get_parameters(mode)
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
@@ -416,6 +427,7 @@ def evaluate(
     path,
     mode,
     output_signature,
+    system_matrix_bins=False,
 ):
     """
     Evaluates a trained regression model on a specified dataset, saves predictions and ground truth values, and generates evaluation plots.
@@ -527,12 +539,23 @@ def evaluate(
     #)
 
     logging.info("Exporting results to .npy files")
-    np.save(
-        file=dataset_type + "_regE_pred.npy", arr=y_pred
-    )
-    np.save(
-        file=dataset_type + "_regE_true.npy", arr=y_true
-    )
+    if system_matrix_bins:
+        # Bin true position into 200 bins between 0 and 200
+        true_bins = np.linspace(0, 200, 201)
+        y_true_binned = np.digitize(y_true, bins=true_bins)
+        # Split predicted energies along true position bins
+        for i in range(1, len(true_bins)):
+            bin_mask = y_true_binned == i
+            np.save(
+                file=dataset_type + f"_regE_pred_bin{i:03d}.npy", arr=y_pred[bin_mask]
+            )
+    else:
+        np.save(
+            file=dataset_type + "_regE_pred.npy", arr=y_pred
+        )
+        np.save(
+            file=dataset_type + "_regE_true.npy", arr=y_true
+        )
 
     labels = data.labels
 
@@ -680,6 +703,9 @@ if __name__ == "__main__":
         "--evaluation", action="store_true", help="If set, do evaluation process"
     )
     parser.add_argument(
+        "--evaluate_training_set", action="store_true", help="If set, evaluate the training set. Needed for SM creation."
+    )
+    parser.add_argument(
         "--prediction", action="store_true", help="If set, do prediction process"
     )
     parser.add_argument(
@@ -714,6 +740,7 @@ if __name__ == "__main__":
         activation_out=args.activation_out,
         do_training=args.training,
         do_evaluation=args.evaluation,
+        evaluate_training_set=args.evaluate_training_set,
         do_prediction=args.prediction,
         model_type=args.model_type,
         dataset_name=args.dataset_name,
