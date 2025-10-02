@@ -1,5 +1,30 @@
 import numpy as np
+import awkward as ak
 
+def convert_tvector3_to_arrays(batch, mode="ak"):
+    """Convert TVector3 into separate x, y, z components"""
+    if mode == "ak":
+        return ak.zip({
+            "x": batch["fX"],
+            "y": batch["fY"],
+            "z": batch["fZ"]
+        })
+    elif mode == "np":
+        # Convert each field to a plain numpy array,
+        # and fill masked values with 0.
+        # Check if fX exists
+        if "fX" in batch.fields:
+            fX = np.ma.filled(ak.to_numpy(batch["fX"]), 0)
+            fY = np.ma.filled(ak.to_numpy(batch["fY"]), 0)
+            fZ = np.ma.filled(ak.to_numpy(batch["fZ"]), 0)
+        elif "x" in batch.fields:
+            x = np.ma.filled(ak.to_numpy(batch["x"]), 0)
+            y = np.ma.filled(ak.to_numpy(batch["y"]), 0)
+            z = np.ma.filled(ak.to_numpy(batch["z"]), 0)
+        else:
+            raise ValueError("No valid fields found in provided batch")
+        # Stack them columnwise to create an array of shape (n, 3)
+        return np.column_stack((fX, fY, fZ))
 
 class TVector3:
     def __init__(self, x, y, z):

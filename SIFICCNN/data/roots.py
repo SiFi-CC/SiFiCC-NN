@@ -51,13 +51,7 @@ class RootSimulation:
         self.file = file
         self.add_acceptance_holes = add_acceptance_holes
 
-        mode_dict = {
-            "CM-4to1-sim": "CM-4to1",
-            "CC-4to1-sim": "CC-4to1",
-            "CC-1to1": "CC-1to1",
-        }
-
-        self.mode = mode_dict[mode]
+        self.mode = mode
 
         # Verify mode
         if self.mode not in ["CM-4to1", "CC-4to1", "CC-1to1"]:
