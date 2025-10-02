@@ -255,14 +255,9 @@ def main(
         if mode == "CC":
             logging.error("Prediction mode is not implemented for Compton camera data.")
             return
-        elif mode == "CM":
-            mode == "CMbeamtime"
-        datasets, output_dimensions, dataset_name = get_parameters(mode)
-        output_signature = (
-            tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
-            tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
-            tf.TensorSpec(shape=(None,), dtype=tf.int64)                            # i
-            )
+        else:
+            logging.error("Prediction mode is not implemented for this dataset.")
+            return
         for file in {k: v for k, v in datasets.items() if k != "continuous"}.values():
             predict(
                 dataset_type=file,

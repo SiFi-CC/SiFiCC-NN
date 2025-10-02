@@ -1,5 +1,5 @@
 def get_parameters(mode):
-    if mode == "CC-4to1":
+    if mode == "CC":
         # Parameters for the CC mode
         datasets = {
             "continuous": "OptimisedGeometry_4to1_Continuous_1.8e10protons_simv4",
@@ -16,7 +16,7 @@ def get_parameters(mode):
         dataset_name = "SimGraphSiPM"
         # DATASET_NEUTRONS = "OptimisedGeometry_4to1_0mm_gamma_neutron_2e9_protons"
 
-    elif mode == "CM-4to1":
+    elif mode == "CM":
         # Parameters for the CM mode
         datasets = {
             "continuous": "SystemMatrix_CodedMaskHIT_simv5_linesource_0to29999",
@@ -65,4 +65,7 @@ def get_parameters(mode):
             "x-z-position": 385,
         }
         dataset_name = "BeamTime"
+    else:
+        raise NotImplementedError(f"Mode '{mode}' is not supported.")
+
     return datasets, output_dimensions, dataset_name
