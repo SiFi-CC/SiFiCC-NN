@@ -150,10 +150,11 @@ def main(
     do_training=False,
     do_evaluation=False,
     evaluate_training_set=False,
+    sm_bins=200,
     do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
-    mode="CC",
+    mode="CM",
     progressive=False,
 ):
     """
@@ -274,6 +275,7 @@ def main(
             mode=mode,
             output_signature=output_signature,
             system_matrix_bins=True,
+            sm_bins=sm_bins,
         )
     
 
@@ -465,6 +467,7 @@ def evaluate(
     mode,
     output_signature,
     system_matrix_bins=False,
+    sm_bins = 200,
 ):
     """
     Evaluates a trained position classification model on a specified dataset, generates predictions, 
@@ -578,7 +581,6 @@ def evaluate(
 
     # export the classification results to a readable .txt file
     # .txt is used as it allowed to be accessible outside a python environment
-
     #logging.info("Exporting results to .txt files")
     #np.savetxt(
     #    fname=dataset_type + "_pos_clas_pred.txt", X=y_pred, delimiter=",", newline="\n"
@@ -591,12 +593,15 @@ def evaluate(
     if system_matrix_bins:
         del y_true_scores, y_pred_scores
         gc.collect()
-        # Bin true position into 200 bins between 0 and 200
-        true_bins = np.linspace(0, 200, 201)
-        y_true_binned = np.digitize(y_true_entries, bins=true_bins)
+        # Bin true position into sm_bins bins between 0 and sm_bins
+        true_bins = np.linspace(0, sm_bins, sm_bins+1)
+        # Load source positions. Current sp range is -70 to 70. Thus it needs to be mapped to 0-sm_bins
+        source_position = np.load(os.path.join(path, dataset_type, "source_positions.npy"))
+        source_position = (source_position+70) * (sm_bins/140)
+        sp_binned = np.digitize(source_position, true_bins)  # Bin along x position
         # Split predicted energies along true position bins
         for i in range(1, len(true_bins)):
-            bin_mask = y_true_binned == i
+            bin_mask = sp_binned == i
             np.save(dataset_type + f"_pos_clas_pred_bin_{i:03d}.npy", y_pred_entries[bin_mask])
     else:
         y_true = np.column_stack((y_true_scores, y_true_entries))
@@ -778,6 +783,9 @@ if __name__ == "__main__":
         "--evaluate_training_set", action="store_true", help="If set, evaluate the training set (needed for SM)"
     )
     parser.add_argument(
+        "--sm_bins", type=int, default=200, help="Number of bins for spatial mapping of system matrix (only if --evaluate_training_set is set)"
+    )
+    parser.add_argument(
         "--prediction", action="store_true", help="If set, do prediction process"
     )
     parser.add_argument(
@@ -813,6 +821,7 @@ if __name__ == "__main__":
         do_training=args.training,
         do_evaluation=args.evaluation,
         evaluate_training_set=args.evaluate_training_set,
+        sm_bins=args.sm_bins,
         do_prediction=args.prediction,
         model_type=args.model_type,
         dataset_name=args.dataset_name,

@@ -127,11 +127,12 @@ def main(
     activation_out="relu",
     do_training=False,
     do_evaluation=False,
-    do_prediction=False,
     evaluate_training_set=False,
+    sm_bins=200,
+    do_prediction=False,
     model_type="SiFiECRNShort",
     dataset_name="SimGraphSiPM",
-    mode="CC",
+    mode="CM",
     progressive=False,
 ):
     """
@@ -252,6 +253,7 @@ def main(
             mode=mode,
             output_signature=output_signature,
             system_matrix_bins=True,
+            sm_bins=sm_bins,
         )
     
 
@@ -260,8 +262,7 @@ def main(
             logging.error("Prediction mode is not implemented for Compton camera data.")
             return
         elif mode == "CM":
-            mode = "CMbeamtime"
-        datasets, output_dimensions, dataset_name = get_parameters(mode)
+            datasets, output_dimensions, dataset_name = get_parameters("CMbeamtime")
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -272,7 +273,7 @@ def main(
                 dataset_type=file,
                 RUN_NAME=run_name,
                 path=path_results,
-                mode=mode,
+                mode="CMbeamtime",
                 output_signature=output_signature,
             )
             gc.collect()
@@ -428,6 +429,7 @@ def evaluate(
     mode,
     output_signature,
     system_matrix_bins=False,
+    sm_bins = 200,
 ):
     """
     Evaluates a trained regression model on a specified dataset, saves predictions and ground truth values, and generates evaluation plots.
@@ -518,6 +520,7 @@ def evaluate(
     y_true = np.zeros((len(data), output_dimensions["energy"]), dtype=np.float32)
     y_pred = np.zeros((len(data), output_dimensions["energy"]), dtype=np.float32)
     index = 0
+    gc.collect()
     for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
         inputs, target = batch
         p = tf_model(inputs, training=False)
@@ -540,12 +543,16 @@ def evaluate(
 
     logging.info("Exporting results to .npy files")
     if system_matrix_bins:
-        # Bin true position into 200 bins between 0 and 200
-        true_bins = np.linspace(0, 200, 201)
-        y_true_binned = np.digitize(y_true, bins=true_bins)
+        gc.collect()
+        # Bin true position into sm_bins bins between 0 and sm_bins
+        true_bins = np.linspace(0, sm_bins, sm_bins+1)
+        # Load source positions. Current sp range is -70 to 70. Thus it needs to be mapped to 0-sm_bins
+        source_position = np.load(os.path.join(path, dataset_type, "source_positions.npy"))
+        source_position = (source_position+70) * (sm_bins/140)
+        sp_binned = np.digitize(source_position, true_bins)  # Bin along x position
         # Split predicted energies along true position bins
         for i in range(1, len(true_bins)):
-            bin_mask = y_true_binned == i
+            bin_mask = sp_binned == i
             np.save(
                 file=dataset_type + f"_regE_pred_bin{i:03d}.npy", arr=y_pred[bin_mask]
             )
@@ -645,7 +652,7 @@ def predict(
 
     # Create disjoint loader for test datasets
     logging.info("Creating disjoint loader for test datasets")
-    batch_size = 65536
+    batch_size = 16384
     loader_test = DisjointLoader(data, batch_size=batch_size, epochs=1, shuffle=False)
 
     test_dataset = tf.data.Dataset.from_generator(
@@ -703,7 +710,10 @@ if __name__ == "__main__":
         "--evaluation", action="store_true", help="If set, do evaluation process"
     )
     parser.add_argument(
-        "--evaluate_training_set", action="store_true", help="If set, evaluate the training set. Needed for SM creation."
+        "--evaluate_training_set", action="store_true", help="If set, evaluate the training set (needed for SM)"
+    )
+    parser.add_argument(
+        "--sm_bins", type=int, default=200, help="Number of bins for spatial mapping of system matrix (only if --evaluate_training_set is set)"
     )
     parser.add_argument(
         "--prediction", action="store_true", help="If set, do prediction process"
@@ -741,6 +751,7 @@ if __name__ == "__main__":
         do_training=args.training,
         do_evaluation=args.evaluation,
         evaluate_training_set=args.evaluate_training_set,
+        sm_bins=args.sm_bins,
         do_prediction=args.prediction,
         model_type=args.model_type,
         dataset_name=args.dataset_name,
