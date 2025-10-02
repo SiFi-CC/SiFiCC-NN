@@ -33,20 +33,19 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 import os
 
-# Update these to your actual paths
-PREDICTION_DIR = "/home/philippe/temp/SM/binned_arrays"  
-OUTPUT_DIR = "/home/philippe/temp/SM/binned_arrays/sifitrees"
-SCRIPT_PATH = "nativeHitmapCreator.py"  
+PREDICTION_DIR = "/home/home2/institut_3b/clement/Master/github/SiFiCC-NN/results/CCBestClassdo40/SystemMatrix_CodedMaskHIT_simv5_linesource_0to29999"  
+OUTPUT_DIR = "/net/scratch_g4rt1/clement/SM/paper2025"
+SCRIPT_PATH = "NativeHitmapCreator.py"  
 
-# Function to run the command
 def run_command(i):
     dataset_id = f"{i:03d}"  # Format as 000, 001, ..., 199
 
-    energy_file = os.path.join(PREDICTION_DIR, f"regE_bin_{dataset_id}.npy")
-    pos_file = os.path.join(PREDICTION_DIR, f"pos_clas_bin_{dataset_id}.npy")
+    energy_file = os.path.join(PREDICTION_DIR, f"SystemMatrix_CodedMaskHIT_simv5_linesource_0to29999_regE_pred_bin{dataset_id}.npy")
+    pos_file = os.path.join(PREDICTION_DIR, f"SystemMatrix_CodedMaskHIT_simv5_linesource_0to29999_pos_clas_pred_bin_{dataset_id}.npy")
     output_prefix = os.path.join(OUTPUT_DIR, f"bin_{dataset_id}")
 
     if not os.path.isfile(energy_file) or not os.path.isfile(pos_file):
+        print(f"Missing files for bin {dataset_id}: {energy_file}, {pos_file}")
         return (i, 1, f"Missing files for bin {dataset_id}")
 
     cmd = [
@@ -54,7 +53,7 @@ def run_command(i):
         "--energy_npy", energy_file,
         "--position_npy", pos_file,
         "--output_prefix", output_prefix,
-        "--e_threshold", "7000"
+        #"--e_threshold", "7000"
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -63,7 +62,7 @@ def run_command(i):
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     total_bins = 200
-    max_workers = 8
+    max_workers = 48
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(run_command, i): i for i in range(total_bins)}

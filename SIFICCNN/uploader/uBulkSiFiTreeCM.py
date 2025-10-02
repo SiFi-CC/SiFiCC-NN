@@ -37,7 +37,6 @@ from tqdm import tqdm
     "run00580_sifi",
     "run00581_sifi",
 ]"""
-datasets = range(200)
 
 #    "run00596_sifi_1M_TESTING",
 #    "run00566_sifi",
