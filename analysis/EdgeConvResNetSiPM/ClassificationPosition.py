@@ -596,7 +596,7 @@ def evaluate(
         # Bin true position into sm_bins bins between 0 and sm_bins
         true_bins = np.linspace(0, sm_bins, sm_bins+1)
         # Load source positions. Current sp range is -70 to 70. Thus it needs to be mapped to 0-sm_bins
-        source_position = np.load(os.path.join(path, dataset_type, "source_positions.npy"))
+        source_position = np.load(os.path.join(parent_directory(), "datasets", "CMSimGraphSiPM", "source_positions.npy"))
         source_position = (source_position+70) * (sm_bins/140)
         sp_binned = np.digitize(source_position, true_bins)  # Bin along x position
         # Split predicted energies along true position bins
