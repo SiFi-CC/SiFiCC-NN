@@ -306,7 +306,7 @@ class DSGraphSiPM(Dataset):
             labels = np.load(self.path + "/" + "graph_labels.npy")
 
             _, counts = np.unique(labels, return_counts=True)
-            class_weights = {0: len(labels) / (2 * counts[0]),
+            class_weight_dict = {0: len(labels) / (2 * counts[0]),
                              1: len(labels) / (2 * counts[1])}
         else:
             # Multi-class classification case
