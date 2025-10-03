@@ -602,7 +602,7 @@ def evaluate(
         # Split predicted energies along true position bins
         for i in range(1, len(true_bins)):
             bin_mask = sp_binned == i
-            np.save(dataset_type + f"_pos_clas_pred_bin_{i:03d}.npy", y_pred_entries[bin_mask])
+            np.save(dataset_type + f"_pos_clas_pred_bin_{i-1:03d}.npy", y_pred_entries[bin_mask])
     else:
         y_true = np.column_stack((y_true_scores, y_true_entries))
         y_pred = np.column_stack((y_pred_scores, y_pred_entries))

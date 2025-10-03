@@ -554,7 +554,7 @@ def evaluate(
         for i in range(1, len(true_bins)):
             bin_mask = sp_binned == i
             np.save(
-                file=dataset_type + f"_regE_pred_bin{i:03d}.npy", arr=y_pred[bin_mask]
+                file=dataset_type + f"_regE_pred_bin{i-1:03d}.npy", arr=y_pred[bin_mask]
             )
     else:
         np.save(
