@@ -104,7 +104,7 @@ def SiFiECRN3V1(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1")
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1", jit_compile=False)
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -116,7 +116,7 @@ def SiFiECRN3V1(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -176,7 +176,7 @@ def SiFiECRN4V2(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -237,7 +237,7 @@ def SiFiECRN5V2(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -296,7 +296,7 @@ def SiFiECRN3V2BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -360,7 +360,7 @@ def SiFiECRN3V1BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -403,7 +403,7 @@ def SiFiECR2N3V1(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -446,7 +446,7 @@ def SiFiECR2N3V1BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -489,7 +489,7 @@ def SiFiECR2N3V2(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -532,7 +532,7 @@ def SiFiECR2N3V2BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -575,7 +575,7 @@ def SiFiECRNx3V2(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -618,7 +618,7 @@ def SiFiECRNx3V2BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -661,7 +661,7 @@ def SiFiECRNx3V1(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
@@ -704,7 +704,7 @@ def SiFiECRNx3V1BN(
         loss = "binary_crossentropy"
         list_metrics = ["Precision", "Recall"]
     # regression setup
-    elif task == "regression":
+    elif task in ["regression", "position", "energy"]:
         loss = "mean_absolute_error"
         list_metrics = ["mean_absolute_error"]
     # multi-class classification setup
