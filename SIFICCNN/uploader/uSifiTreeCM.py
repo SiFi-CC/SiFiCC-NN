@@ -1,250 +1,220 @@
 """
-This script is designed to create a SiFi tree from predictions made by a neural network model.
-It reads the predictions and data from specified paths, processes them, and writes the results into a ROOT file in the SiFi tree format.
-It uses the ROOT framework for handling the SiFi tree and the SFibersHit objects.
-The different paths are necessary since the predictions are typically stored in a separate directory from the data used for training or testing the model. 
-The latter holds the actual hit data, while the predictions contain the model's output for those hits."""
+Create a SiFi tree (ROOT) from NN predictions.
 
+Inputs
+- Energy prediction file (NumPy .npy)
+- Position prediction file (NumPy .npy of fiber IDs)
+
+Output
+- ROOT file with SFibersHit category filled per predicted cluster
+
+Notes
+- Energy is written in keV (prediction assumed to be MeV, converted by x1000).
+- Fiber ID is converted to (layer, fiber) by divmod(fibers_per_layer).
+"""
+
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import logging
+from pathlib import Path
+from typing import Tuple, Optional
 
 import numpy as np
-import logging
-logging.basicConfig(level=logging.INFO)
-import os
-import ctypes
+from tqdm import tqdm
 
-logging.info("Importing ROOT")
-import ROOT
-# Optimize import
+import ROOT  # type: ignore
+
+# Optimize ROOT behavior for non-interactive scripts
 ROOT.PyConfig.DisableRootLogon = True
 ROOT.PyConfig.StartGUIThread = False
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-logging.info("ROOT imported successfully")
-from tqdm import tqdm
-import argparse
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
 
-
-
-
-class SaveToSiFiTree:
-    def __init__(self, prediction_path, data_path, dataset_name, output_file_name="predictions_sifitree.root"):
-        self.prediction_path = prediction_path
-        #self.data_path = data_path
-        self.dataset_name = dataset_name
-        self.output_file_name = output_file_name
-
-    def assemble_clusters(self):
-        # Not yet saving in events, so only single clusters
-
-        # Load the hitIds from the data_path
-
-        
-
-        """graph_indicator = np.load(os.path.join(self.data_path, self.dataset_name, "graph_indicator.npy"))
-        #cluster_time = np.load(os.path.join(self.data_path, self.dataset_name, "cluster_time.npy"))
-        logging.info("Loaded hitIds, graph_indicator and cluster_time from the data_path")
-        
-        # split the hitIds into clusters
-        n_nodes = np.bincount(graph_indicator)
-        n_nodes_cum = np.concatenate(([0], np.cumsum(n_nodes)[:-1]))
-        try:
-            hitIds = np.load(os.path.join(self.data_path, self.dataset_name, "sipm_hitids.npy"))
-            clusters = np.split(hitIds, n_nodes_cum[1:])
-            n_clusters = len(clusters)
-            logging.info("Split the hitIds into clusters")
-        except FileNotFoundError:
-            clusters = graph_indicator[-1]+1
-            n_clusters = clusters
-        
-        logging.info(f"Number of clusters: {n_clusters}")"""
-
-
-        # Load the prediction from the model
-        #energy_prediction = np.load(os.path.join(self.prediction_path, self.dataset_name, self.dataset_name+"_regE_pred.npy"))
-        #xz_position_prediction = np.load(os.path.join(self.prediction_path, self.dataset_name, self.dataset_name+"_ClassXZ_pred.npy"))[:,1] # (confidence, fibre_id)
-        energy_prediction = np.load(os.path.join(self.prediction_path, "regE_bin_"+self.dataset_name+".npy"))
-        xz_position_prediction = np.load(os.path.join(self.prediction_path, "pos_clas_bin_"+self.dataset_name+".npy"))
-        n_clusters = len(energy_prediction)
-        logging.info("Loaded the prediction from the model")
-        
-        # Creating arrays corresponding to sifitree entries in SFibersRawCluster
-        data_module = np.zeros(n_clusters, dtype=np.bool_)
-        data_layer, data_fiber = np.divmod(xz_position_prediction, 55)  # Convert fiber ID to layer and fiber index
-        data_u = -100
-        data_E = energy_prediction
-        data_t = None #cluster_time
-        clusters_per_event = np.ones(len(data_E), dtype=np.int8)
-        writeSiFiTreeDemo(data_module, data_layer, data_fiber, data_u, data_E, data_t, clusters_per_event, fname=self.output_file_name)
-        logging.info("Created arrays corresponding to sifitree entries in SFibersRawCluster")
-
-
-
-
-def writeSiFiTreeDemo(module, layer, fiber, u, E, t, clusters_per_event, fname="predictions_sifitree.root"):
-    # Get the global SiFi instance.
-    sifi = ROOT.sifi()
-    sifi.setOutputFileName(fname)
-    sifi.book()
-    
-    # Define the detector geometry: 1 module, 7 layers, 55 fibers.
-    # Create a NumPy array with the sizes.
-    sizes_np = np.array([1, 7, 55], dtype=np.uint64)
-    # Get a pointer to the NumPy array data as an unsigned long pointer.
-    sizes_ptr = sizes_np.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
-    
-    # Get the SiFi instance and register the category.
-    dm = ROOT.SiFi.instance()
-    # Use the overload with: (SCategory::Cat cat, const string& name, unsigned long dim, unsigned long* sizes, bool simulation)
-    if not dm.registerCategory(ROOT.SCategory.CatFibersHit, "SFibersHit", 3, sizes_ptr, False):
-        logging.error("Error: Could not register SFibersHit category.")
-        return False
-    
-    # Build the category.
-    pCatFibHit = sifi.buildCategory(ROOT.SCategory.CatFibersHit)
-    if not pCatFibHit:
-        logging.error("Error: No CatFiberHits category found.")
-        return False
-
-    logging.info("Successfully registered and built the SFibersHit category.")
-    
-    sifi.setTree(ROOT.TTree())
-    sifi.loop(len(clusters_per_event))
-    counter = 0
-    # Loop over events.
-    for i in tqdm(range(len(clusters_per_event)), desc="Processing events"):
-        pCatFibHit.clear()  # clear the category for the new event
-        
-        # Loop over hits in the event.
-        for j in range(clusters_per_event[i]):
-            # Set the address: module 0, layer 0, fiber = hit index.
-            mod = int(0)
-            lay = int(layer[counter])  # layer is derived from the prediction
-            fib = int(fiber[counter])  # fiber is derived from the prediction
-            #print(f"Processing hit {counter}: Module {mod}, Layer {lay}, Fiber {fib}")
-            
-            # Create a locator with 3 dimensions.
-            loc = ROOT.SLocator(3)
-            loc[0] = mod
-            loc[1] = lay
-            loc[2] = fib
-            
-            # Use the helper function (compiled via gInterpreter) to add a new SFibersHit.
-            pHit = ROOT.AddSFibersHit(pCatFibHit, loc)
-            
-            # Set the hit address.
-            pHit.setAddress(mod, lay, fib)
-            
-            # Set dummy values for time, energy, and y.
-            time_val = -100     # hit time
-            s_time = -100.0     # hit time (sigma)
-            energy = E[counter]*1000 #E[counter]    # hit energy in keV
-            s_energy = -100.0   # hit energy (sigma)
-            y = -100       # y-coordinate of the hit
-            s_y = -100.0        # y-coordinate sigma
-            
-            pHit.setTime(int(time_val), s_time)
-            pHit.setE(energy, s_energy)
-            pHit.setU(y, s_y)
-            
-            # Print the hit info.
-            #pHit.Print()
-            counter += 1
-        
-        sifi.fill()
-    
-    sifi.save()
-    logging.info(f"Saved the SiFi tree to {fname}")
-
-    # cleanup:
-    ROOT.gROOT.Reset()
-    ROOT.gSystem.Exit(0)  # This will exit the process after writing the file
-
-
-
-# Example usage:
-"""sifi_path = "/home/philippe/RWTHHome/temp"
-prediction_path = "/home/philippe/RWTHscrath1clement/SiFiCCNN/results/posxz_ep5_bs1024_do20_nf128"
-data_path = "/home/philippe/RWTHHome/Master/github/SiFiCC-NN/datasetsdebug/BeamTime"
-dataset_name = "run00509_sifi"
-output_path = "/home/philippe/RWTHHome/temp/updated" """
-
-if __name__ == "__main__":
-    """    logging.info("Starting the SiFi tree assembly process...")
-    prediction_path = "/home/philippe/temp/MagdasSifitrees/reco/uploader/posxz_ep5_bs1024_do20_nf128_AccHoles"
-    data_path = "/home/philippe/RWTHscrath1clement/SiFiCCNN/datasets/BeamTime"
-
-    dataset_names = [
-        "run00596_sifi_1M_TESTING",
-        "run00566_sifi",
-        "run00567_sifi",
-        "run00568_sifi",
-        "run00569_sifi",
-        "run00570_sifi",
-        "run00571_sifi",
-        "run00575_sifi",
-        "run00576_sifi",
-        "run00577_sifi",
-        "run00578_sifi",
-        "run00579_sifi",
-        "run00580_sifi",
-        "run00581_sifi",
-    ]
-    #    "run00582_sifi",
-    #    "run00583_sifi",
-    #    "run00584_sifi",
-    logging.info(f"Found {len(dataset_names)} datasets to process.")
-    for dataset_name in dataset_names:
-        ROOT.gInterpreter.ProcessLine("#include <SiFi.h>")
-        ROOT.gInterpreter.ProcessLine("#include <SCategoryManager.h>")
-        ROOT.gInterpreter.ProcessLine("#include <SLocator.h>")
-        ROOT.gInterpreter.ProcessLine("#include <SFibersHit.h>")
-
-        # Define helper function to add SFibersHit objects.
-        # This function will be compiled and available in the ROOT interpreter.
-        # It takes a pointer to the category and a locator, and returns a pointer to the new SFibersHit object.
-        # This functionality could not be achieved with a simple Python function due to the need for C++ object management.
-        ROOT.gInterpreter.ProcessLine('''
-        SFibersHit* AddSFibersHit(SCategory* cat, const SLocator& loc) {
-            TObject*& slot = cat->getSlot(loc);
-            new (slot) SFibersHit();
-            return reinterpret_cast<SFibersHit*>(slot);
-        }
-        ''')
-        logging.info(f"Processing dataset: {dataset_name}")
-        # Create the object.
-        sifi_tree = SaveToSiFiTree(prediction_path, data_path, dataset_name, output_file_name=dataset_name+".root")
-        # Call the method to assemble the clusters.
-        sifi_tree.assemble_clusters()"""
-    
-
-    logging.info("Starting the SiFi tree assembly process...")
-    #prediction_path = "/home/philippe/temp/MagdasSifitrees/reco/uploader/posxz_ep5_bs1024_do20_nf128_AccHoles"
-    prediction_path = "/home/philippe/temp/SM/binned_arrays"
-    data_path = "/home/philippe/RWTHscrath1clement/SiFiCCNN/datasets/BeamTime"
-    parser = argparse.ArgumentParser(description="Create a SiFi tree from predictions.")
-    parser.add_argument("--dataset_name", type=str, required=True, help="Name of the dataset to process.")
-    dataset_name = parser.parse_args().dataset_name
+def _compile_root_helpers() -> None:
+    """Make sure required C++ headers and helper are available to ROOT."""
     ROOT.gInterpreter.ProcessLine("#include <SiFi.h>")
     ROOT.gInterpreter.ProcessLine("#include <SCategoryManager.h>")
     ROOT.gInterpreter.ProcessLine("#include <SLocator.h>")
     ROOT.gInterpreter.ProcessLine("#include <SFibersHit.h>")
 
-    # Define helper function to add SFibersHit objects.
-    # This function will be compiled and available in the ROOT interpreter.
-    # It takes a pointer to the category and a locator, and returns a pointer to the new SFibersHit object.
-    # This functionality could not be achieved with a simple Python function due to the need for C++ object management.
-    ROOT.gInterpreter.ProcessLine('''
-    SFibersHit* AddSFibersHit(SCategory* cat, const SLocator& loc) {
-        TObject*& slot = cat->getSlot(loc);
-        new (slot) SFibersHit();
-        return reinterpret_cast<SFibersHit*>(slot);
-    }
-    ''')
-    logging.info(f"Processing dataset: {dataset_name}")
-    # Create the object.
-    sifi_tree = SaveToSiFiTree(prediction_path, data_path, dataset_name, output_file_name=dataset_name+".root")
-    # Call the method to assemble the clusters.
-    sifi_tree.assemble_clusters()
+    ROOT.gInterpreter.ProcessLine(
+        r'''
+        SFibersHit* AddSFibersHit(SCategory* cat, const SLocator& loc) {
+            TObject*& slot = cat->getSlot(loc);
+            new (slot) SFibersHit();
+            return reinterpret_cast<SFibersHit*>(slot);
+        }
+        '''
+    )
+
+
+def _register_sfibers_category(modules: int, layers: int, fibers_per_layer: int) -> Tuple[object, object]:
+    """Register and build the SFibersHit category; return (sifi, pCatFibHit)."""
+    sifi = ROOT.sifi()
+
+    sizes_np = np.array([modules, layers, fibers_per_layer], dtype=np.uint64)
+    sizes_ptr = sizes_np.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
+
+    dm = ROOT.SiFi.instance()
+    ok = dm.registerCategory(
+        ROOT.SCategory.CatFibersHit,
+        "SFibersHit",
+        3,
+        sizes_ptr,
+        False,
+    )
+    if not ok:
+        raise RuntimeError("Could not register SFibersHit category")
+
+    pCatFibHit = sifi.buildCategory(ROOT.SCategory.CatFibersHit)
+    if not pCatFibHit:
+        raise RuntimeError("No CatFibersHit category found after build")
+
+    return sifi, pCatFibHit
+
+
+
+
+def write_sifi_tree(
+    layers: np.ndarray,
+    fibers: np.ndarray,
+    energies_mev: np.ndarray,
+    output_file: Path,
+    modules: int,
+    layers_count: int,
+    fibers_per_layer: int,
+) -> None:
+    """Write predictions to a SiFi ROOT file as SFibersHit entries.
+
+    - layers/fibers: per-cluster indices
+    - energies_mev: energy per cluster (MeV)
+    """
+    if not (len(layers) == len(fibers) == len(energies_mev)):
+        raise ValueError("layers, fibers and energies must have same length")
+
+    _compile_root_helpers()
+    sifi = ROOT.sifi()
+    # Match original order: set output name before booking
+    sifi.setOutputFileName(str(output_file))
+    sifi.setTree(ROOT.TTree())
+    sifi.book()
+    sifi, pCatFibHit = _register_sfibers_category(modules, layers_count, fibers_per_layer)
+
+    n_events = len(energies_mev)
+    sifi.loop(n_events)
+
+    for i in tqdm(range(n_events), desc="Writing events"):
+        pCatFibHit.clear()
+
+        # One hit per event for now
+        mod = 0
+        lay = int(layers[i])
+        fib = int(fibers[i])
+
+        loc = ROOT.SLocator(3)
+        loc[0] = mod
+        loc[1] = lay
+        loc[2] = fib
+
+        pHit = ROOT.AddSFibersHit(pCatFibHit, loc)
+        pHit.setAddress(mod, lay, fib)
+
+        # Convert MeV to keV for ROOT
+        energy_kev = float(energies_mev[i]) * 1000.0
+
+        # Dummy placeholders for unused fields
+        pHit.setTime(int(-100), float(-100.0))
+        pHit.setE(energy_kev, float(-100.0))
+        pHit.setU(int(-100), float(-100.0))
+
+        sifi.fill()
+
+    sifi.save()
+    logging.info(f"Saved SiFi tree: {output_file}")
+
+
+
+def _load_predictions(
+    prediction_dir: Path,
+    dataset_name: str,
+    fibers_per_layer: int,
+    energy_file: Optional[Path] = None,
+    position_file: Optional[Path] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load energy (MeV) and position (fiber id) predictions and split to (layer, fiber)."""
+    if energy_file is None:
+        energy_file = prediction_dir / f"regE_bin_{dataset_name}.npy"
+    if position_file is None:
+        position_file = prediction_dir / f"pos_clas_bin_{dataset_name}.npy"
+
+    if not energy_file.exists():
+        raise FileNotFoundError(f"Energy prediction file not found: {energy_file}")
+    if not position_file.exists():
+        raise FileNotFoundError(f"Position prediction file not found: {position_file}")
+
+    energies_mev = np.load(energy_file)
+    pos_ids = np.load(position_file)
+
+    # Ensure 1D arrays
+    energies_mev = np.asarray(energies_mev).reshape(-1)
+    pos_ids = np.asarray(pos_ids).reshape(-1)
+
+    if len(energies_mev) != len(pos_ids):
+        raise ValueError(
+            f"Mismatched lengths: energies={len(energies_mev)} vs positions={len(pos_ids)}"
+        )
+
+    layers, fibers = np.divmod(pos_ids, fibers_per_layer)
+    return layers.astype(int), fibers.astype(int), energies_mev.astype(float)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Create a SiFi ROOT tree from NN predictions.")
+    parser.add_argument("--prediction_dir", type=Path, required=True, help="Directory with prediction .npy files")
+    parser.add_argument("--dataset_name", type=str, required=True, help="Dataset name used in prediction filenames")
+    parser.add_argument("--output", type=Path, help="Output ROOT file path (default: <dataset_name>.root)")
+
+    # Geometry
+    parser.add_argument("--modules", type=int, default=1, help="Number of modules (default: 1)")
+    parser.add_argument("--layers", dest="layers_count", type=int, default=7, help="Number of layers (default: 7)")
+    parser.add_argument("--fibers_per_layer", type=int, default=55, help="Fibers per layer (default: 55)")
+
+    # Optional custom file names
+    parser.add_argument("--energy_file", type=Path, help="Path to energy .npy (MeV)")
+    parser.add_argument("--position_file", type=Path, help="Path to position .npy (fiber IDs)")
+
+    args = parser.parse_args()
+
+    output_file = args.output or Path(f"{args.dataset_name}.root")
+
+    logging.info("Loading predictions…")
+    layers, fibers, energies_mev = _load_predictions(
+        args.prediction_dir,
+        args.dataset_name,
+        args.fibers_per_layer,
+        args.energy_file,
+        args.position_file,
+    )
+
+    logging.info("Writing ROOT (SiFi tree)…")
+    write_sifi_tree(
+        layers=layers,
+        fibers=fibers,
+        energies_mev=energies_mev,
+        output_file=output_file,
+        modules=args.modules,
+        layers_count=args.layers_count,
+        fibers_per_layer=args.fibers_per_layer,
+    )
+
+
+if __name__ == "__main__":
+    main()
 
 
 
