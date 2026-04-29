@@ -427,7 +427,7 @@ def training(
                     patience=2, #4
                     min_delta=1e-2,
                     min_lr=1e-6,
-                    verbose=0,
+                    verbose=1,
                 )
             ]
         #if fraction == 1.0:
