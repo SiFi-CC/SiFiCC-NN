@@ -282,10 +282,15 @@ class RootSimulation:
         if n_stop is None:
             n_stop = self.events_entries
 
+        current_entry = int(n_start)
         with tqdm.tqdm(total = n_stop - n_start, desc="Iteratively processing root file") as pbar:
             for batch in self.events.iterate(
                 step_size="100000 kB", entry_start=n_start, entry_stop=n_stop
             ):
+                # Preserve absolute ROOT entry index for each event in this batch.
+                entry_indices = np.arange(current_entry, current_entry + len(batch), dtype=np.int64)
+                batch = ak.with_field(batch, entry_indices, "__entry_index")
+                current_entry += len(batch)
                 # get minimum timestamp of SiPM hits
                 EventHolder = self.do_batch_processing(batch)
                 pbar.update(len(batch))

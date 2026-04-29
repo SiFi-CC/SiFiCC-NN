@@ -658,7 +658,8 @@ def get_SiPM_Fibre_connections_numba():
 
 @njit(cache=True)
 def find_sipm_clusters_numba(SiPMIds, SiPMtimes, SiPMpositions, SiPMphoton_count,
-                              FibreIds, FibreTimes, FibrePositions, FibreEnergy, mc_source_position):
+                              FibreIds, FibreTimes, FibrePositions, FibreEnergy, mc_source_position,
+                              event_entry_indices):
     """
     -
     """
@@ -679,6 +680,7 @@ def find_sipm_clusters_numba(SiPMIds, SiPMtimes, SiPMpositions, SiPMphoton_count
     global_cluster_position = List()
     global_cluster_energy = List()
     global_mc_source_position = List()
+    global_cluster_event_index = List()
 
 
     # Get the sipm-fibre map (shape: (224,4)).
@@ -828,9 +830,11 @@ def find_sipm_clusters_numba(SiPMIds, SiPMtimes, SiPMpositions, SiPMphoton_count
             global_cluster_position.append(center_fibre)
             global_cluster_energy.append(total_energy)
             global_mc_source_position.append(event_mc_source_position)
+            global_cluster_event_index.append(event_entry_indices[ev])
     return (global_sipm_ids, global_sipm_time, global_sipm_position, global_sipm_photon_count, global_sipm_offsets,
             global_fibre_ids, global_fibre_time, global_fibre_position, global_fibre_energy, global_fibre_offsets,
-            global_cluster_time, global_cluster_position, global_cluster_energy, global_mc_source_position)
+            global_cluster_time, global_cluster_position, global_cluster_energy, global_mc_source_position,
+            global_cluster_event_index)
 
 
 
@@ -864,6 +868,12 @@ def cluster_SiPMs_across_events(ak_sipm_hits, ak_fibre_hits, batch):
 
     # Get and convert the mc source positions.
     flat_mc_source_positions = convert_tvector3_to_arrays(batch["MCPosition_source"], mode="np")
+    # Preserve original root entry index per event (fallback to local index if unavailable).
+    batch_fields = getattr(batch, "fields", [])
+    if "__entry_index" in batch_fields:
+        event_entry_indices = np.asarray(ak.to_numpy(batch["__entry_index"]), dtype=np.int64)
+    else:
+        event_entry_indices = np.arange(len(ak_sipm_hits), dtype=np.int64)
     
     # Get the underlying ListOffsetArray from the now-regular layout for SiPMs.
     ids_listoffset = sipm_ids_reg.layout.content
@@ -914,7 +924,18 @@ def cluster_SiPMs_across_events(ak_sipm_hits, ak_fibre_hits, batch):
     logging.info("Flat arrays split")
 
     start = time.time()
-    data = find_sipm_clusters_numba(split_ids, split_times, split_positions, split_photon_count, split_fibre_ids, split_fibre_times, split_fibre_positions, split_fibre_energy, flat_mc_source_positions)
+    data = find_sipm_clusters_numba(
+        split_ids,
+        split_times,
+        split_positions,
+        split_photon_count,
+        split_fibre_ids,
+        split_fibre_times,
+        split_fibre_positions,
+        split_fibre_energy,
+        flat_mc_source_positions,
+        event_entry_indices,
+    )
     stop = time.time()
     logging.info(f"Clustering took {stop-start:.2f} seconds")
     logging.info("Found clusters")
@@ -938,6 +959,7 @@ def cluster_SiPMs_across_events(ak_sipm_hits, ak_fibre_hits, batch):
     cluster_energy   = np.asarray(data[12])
 
     mc_source_position = np.asarray(data[13])  # shape (N_cluster, 3)
+    cluster_event_index = np.asarray(data[14], dtype=np.int64)
 
     stop = time.time()
     logging.info(f"Conversion to numpy took {stop-start:.2f} seconds")
@@ -1053,10 +1075,25 @@ def cluster_SiPMs_across_events(ak_sipm_hits, ak_fibre_hits, batch):
     cluster_time_layout   = NumpyArray(cluster_time)
     cluster_energy_layout = NumpyArray(cluster_energy)
     cluster_fibre_id_layout = NumpyArray(indices)
+    cluster_event_index_layout = NumpyArray(cluster_event_index)
 
     cluster_record = RecordArray(
-        [cluster_time_layout, cluster_positions_record, cluster_energy_layout, cluster_fibre_id_layout, source_positions_record],
-        ["ClusterTime", "ClusterPosition", "ClusterEnergy", "ClusterFibreId", "Cluster_MCPosition_source"]
+        [
+            cluster_time_layout,
+            cluster_positions_record,
+            cluster_energy_layout,
+            cluster_fibre_id_layout,
+            source_positions_record,
+            cluster_event_index_layout,
+        ],
+        [
+            "ClusterTime",
+            "ClusterPosition",
+            "ClusterEnergy",
+            "ClusterFibreId",
+            "Cluster_MCPosition_source",
+            "ClusterEventIndex",
+        ]
     )
 
     ak_cluster_data = ak.Array(cluster_record)
