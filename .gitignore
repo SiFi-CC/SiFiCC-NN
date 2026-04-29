@@ -31,3 +31,7 @@ datasets
 *.keras
 .vscode/settings.json
 
+# allow SIFICCNN/datasets even though generic "datasets" is ignored
+!/SIFICCNN/datasets/
+!/SIFICCNN/datasets/**
+

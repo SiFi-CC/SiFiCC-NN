@@ -65,7 +65,11 @@ from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
-from SIFICCNN.datasets import DSGraphSiPM
+from SIFICCNN.datasets import (
+    DSGraphSiPM,
+    get_train_split_norm_x,
+    shuffle_dataset_like_training,
+)
 from SIFICCNN.models import get_models
 from SIFICCNN.utils import parent_directory
 
@@ -311,10 +315,18 @@ def training(
 
     logging.info("Starting training of model on dataset: %s", dataset_type)
 
+    dataset_path = os.path.join(parent_directory(), "datasets", dataset_name, dataset_type)
+    norm_x, shuffle_state = get_train_split_norm_x(
+        dataset_path=dataset_path,
+        trainsplit=trainsplit,
+        positives=True,
+        shuffle=True,
+    )
+
     # load graph datasets
     data = DSGraphSiPM(
         type=dataset_type,
-        norm_x=None,
+        norm_x=norm_x,
         mode=mode,
         positives=True,
         regression="Position",
@@ -331,7 +343,7 @@ def training(
     # generate disjoint loader from datasets
     logging.info("Creating disjoint loader for training and validation datasets")
     # shuffle data list for training
-    random.shuffle(data)
+    shuffle_dataset_like_training(data, shuffle_state)
     if progressive:
         fractions = [0.01, 0.05,  0.25, 0.5, 1.0]
         # Define epochs per phase: fewer for small fractions, more as the fraction increases

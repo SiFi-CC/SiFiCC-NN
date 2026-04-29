@@ -16,7 +16,7 @@ from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
 
 from SIFICCNN.utils.layers import ReZero
-from SIFICCNN.datasets import DSGraphCluster
+from SIFICCNN.datasets import DSGraphCluster, get_train_split_norm_x
 from SIFICCNN.models import SiFiECRNShort
 from SIFICCNN.utils import parent_directory
 
@@ -113,9 +113,18 @@ def training(
     path,
     modelParameter,
 ):
+    dataset_path = os.path.join(
+        parent_directory(), "datasets", "SimGraphCluster", dataset_name
+    )
+    norm_x, _ = get_train_split_norm_x(
+        dataset_path=dataset_path,
+        trainsplit=trainsplit,
+        positives=False,
+    )
+
     # load graph datasets
     data = DSGraphCluster(
-        name=dataset_name, norm_x=None, positives=False, regression=None
+        name=dataset_name, norm_x=norm_x, positives=False, regression=None
     )
 
     # set class-weights
