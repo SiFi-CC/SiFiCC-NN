@@ -104,7 +104,7 @@ def SiFiECRN3V1(
 
     out = Dense(n_out, activation=activation_out)(x)
 
-    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1", jit_compile=False)
+    model = Model(inputs=[X_in, A_in, I_in], outputs=out, name="SiFiECRN3V1")
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
@@ -123,7 +123,7 @@ def SiFiECRN3V1(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -183,7 +183,7 @@ def SiFiECRN4V2(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -244,7 +244,7 @@ def SiFiECRN5V2(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -303,7 +303,7 @@ def SiFiECRN3V2BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -367,7 +367,7 @@ def SiFiECRN3V1BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -410,7 +410,7 @@ def SiFiECR2N3V1(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -453,7 +453,7 @@ def SiFiECR2N3V1BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -496,7 +496,7 @@ def SiFiECR2N3V2(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -539,7 +539,7 @@ def SiFiECR2N3V2BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -582,7 +582,7 @@ def SiFiECRNx3V2(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -625,7 +625,7 @@ def SiFiECRNx3V2BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -668,7 +668,7 @@ def SiFiECRNx3V1(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 
@@ -711,7 +711,7 @@ def SiFiECRNx3V1BN(
     elif task == "x-z-position":
         loss = "categorical_crossentropy"
         list_metrics = ["categorical_accuracy"]
-    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=list_metrics, jit_compile=False)
 
     return model
 

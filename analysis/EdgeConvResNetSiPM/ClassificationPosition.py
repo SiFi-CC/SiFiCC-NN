@@ -54,6 +54,11 @@ import numpy as np
 import os
 import pickle as pkl
 import json
+
+# disable XLA compilation for TensorFlow before importing it
+os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices=false"
+os.environ["TF_XLA_AUTO_JIT"] = "0"
+
 import tensorflow as tf
 import argparse
 import logging
