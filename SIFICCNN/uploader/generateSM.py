@@ -4,11 +4,14 @@ import os
 import glob
 
 # Configuration
-NUM_FILES = 200
-N_GAMMAS_TOTAL = 37798000
+NUM_FILES = int(os.getenv("GENERATE_SM_NUM_FILES", "200"))
+N_GAMMAS_TOTAL = float(os.getenv("GENERATE_SM_N_GAMMAS_TOTAL", "37798000"))
 
 # Base directory for this dataset (outputs will be saved here)
-BASE_DIR = "/net/scratch_g4rt1/clement/SM/paper2025/CCBestClassdo40/systemMatrix"
+BASE_DIR = os.getenv(
+    "GENERATE_SM_BASE_DIR",
+    "/net/scratch_g4rt1/clement/SM/paper2025/CCBestClassdo40/systemMatrix",
+)
 
 # Directory where input ROOT files are stored (one per bin, containing histograms)
 # The script will search using INPUT_ROOTS_GLOB formatted with bin_id,
@@ -23,7 +26,10 @@ HITMAPS_DIR = os.path.join(BASE_DIR, "hitmaps")
 # Output paths (use BASE_DIR for saving)
 OUTPUT_ROOT = os.path.join(BASE_DIR, "system_matrix_from_numpy.root")
 OUTPUT_PDF_DIR = os.path.join(BASE_DIR, "heatmaps")
-SOURCE_HIST_PATH = os.path.join(BASE_DIR, "sourceHist_wideSource_200pixels.root")
+SOURCE_HIST_PATH = os.getenv(
+    "GENERATE_SM_SOURCE_HIST_PATH",
+    os.path.join(BASE_DIR, "sourceHist_wideSource_200pixels.root"),
+)
 
 # Ensure base and output directories exist
 os.makedirs(BASE_DIR, exist_ok=True)
