@@ -196,8 +196,8 @@ def main(
 
     task = "x-z-position"
 
-    # Handle prediciton mode
-    only_prediction = do_prediction and not (do_training or do_evaluation)
+    # Only switch to beamtime prediction mode when prediction is the sole action.
+    only_prediction = do_prediction and not (do_training or do_evaluation or evaluate_training_set)
     if only_prediction:
         mode = "CMbeamtime"  # Set mode to CMbeamtime for prediction
 
