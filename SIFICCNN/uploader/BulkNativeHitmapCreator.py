@@ -19,11 +19,11 @@ def _init_logger():
 logger = _init_logger()
 
 # --- CONFIG ---
-RESULTS_ROOT = Path("/home/philippe/RWTHscrath1clement/SiFiCCNN/results")
-OUT_BASE = Path("/home/philippe/RWTHscrath1clement/SM/paper2025")
+RESULTS_ROOT = Path("/net/scratch_g4rt1/clement/SiFiCCNN/results")
+OUT_BASE = Path("/net/scratch_g4rt1/clement/SiFiCCNN/HitMapsForPaper26")
 CREATOR = "NativeHitmapCreator.py"
 PYTHON = "python"
-REDUCED_STATISTICS = 0.01  # fraction of events to process
+REDUCED_STATISTICS = 1  # fraction of events to process
 DRY_RUN = False  # set True to just print commands
 # Number of parallel workers; can be overridden via env var WORKERS
 try:
@@ -32,7 +32,7 @@ try:
         # Sensible default: min(available CPUs, 8)
         import os as _os
 
-        MAX_WORKERS = min((_os.cpu_count() or 2), 8)
+        MAX_WORKERS = min((_os.cpu_count() or 2), 48)
 except Exception:
     MAX_WORKERS = 1
 
@@ -104,7 +104,7 @@ failed = 0
 
 # Scan and collect all jobs first
 jobs: list[tuple[str, str]] = []  # (job_dir_str, class_name)
-for class_dir in sorted(RESULTS_ROOT.glob("CCBestClassdo40")):
+for class_dir in sorted(RESULTS_ROOT.glob("Norm_SiFiECRN3V*")):
     logger.debug("Scanning class directory: %s", class_dir)
 
     # Collect subdirectories matching desired patterns

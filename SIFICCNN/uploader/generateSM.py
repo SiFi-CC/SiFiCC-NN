@@ -1,7 +1,90 @@
 import numpy as np
-import ROOT
 import os
 import glob
+import sys
+
+
+def _unique_existing_dirs(paths):
+    unique_paths = []
+    seen = set()
+    for path in paths:
+        if not path:
+            continue
+        normalized = os.path.abspath(path)
+        if normalized in seen or not os.path.isdir(normalized):
+            continue
+        seen.add(normalized)
+        unique_paths.append(normalized)
+    return unique_paths
+
+
+def _find_root_libdirs():
+    candidates = []
+
+    rootsys = os.environ.get("ROOTSYS")
+    if rootsys:
+        candidates.append(os.path.join(rootsys, "lib"))
+
+    for env_name in ("PYTHONPATH", "LD_LIBRARY_PATH"):
+        for entry in os.environ.get(env_name, "").split(os.pathsep):
+            if os.path.isfile(os.path.join(entry, "libPyROOT.so")):
+                candidates.append(entry)
+
+    for entry in sys.path:
+        if os.path.isfile(os.path.join(entry, "libPyROOT.so")):
+            candidates.append(entry)
+
+    return _unique_existing_dirs(candidates)
+
+
+def _bootstrap_root_runtime(import_error):
+    if os.environ.get("SIFICCNN_ROOT_BOOTSTRAPPED") == "1":
+        root_libdirs = _find_root_libdirs()
+        hint = ""
+        if root_libdirs:
+            hint = f" Tried ROOT lib directories: {', '.join(root_libdirs)}."
+        raise ImportError(
+            "Failed to import PyROOT after normalizing the ROOT runtime."
+            " Make sure ROOTSYS points to a complete ROOT installation and that"
+            " LD_LIBRARY_PATH/PYTHONPATH reference the same ROOT version."
+            f" Original error: {import_error}.{hint}"
+        ) from import_error
+
+    root_libdirs = _find_root_libdirs()
+    if not root_libdirs:
+        raise ImportError(
+            "Failed to import PyROOT and no ROOT library directory could be inferred."
+            " Set ROOTSYS or add the matching ROOT lib directory containing libPyROOT.so"
+            " to LD_LIBRARY_PATH/PYTHONPATH before running generateSM.py."
+            f" Original error: {import_error}"
+        ) from import_error
+
+    root_libdir = root_libdirs[0]
+    rootsys = os.path.dirname(root_libdir)
+    env = os.environ.copy()
+    env["ROOTSYS"] = rootsys
+    env["LD_LIBRARY_PATH"] = os.pathsep.join(
+        [root_libdir] + [entry for entry in env.get("LD_LIBRARY_PATH", "").split(os.pathsep) if entry and entry != root_libdir]
+    )
+    env["PYTHONPATH"] = os.pathsep.join(
+        [root_libdir] + [entry for entry in env.get("PYTHONPATH", "").split(os.pathsep) if entry and entry != root_libdir]
+    )
+    env["PATH"] = os.pathsep.join(
+        [os.path.join(rootsys, "bin")] + [entry for entry in env.get("PATH", "").split(os.pathsep) if entry and entry != os.path.join(rootsys, "bin")]
+    )
+    env["SIFICCNN_ROOT_BOOTSTRAPPED"] = "1"
+    os.execve(sys.executable, [sys.executable] + sys.argv, env)
+
+
+def _import_root():
+    try:
+        import ROOT  # type: ignore
+        return ROOT
+    except ImportError as import_error:
+        _bootstrap_root_runtime(import_error)
+
+
+ROOT = _import_root()
 
 # Configuration
 NUM_FILES = int(os.getenv("GENERATE_SM_NUM_FILES", "200"))
@@ -17,11 +100,11 @@ BASE_DIR = os.getenv(
 # The script will search using INPUT_ROOTS_GLOB formatted with bin_id,
 # e.g., bin-specific subfolders produced by NativeHitmapCreator:
 #   <ROOTS_DIR>/bin_000/*hitmaps*.root
-ROOTS_DIR = os.path.join(BASE_DIR, "hitmaps")
+ROOTS_DIR = os.getenv("GENERATE_SM_ROOTS_DIR", BASE_DIR)
 INPUT_ROOTS_GLOB = os.path.join(ROOTS_DIR, "bin_{bin_id}/*hitmaps*.root")
 
 # Optional fallback: directory where input hitmap .npy files are stored
-HITMAPS_DIR = os.path.join(BASE_DIR, "hitmaps")
+HITMAPS_DIR = os.getenv("GENERATE_SM_HITMAPS_DIR", ROOTS_DIR)
 
 # Output paths (use BASE_DIR for saving)
 OUTPUT_ROOT = os.path.join(BASE_DIR, "system_matrix_from_numpy.root")

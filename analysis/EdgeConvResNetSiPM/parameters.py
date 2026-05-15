@@ -37,7 +37,6 @@ def get_parameters(mode):
         dataset_name = "CMSimGraphSiPM"
     elif mode == "CMbeamtime":
         datasets = {
-            "run00596": "run00596_sifi_1M_TESTING",
             "run00566": "run00566_sifi",
             "run00567": "run00567_sifi",
             "run00568": "run00568_sifi",

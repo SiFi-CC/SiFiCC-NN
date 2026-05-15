@@ -79,6 +79,11 @@ logging.basicConfig(
 )
 
 
+def release_inference_memory():
+    tf.keras.backend.clear_session()
+    gc.collect()
+
+
 def generator(data, no_y=False):
     """
     A generator function that yields batches of data with adjacency matrices converted to tf.SparseTensor of type float32.
@@ -272,6 +277,9 @@ def main(
             return
         elif mode == "CM":
             datasets, output_dimensions, dataset_name = get_parameters("CMbeamtime")
+            for dataset in datasets.values():
+                dataset_path = os.path.join(path_results, dataset)
+                os.makedirs(dataset_path, exist_ok=True)
         output_signature = (
             tf.TensorSpec(shape=(None, 5), dtype=tf.float32),                       # x
             tf.SparseTensorSpec(shape=(None, None), dtype=tf.float32),              # a_sparse
@@ -589,6 +597,9 @@ def evaluate(
     plot_predicted_energy(y_pred)
 
     logging.info("Evaluation on dataset: " + str(dataset_type) + " finished")
+    del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter, history
+    del y_true, y_pred, labels
+    release_inference_memory()
 
 def predict(
     dataset_type,
@@ -696,6 +707,9 @@ def predict(
     )
     plot_predicted_energy(y_pred)
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
+    del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter
+    del y_pred
+    release_inference_memory()
 
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
 if __name__ == "__main__":

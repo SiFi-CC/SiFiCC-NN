@@ -5,11 +5,11 @@ the structure and names of the provided PyROOT macro.
 
 It can be used as an alternative to the ROOT-based hitmap creator and should be faster.
 
-New: writes a ROOT file named "<output_prefix>_hitmaps_sim.root" with histograms:
-  - hFiberHitMap_AE_t0000, hFiberHitMap_AE_t0500, ...
-  - hEnergyDepoMap_AE_t0000, ...
-  - hFiberHitMap_NS_t.... and hEnergyDepoMap_NS_t....
-  - hFiberHitMap_AE_t0000_ERR (error map from AE t0000)
+It writes a ROOT file named "<output_prefix>_hitmaps_sim.root" with histograms:
+    - hFiberHitMap_AE_t0000, hFiberHitMap_AE_t0500, ...
+    - hEnergyDepoMap_AE_t0000, ...
+    - hFiberHitMap_NS_t.... and hEnergyDepoMap_NS_t....
+    - hFiberHitMap_AE_t0000_ERR (error map from AE t0000)
 
 uproot is used to write TH2D histograms.
 
@@ -30,7 +30,7 @@ pred_pos_path : str
 output_prefix : str, optional
     Prefix for output files (also used to name the ROOT file: <prefix>_hitmaps_sim.root).
 e_threshold : float or int, optional
-    Upper energy threshold (in keV) for the last bin. Default is 120000 to match the macro.
+    Shared upper energy threshold (in keV). Default is 7000.
 label_path : str, optional
     Path to a .npy array of integer labels; NS maps are filled only for labels in {1,2} if provided.
 dead_fibers_txt : str, optional
@@ -78,6 +78,7 @@ N_LAYERS_PER_MODULE = 7
 N_FIBERS_PER_LAYER = 55
 THRESHOLDS = [0, 500, 1000, 1500]
 HITMAP_TYPES = ["AE", "NS"]
+QDC_MAX = 7000.0
 
 try:
     import uproot  # type: ignore
@@ -108,8 +109,6 @@ def _apply_dead_fibers_mask(arrays: Dict[str, Dict[int, np.ndarray]],
                 for m in t.values():
                     if 0 <= y < N_LAYERS_PER_MODULE and 0 <= x < N_FIBERS_PER_LAYER:
                         m[y, x] = 0
-
-
 def _write_root_with_uproot(out_path: str,
                             hitmaps: Dict[str, Dict[int, np.ndarray]],
                             energymaps: Dict[str, Dict[int, np.ndarray]],
@@ -199,7 +198,6 @@ def _write_root_with_uproot(out_path: str,
                 fout[name_hit] = _make_th2(hitmaps[htype][thr], name_hit, entries)
                 fout[name_ede] = _make_th2(energymaps[htype][thr], name_ede, entries)
 
-        # For error map, use entries from AE threshold 0 (t0000)
         ae_entries = float(np.nansum(hitmaps["AE"][THRESHOLDS[0]]))
         fout["hFiberHitMap_AE_t0000_ERR"] = _make_th2(err_map, "hFiberHitMap_AE_t0000_ERR", ae_entries)
 
@@ -210,7 +208,7 @@ def generate_hitmaps(
     pred_energy_path: str,
     pred_pos_path: str,
     output_prefix: Optional[str] = None,
-    e_threshold: float = 120000,
+    e_threshold: float = QDC_MAX,
     label_path: Optional[str] = None,
     dead_fibers_txt: Optional[str] = None,
     exclude_dead_fibers: bool = False,
@@ -301,9 +299,12 @@ def generate_hitmaps(
         if l < 0 or l >= N_LAYERS_PER_MODULE or f < 0 or f >= N_FIBERS_PER_LAYER:
             continue
 
-        for j, thr in enumerate(THRESHOLDS):
-            upper = THRESHOLDS[j + 1] if j + 1 < len(THRESHOLDS) else e_threshold
-            if thr < e <= upper:
+        # Match the threshold-scan logic: thresholds are cumulative lower cuts
+        # with a shared upper cap, not disjoint bins.
+        if e >= e_threshold:
+            continue
+        for thr in THRESHOLDS:
+            if e > thr:
                 # AE maps: always fill
                 hitmaps["AE"][thr][l, f] += 1.0
                 energy_maps["AE"][thr][l, f] += e
@@ -318,7 +319,6 @@ def generate_hitmaps(
                 if do_ns:
                     hitmaps["NS"][thr][l, f] += 1.0
                     energy_maps["NS"][thr][l, f] += e
-                break
 
     logging.info("Finished building hitmaps and energy maps.")
 
@@ -329,12 +329,7 @@ def generate_hitmaps(
 
     # Optionally zero dead fibers
     if exclude_dead_fibers and dead_fibers_txt:
-        all_maps = {
-            **{f"hit_{ht}_{thr}": hitmaps[ht][thr] for ht in HITMAP_TYPES for thr in THRESHOLDS},
-            **{f"ene_{ht}_{thr}": energy_maps[ht][thr] for ht in HITMAP_TYPES for thr in THRESHOLDS},
-            "err": err_map,
-        }
-        # Reshape into type->thr mapping for mask helper
+        # Reshape into type->threshold-tag mapping for mask helper.
         structured = {
             "hit_AE": {thr: hitmaps["AE"][thr] for thr in THRESHOLDS},
             "hit_NS": {thr: hitmaps["NS"][thr] for thr in THRESHOLDS},

@@ -83,6 +83,11 @@ logging.basicConfig(
 )
 
 
+def release_inference_memory():
+    tf.keras.backend.clear_session()
+    gc.collect()
+
+
 def generator(data, no_y=False):
     """
     A generator function that yields batches of data with adjacency matrices converted to tf.SparseTensor of type float32.
@@ -577,6 +582,9 @@ def evaluate(
     plot_evaluation_position(mode, y_pred, y_true, labels)
 
     logging.info("Evaluation on dataset: "+ str(dataset_type)+ " finished")
+    del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter, history
+    del y_true, y_pred, labels
+    release_inference_memory()
 
 
 def predict(
@@ -683,6 +691,9 @@ def predict(
         file=dataset_type + "_regP_pred.npy", arr=y_pred
     )
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
+    del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter
+    del y_pred
+    release_inference_memory()
 
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
 if __name__ == "__main__":
