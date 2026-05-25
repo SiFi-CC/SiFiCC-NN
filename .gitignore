@@ -1,37 +1,60 @@
-# dev related (pycharm specific gitignore)
-.idea
-*.pyc
-# ignore all python bytecode files
-__pycache__
-*.pyo
-*.pyd
+# ============ PYTHON & COMPILATION ARTIFACTS ==========
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# ============ NUMBA & JIT COMPILER CACHE ==========
 *.nbc
 *.nbi
 
-# data storage directories
-/root_files/*
-/datasets/*
-/results/*
+# ============ VIRTUAL ENVIRONMENTS ==========
+venv/
+env/
+.venv/
+.conda/
+.env/
+env.bak/
+venv.bak/
 
-# ignore .png, .root, .npz and .npy in results subdirectory
-# files are too large and too many to properly comit
+# ============ IDE & EDITOR FILES ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.history/
+
+# ============ OS & SYSTEM TEMP FILES ==========
+.DS_Store
+.DS_Store?
+._
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============ CLUSTER / JOB SCHEDULER FILES ==========
 condor
-datasets
-*.png
-*.log
-*.root
-*.npz
-*.npy
-*.h5
-*.csv
-*.json
-*.txt
-*.yaml
-*.xml
-*.keras
-.vscode/settings.json
+*.submit
 
-# allow SIFICCNN/datasets even though generic "datasets" is ignored
+# ============ DATA, RESULTS & LOGS ==========
+root_files
+datasets
+results
+logs/
+data/raw/
+*.log
+*.tsv 
+*.root
+*.sh
+datasets_up
+
+# ============ EXCEPTIONS (UNIGNORE) ==========
 !/SIFICCNN/datasets/
 !/SIFICCNN/datasets/**
+
 
