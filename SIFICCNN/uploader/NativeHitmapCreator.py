@@ -109,6 +109,140 @@ def _apply_dead_fibers_mask(arrays: Dict[str, Dict[int, np.ndarray]],
                 for m in t.values():
                     if 0 <= y < N_LAYERS_PER_MODULE and 0 <= x < N_FIBERS_PER_LAYER:
                         m[y, x] = 0
+
+
+def _resolve_position_candidates(pos: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Normalize position predictions to candidate ids and per-candidate weights."""
+    pos = np.asarray(pos)
+    if pos.ndim == 0:
+        pos = pos.reshape(1)
+
+    if pos.ndim == 1:
+        candidate_ids = pos.astype(np.int32, copy=False)[:, None]
+        candidate_weights = np.ones((candidate_ids.shape[0], 1), dtype=np.float32)
+        return candidate_ids, candidate_weights
+
+    if pos.ndim == 2 and pos.shape[1] == 2 and np.issubdtype(pos.dtype, np.floating):
+        candidate_ids = pos[:, 1].astype(np.int32, copy=False)[:, None]
+        candidate_weights = np.ones((candidate_ids.shape[0], 1), dtype=np.float32)
+        return candidate_ids, candidate_weights
+
+    candidate_ids = pos.astype(np.int32, copy=False)
+    candidate_weights = np.ones(candidate_ids.shape, dtype=np.float32)
+    return candidate_ids, candidate_weights
+
+
+def _load_position_metadata(position_metadata_path: Optional[str], idx: Optional[np.ndarray]) -> Optional[dict]:
+    if not position_metadata_path or not os.path.isfile(position_metadata_path):
+        return None
+
+    with np.load(position_metadata_path) as metadata_npz:
+        metadata = {key: metadata_npz[key] for key in metadata_npz.files}
+
+    if idx is not None:
+        for key, value in metadata.items():
+            if getattr(value, "ndim", 0) < 1:
+                continue
+            if idx.size == 0:
+                metadata[key] = value[:0]
+                continue
+            if value.shape[0] > int(np.max(idx)):
+                metadata[key] = value[idx]
+
+    return metadata
+
+
+def _sample_cluster_indices(
+    n_events: int,
+    reduced_statistics: float,
+    random_seed: Optional[int],
+) -> Optional[np.ndarray]:
+    if n_events <= 0 or reduced_statistics >= 1.0:
+        return None
+    if reduced_statistics <= 0.0:
+        return np.array([], dtype=np.int64)
+
+    n_select = int(np.floor(float(n_events) * float(reduced_statistics)))
+    if n_select <= 0:
+        n_select = 1
+    if n_select >= n_events:
+        return None
+
+    rng = np.random.default_rng(random_seed)
+    idx = rng.choice(n_events, size=n_select, replace=False)
+    idx.sort()
+    return idx.astype(np.int64, copy=False)
+
+
+def _build_weighted_positions(
+    pos: np.ndarray,
+    metadata: Optional[dict],
+    n_events: int,
+) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+    candidate_ids, candidate_weights = _resolve_position_candidates(pos)
+    confidence = None
+    margin = None
+    entropy = None
+    quality_weight = None
+
+    if metadata is None:
+        return candidate_ids, candidate_weights, confidence, margin, entropy, quality_weight
+
+    if "topk_indices" in metadata and "topk_scores" in metadata:
+        topk_indices = np.asarray(metadata["topk_indices"])
+        topk_scores = np.asarray(metadata["topk_scores"], dtype=np.float32)
+        if topk_indices.shape[0] == n_events and topk_scores.shape == topk_indices.shape:
+            candidate_ids = topk_indices.astype(np.int32, copy=False)
+            score_sums = topk_scores.sum(axis=1, keepdims=True)
+            candidate_weights = np.divide(
+                topk_scores,
+                score_sums,
+                out=np.zeros_like(topk_scores, dtype=np.float32),
+                where=score_sums > 0,
+            )
+            missing_rows = np.squeeze(score_sums <= 0, axis=1)
+            if np.any(missing_rows):
+                candidate_weights[missing_rows, 0] = 1.0
+
+    if "confidence" in metadata:
+        confidence = np.asarray(metadata["confidence"], dtype=np.float32).reshape(-1)
+    if "margin" in metadata:
+        margin = np.asarray(metadata["margin"], dtype=np.float32).reshape(-1)
+    if "entropy" in metadata:
+        entropy = np.asarray(metadata["entropy"], dtype=np.float32).reshape(-1)
+    if "quality_weight" in metadata:
+        quality_weight = np.asarray(metadata["quality_weight"], dtype=np.float32).reshape(-1)
+
+    return candidate_ids, candidate_weights, confidence, margin, entropy, quality_weight
+
+
+def _compute_event_weights(
+    energy: np.ndarray,
+    quality_weight: Optional[np.ndarray],
+    confidence: Optional[np.ndarray],
+    margin: Optional[np.ndarray],
+    entropy: Optional[np.ndarray],
+    min_confidence: float,
+    min_margin: float,
+    max_entropy: float,
+) -> np.ndarray:
+    event_weights = np.ones(energy.shape[0], dtype=np.float32)
+
+    if quality_weight is not None and quality_weight.shape[0] == energy.shape[0]:
+        event_weights *= np.clip(quality_weight.astype(np.float32, copy=False), 0.0, 1.0)
+
+    if confidence is not None and confidence.shape[0] == energy.shape[0] and min_confidence > 0.0:
+        event_weights[confidence < min_confidence] = 0.0
+
+    if margin is not None and margin.shape[0] == energy.shape[0] and min_margin > 0.0:
+        event_weights[margin < min_margin] = 0.0
+
+    if entropy is not None and entropy.shape[0] == energy.shape[0] and max_entropy < 1.0:
+        event_weights[entropy > max_entropy] = 0.0
+
+    return event_weights
+
+
 def _write_root_with_uproot(out_path: str,
                             hitmaps: Dict[str, Dict[int, np.ndarray]],
                             energymaps: Dict[str, Dict[int, np.ndarray]],
@@ -210,10 +344,15 @@ def generate_hitmaps(
     output_prefix: Optional[str] = None,
     e_threshold: float = QDC_MAX,
     label_path: Optional[str] = None,
+    position_metadata_path: Optional[str] = None,
     dead_fibers_txt: Optional[str] = None,
     exclude_dead_fibers: bool = False,
     save_extras: bool = False,
     reduced_statistics: float = 1.0,
+    random_seed: Optional[int] = None,
+    min_confidence: float = 0.0,
+    min_margin: float = 0.0,
+    max_entropy: float = 1.0,
 ):
     print(f"output_prefix: {output_prefix}, e_path: {pred_energy_path}, p_path: {pred_pos_path}")
     """Build hitmaps/energy maps for thresholds and write outputs including a ROOT file."""
@@ -229,30 +368,36 @@ def generate_hitmaps(
 
     # Ensure 1D arrays to avoid deprecation warnings on scalar conversion
     energy = np.asarray(np.load(pred_energy_path)).ravel() * 1000.0  # MeV -> keV
-    pos = np.load(pred_pos_path) 
-    if pos.ndim > 1:
-        pos = pos[:,1] # take fiber id if multiple outputs
+    pos = np.load(pred_pos_path)
 
-    # Index array for random selection (kept for consistent slicing of labels)
-    idx = None
+    idx = _sample_cluster_indices(energy.shape[0], reduced_statistics, random_seed)
+    if idx is not None:
+        logging.info(
+            "Reducing statistics by random cluster sampling: selecting %d / %d clusters (fraction=%.4f, seed=%s)",
+            idx.size,
+            energy.shape[0],
+            reduced_statistics,
+            random_seed,
+        )
+        energy = energy[idx]
+        pos = pos[idx]
 
-    # Reduce statistics if requested
-    if 0.0 < reduced_statistics < 1.0:
-        n_events = energy.shape[0]
-        n_select = int(n_events * reduced_statistics)
-        logging.info(f"Reducing statistics: selecting {n_select} / {n_events} events")
-        # Select a uniformly spaced subset of indices across the event range
-        # (deterministic, reproducible). Use linspace and cast to int.
-        if n_select <= 0:
-            idx = np.array([], dtype=int)
-            energy = energy[:0]
-            pos = pos[:0]
-        else:
-            # np.linspace with dtype=int produces evenly spaced integer indices
-            # within [0, n_events-1]. This ensures a uniform coverage.
-            idx = np.linspace(0, n_events - 1, num=n_select, dtype=int)
-            energy = energy[idx]
-            pos = pos[idx]
+    position_metadata = _load_position_metadata(position_metadata_path, idx)
+    position_candidates, candidate_weights, confidence, margin, entropy, quality_weight = _build_weighted_positions(
+        pos,
+        position_metadata,
+        energy.shape[0],
+    )
+    event_weights = _compute_event_weights(
+        energy,
+        quality_weight,
+        confidence,
+        margin,
+        entropy,
+        min_confidence,
+        min_margin,
+        max_entropy,
+    )
 
 
     if energy.shape[0] != pos.shape[0]:
@@ -261,25 +406,14 @@ def generate_hitmaps(
     labels = None
     if label_path and os.path.isfile(label_path):
         labels = np.asarray(np.load(label_path)).ravel()
-        if 0.0 < reduced_statistics < 1.0:
-            # Apply the same random indices if we sampled randomly earlier.
-            if idx is None:
-                # Fallback: use last-chunk behavior (shouldn't happen)
-                if n_select <= 0:
-                    labels = labels[:0]
-                else:
-                    labels = labels[-n_select:]
-            else:
-                labels = labels[idx]
+        if idx is not None:
+            labels = labels[idx]
         if labels.shape[0] != energy.shape[0]:
             logging.warning(
                 "Labels array length (%d) != energy/pos length (%d); ignoring labels",
                 labels.shape[0], energy.shape[0]
             )
             labels = None
-
-    # Decode flat fiber index -> (layer, fiber)
-    layer, fiber = np.divmod(pos.astype(int), N_FIBERS_PER_LAYER)
 
     # Initialize maps for both types
     hitmaps: Dict[str, Dict[int, np.ndarray]] = {
@@ -294,9 +428,8 @@ def generate_hitmaps(
     # Fill maps
     for i in range(energy.shape[0]):
         e = float(energy[i])
-        l = int(layer[i])
-        f = int(fiber[i])
-        if l < 0 or l >= N_LAYERS_PER_MODULE or f < 0 or f >= N_FIBERS_PER_LAYER:
+        event_weight = float(event_weights[i])
+        if event_weight <= 0.0:
             continue
 
         # Match the threshold-scan logic: thresholds are cumulative lower cuts
@@ -305,20 +438,26 @@ def generate_hitmaps(
             continue
         for thr in THRESHOLDS:
             if e > thr:
-                # AE maps: always fill
-                hitmaps["AE"][thr][l, f] += 1.0
-                energy_maps["AE"][thr][l, f] += e
-
-                # NS maps: only if label in {1,2}; if labels missing, mirror AE (inform user once)
                 do_ns = False
                 if labels is not None:
                     lab = int(labels[i])
                     do_ns = (lab > 0 and lab < 3)
-                else:
-                    do_ns = False
-                if do_ns:
-                    hitmaps["NS"][thr][l, f] += 1.0
-                    energy_maps["NS"][thr][l, f] += e
+
+                for j in range(position_candidates.shape[1]):
+                    weighted_position = float(candidate_weights[i, j]) * event_weight
+                    if weighted_position <= 0.0:
+                        continue
+
+                    l, f = divmod(int(position_candidates[i, j]), N_FIBERS_PER_LAYER)
+                    if l < 0 or l >= N_LAYERS_PER_MODULE or f < 0 or f >= N_FIBERS_PER_LAYER:
+                        continue
+
+                    hitmaps["AE"][thr][l, f] += weighted_position
+                    energy_maps["AE"][thr][l, f] += weighted_position * e
+
+                    if do_ns:
+                        hitmaps["NS"][thr][l, f] += weighted_position
+                        energy_maps["NS"][thr][l, f] += weighted_position * e
 
     logging.info("Finished building hitmaps and energy maps.")
 
@@ -407,10 +546,15 @@ if __name__ == "__main__":
     parser.add_argument("--output_prefix", required=True, help="Prefix for output files (e.g. output/run00566)")
     parser.add_argument("--e_threshold", type=int, default=120000, help="Upper energy threshold (keV) for the last bin; default 120000")
     parser.add_argument("--label_npy", required=False, default=None, help="Optional labels .npy for NS maps (labels in {1,2} are counted)")
+    parser.add_argument("--position_metadata_npz", required=False, default=None, help="Optional top-k position metadata .npz with confidence and quality weights")
     parser.add_argument("--dead_fibers_txt", required=False, default=None, help="Optional path to Dead_Fibers.txt (yChannel xChannel per line)")
     parser.add_argument("--exclude_dead", action="store_true", help="Zero out dead fibers from the txt file if provided")
     parser.add_argument("--save_extras", action="store_true", help="Also write npy/npz/png outputs (default off)")
     parser.add_argument("--reduced_statistics", type=float, default=1.0, help="Fraction of events to process (for testing); default 1.0 (all events)")
+    parser.add_argument("--random_seed", type=int, default=None, help="Optional RNG seed used when reduced statistics samples a random cluster subset")
+    parser.add_argument("--min_confidence", type=float, default=0.0, help="Optional hard veto for low-confidence position predictions")
+    parser.add_argument("--min_margin", type=float, default=0.0, help="Optional hard veto for small top1-top2 probability margins")
+    parser.add_argument("--max_entropy", type=float, default=1.0, help="Optional hard veto for high-entropy predictions")
     args = parser.parse_args()
 
     generate_hitmaps(
@@ -419,8 +563,13 @@ if __name__ == "__main__":
         args.output_prefix,
         args.e_threshold,
         label_path=args.label_npy,
+        position_metadata_path=args.position_metadata_npz,
         dead_fibers_txt=args.dead_fibers_txt,
         exclude_dead_fibers=args.exclude_dead,
         save_extras=args.save_extras,
         reduced_statistics=args.reduced_statistics,
+        random_seed=args.random_seed,
+        min_confidence=args.min_confidence,
+        min_margin=args.min_margin,
+        max_entropy=args.max_entropy,
     )

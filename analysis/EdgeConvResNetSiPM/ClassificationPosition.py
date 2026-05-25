@@ -66,6 +66,8 @@ from tqdm import tqdm
 import random
 import gc
 
+DEFAULT_TOP_K_EXPORT = 5
+
 from spektral.layers import EdgeConv, GlobalMaxPool
 from spektral.data.loaders import DisjointLoader
 
@@ -88,6 +90,91 @@ from SIFICCNN.utils.plotter import (
     plot_history_regression,
     plot_confusion_matrix,
     plot_class_multiplicity,)
+
+
+def _load_confidence_calibration(path):
+    """Load a monotone confidence calibration saved next to the trained classifier."""
+    if not os.path.isfile(path):
+        return None
+
+    with np.load(path) as calibration_npz:
+        edges = np.asarray(calibration_npz["edges"], dtype=np.float32)
+        calibrated = np.asarray(calibration_npz["calibrated_accuracy"], dtype=np.float32)
+
+    if edges.ndim != 1 or calibrated.ndim != 1 or edges.size != calibrated.size + 1:
+        raise ValueError(f"Invalid confidence calibration file: {path}")
+
+    return {
+        "edges": edges,
+        "calibrated_accuracy": np.clip(calibrated, 0.0, 1.0),
+    }
+
+
+def _apply_confidence_calibration(confidence, calibration):
+    """Map raw top-1 confidence to estimated correctness probability."""
+    confidence = np.asarray(confidence, dtype=np.float32)
+    if calibration is None:
+        return np.clip(confidence, 0.0, 1.0)
+
+    edges = calibration["edges"]
+    calibrated = calibration["calibrated_accuracy"]
+    idx = np.clip(np.digitize(confidence, edges[1:-1], right=False), 0, calibrated.size - 1)
+    return calibrated[idx]
+
+
+def _extract_topk_metadata(probabilities, confidence_calibration=None, top_k=DEFAULT_TOP_K_EXPORT):
+    """Return top-k class ids, scores, and simple quality metrics per event."""
+    top_k = max(1, min(int(top_k), probabilities.shape[1]))
+    topk_idx = np.argpartition(probabilities, -top_k, axis=1)[:, -top_k:]
+    topk_scores = np.take_along_axis(probabilities, topk_idx, axis=1)
+
+    order = np.argsort(topk_scores, axis=1)[:, ::-1]
+    topk_idx = np.take_along_axis(topk_idx, order, axis=1).astype(np.int16, copy=False)
+    topk_scores = np.take_along_axis(topk_scores, order, axis=1).astype(np.float16, copy=False)
+
+    confidence = topk_scores[:, 0].astype(np.float32, copy=False)
+    margin = np.zeros_like(confidence, dtype=np.float32)
+    if top_k > 1:
+        margin = confidence - topk_scores[:, 1].astype(np.float32, copy=False)
+
+    safe_probs = np.clip(probabilities.astype(np.float32, copy=False), 1e-8, 1.0)
+    entropy = -np.sum(safe_probs * np.log(safe_probs), axis=1)
+    entropy /= np.log(float(probabilities.shape[1]))
+    entropy = np.clip(entropy, 0.0, 1.0).astype(np.float32, copy=False)
+
+    quality_weight = _apply_confidence_calibration(confidence, confidence_calibration)
+    quality_weight = np.clip(quality_weight, 0.0, 1.0).astype(np.float16, copy=False)
+
+    return (
+        topk_idx,
+        topk_scores,
+        confidence.astype(np.float16),
+        margin.astype(np.float16),
+        entropy.astype(np.float16),
+        quality_weight,
+    )
+
+
+def _save_position_metadata_npz(
+    output_path,
+    predicted_entries,
+    topk_idx,
+    topk_scores,
+    confidence,
+    margin,
+    entropy,
+    quality_weight,
+):
+    np.savez(
+        output_path,
+        predicted_entry=predicted_entries.astype(np.int16, copy=False),
+        topk_indices=topk_idx.astype(np.int16, copy=False),
+        topk_scores=topk_scores.astype(np.float16, copy=False),
+        confidence=confidence.astype(np.float16, copy=False),
+        margin=margin.astype(np.float16, copy=False),
+        entropy=entropy.astype(np.float16, copy=False),
+        quality_weight=quality_weight.astype(np.float16, copy=False),
+    )
     #get_classification_report
 #)
 
@@ -541,6 +628,9 @@ def evaluate(
 
     # load norm
     norm_x = np.load(RUN_NAME + "_position_classifier_norm_x.npy")
+    confidence_calibration = _load_confidence_calibration(
+        RUN_NAME + "_position_classifier_confidence_calibration.npz"
+    )
 
     # recompile model
     logging.info("Recompiling model")
@@ -586,6 +676,12 @@ def evaluate(
     y_pred_scores = np.zeros((len(data),), dtype=np.float16)
     y_true_entries = np.zeros((len(data),), dtype=np.int16)
     y_pred_entries = np.zeros((len(data),), dtype=np.int16)
+    y_pred_topk_idx = np.zeros((len(data), DEFAULT_TOP_K_EXPORT), dtype=np.int16)
+    y_pred_topk_scores = np.zeros((len(data), DEFAULT_TOP_K_EXPORT), dtype=np.float16)
+    y_pred_confidence = np.zeros((len(data),), dtype=np.float16)
+    y_pred_margin = np.zeros((len(data),), dtype=np.float16)
+    y_pred_entropy = np.zeros((len(data),), dtype=np.float16)
+    y_pred_quality_weight = np.zeros((len(data),), dtype=np.float16)
     index = 0
     gc.collect()
     for batch in tqdm(test_dataset, desc="Making predictions", total=loader_test.steps_per_epoch):
@@ -593,11 +689,21 @@ def evaluate(
         p = tf_model(inputs, training=False)
         batch_size = target.shape[0]
         y_true = target.numpy()
-        y_pred = tf.cast(p, tf.float16).numpy()
+        y_pred = p.numpy().astype(np.float32, copy=False)
         y_true_scores[index:index + batch_size] = np.max(y_true, axis=1)
         y_pred_scores[index:index + batch_size] = np.max(y_pred, axis=1)
         y_true_entries[index:index + batch_size] = np.argmax(y_true, axis=1)
         y_pred_entries[index:index + batch_size] = np.argmax(y_pred, axis=1)
+        topk_idx, topk_scores, confidence, margin, entropy, quality_weight = _extract_topk_metadata(
+            y_pred,
+            confidence_calibration=confidence_calibration,
+        )
+        y_pred_topk_idx[index:index + batch_size] = topk_idx
+        y_pred_topk_scores[index:index + batch_size] = topk_scores
+        y_pred_confidence[index:index + batch_size] = confidence
+        y_pred_margin[index:index + batch_size] = margin
+        y_pred_entropy[index:index + batch_size] = entropy
+        y_pred_quality_weight[index:index + batch_size] = quality_weight
         index += batch_size
         del p
         del inputs, target
@@ -616,8 +722,6 @@ def evaluate(
 
     logging.info("Exporting results to .npy files")
     if system_matrix_bins:
-        del y_true_scores, y_pred_scores
-        gc.collect()
         # Bin true position into sm_bins bins between 0 and sm_bins
         true_bins = np.linspace(0, sm_bins, sm_bins+1)
         # Load source positions. Current sp range is -70 to 70. Thus it needs to be mapped to 0-sm_bins
@@ -628,11 +732,31 @@ def evaluate(
         for i in range(1, len(true_bins)):
             bin_mask = sp_binned == i
             np.save(dataset_type + f"_pos_clas_pred_bin_{i-1:03d}.npy", y_pred_entries[bin_mask])
+            _save_position_metadata_npz(
+                dataset_type + f"_pos_clas_pred_bin_{i-1:03d}_topk.npz",
+                y_pred_entries[bin_mask],
+                y_pred_topk_idx[bin_mask],
+                y_pred_topk_scores[bin_mask],
+                y_pred_confidence[bin_mask],
+                y_pred_margin[bin_mask],
+                y_pred_entropy[bin_mask],
+                y_pred_quality_weight[bin_mask],
+            )
     else:
         y_true = np.column_stack((y_true_scores, y_true_entries))
         y_pred = np.column_stack((y_pred_scores, y_pred_entries))
         np.save(dataset_type + "_ClassXZ_pred.npy", y_pred)
         np.save(dataset_type + "_ClassXZ_true.npy", y_true)
+        _save_position_metadata_npz(
+            dataset_type + "_ClassXZ_pred_topk.npz",
+            y_pred_entries,
+            y_pred_topk_idx,
+            y_pred_topk_scores,
+            y_pred_confidence,
+            y_pred_margin,
+            y_pred_entropy,
+            y_pred_quality_weight,
+        )
 
         logging.info("Plotting results")
         # plot confusion matrix
@@ -660,6 +784,7 @@ def evaluate(
     logging.info("Evaluation on dataset: " + dataset_type + " finished")
     del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter, history
     del y_true_scores, y_pred_scores, y_true_entries, y_pred_entries
+    del y_pred_topk_idx, y_pred_topk_scores, y_pred_confidence, y_pred_margin, y_pred_entropy, y_pred_quality_weight
     release_inference_memory()
 
 def predict(
@@ -715,6 +840,9 @@ def predict(
 
     # load norm
     norm_x = np.load(RUN_NAME + "_position_classifier_norm_x.npy")
+    confidence_calibration = _load_confidence_calibration(
+        RUN_NAME + "_position_classifier_confidence_calibration.npz"
+    )
 
     # recompile model
     logging.info("Recompiling model")
@@ -769,6 +897,10 @@ def predict(
     # only save the highest score for each event
     y_pred_scores = np.max(y_pred, axis=1)
     y_pred_entries = np.argmax(y_pred, axis=1)
+    y_pred_topk_idx, y_pred_topk_scores, y_pred_confidence, y_pred_margin, y_pred_entropy, y_pred_quality_weight = _extract_topk_metadata(
+        y_pred,
+        confidence_calibration=confidence_calibration,
+    )
     y_pred = np.column_stack((y_pred_scores, y_pred_entries))
     #y_pred = y_pred[y_pred[:,0] > 0]  # Filter out entries with score 0
 
@@ -776,11 +908,22 @@ def predict(
     np.save(
         file=dataset_type + "_ClassXZ_pred.npy", arr=y_pred
     )
+    _save_position_metadata_npz(
+        dataset_type + "_ClassXZ_pred_topk.npz",
+        y_pred_entries,
+        y_pred_topk_idx,
+        y_pred_topk_scores,
+        y_pred_confidence,
+        y_pred_margin,
+        y_pred_entropy,
+        y_pred_quality_weight,
+    )
     plot_predicted_xzposition(y_pred)
 
     logging.info("Prediction on dataset " + str(dataset_type) + " finished!")
     del loader_test, test_dataset, data, norm_x, tf_model, optimizer, modelParameter, history
     del y_pred, y_pred_scores, y_pred_entries
+    del y_pred_topk_idx, y_pred_topk_scores, y_pred_confidence, y_pred_margin, y_pred_entropy, y_pred_quality_weight
     release_inference_memory()
 if __name__ == "__main__":
     # configure argument parser

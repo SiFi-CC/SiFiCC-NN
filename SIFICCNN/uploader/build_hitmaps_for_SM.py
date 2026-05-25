@@ -91,9 +91,14 @@ def _process_one_bin(
     energy_path: Path,
     pos_path: Path,
     out_dir: Path,
+    position_metadata_path: Optional[Path],
     dead_fibers_txt: Optional[Path],
     exclude_dead: bool,
     overwrite: bool,
+    e_threshold: float,
+    min_confidence: float,
+    min_margin: float,
+    max_entropy: float,
 ) -> Tuple[int, bool, bool, bool, str]:
     """Worker that generates AE maps for a single bin and copies NPYs to targets.
 
@@ -120,11 +125,15 @@ def _process_one_bin(
                 pred_energy_path=str(energy_path),
                 pred_pos_path=str(pos_path),
                 output_prefix=str(out_prefix),
-                e_threshold=120000,
+                e_threshold=e_threshold,
                 label_path=None,
+                position_metadata_path=str(position_metadata_path) if position_metadata_path else None,
                 dead_fibers_txt=str(dead_fibers_txt) if dead_fibers_txt else None,
                 exclude_dead_fibers=bool(exclude_dead and dead_fibers_txt),
                 save_extras=False,
+                min_confidence=min_confidence,
+                min_margin=min_margin,
+                max_entropy=max_entropy,
             )
         except Exception:
             had_generate_error = True
@@ -162,6 +171,10 @@ def main():
     ap.add_argument("--dead-fibers-txt", type=Path, default=None, help="Optional path to Dead_Fibers.txt")
     ap.add_argument("--exclude-dead", action="store_true", help="Zero out dead fibers listed in the txt file")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1), help="Number of parallel worker processes")
+    ap.add_argument("--e-threshold", type=float, default=120000.0, help="Hard upper energy cut in keV; events at or above this value are ignored")
+    ap.add_argument("--min-confidence", type=float, default=0.0, help="Optional hard veto for low-confidence position predictions")
+    ap.add_argument("--min-margin", type=float, default=0.0, help="Optional hard veto for small top1-top2 probability margins")
+    ap.add_argument("--max-entropy", type=float, default=1.0, help="Optional hard veto for high-entropy predictions")
     args = ap.parse_args()
 
     pred_dir: Path = args.pred_dir
@@ -188,6 +201,9 @@ def main():
     with ProcessPoolExecutor(max_workers=args.workers) as ex:
         futures = []
         for bid in common_bins:
+            position_metadata_path = pos_by_bin[bid].with_name(pos_by_bin[bid].stem + "_topk.npz")
+            if not position_metadata_path.exists():
+                position_metadata_path = None
             futures.append(
                 ex.submit(
                     _process_one_bin,
@@ -195,9 +211,14 @@ def main():
                     energy_by_bin[bid],
                     pos_by_bin[bid],
                     out_dir,
+                    position_metadata_path,
                     args.dead_fibers_txt,
                     args.exclude_dead,
                     args.overwrite,
+                    args.e_threshold,
+                    args.min_confidence,
+                    args.min_margin,
+                    args.max_entropy,
                 )
             )
 
