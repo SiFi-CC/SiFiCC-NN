@@ -5,16 +5,13 @@
 #
 ##########################################################################
 
-import numpy as np
 import os
 import argparse
 import logging
-import matplotlib.pyplot as plt
 import awkward as ak
 
 from SIFICCNN.data.roots import RootSimulation
 from SIFICCNN.utils import parent_directory
-from SIFICCNN.utils.numba import make_all_edges
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,7 +20,6 @@ def dSimulation_to_GraphSiPMCM(
         dataset_name,
         path="",
         coordinate_system="CRACOW",
-        energy_cut=None,
         n_start=0,
         n_stop=None,
 ):
@@ -37,215 +33,161 @@ def dSimulation_to_GraphSiPMCM(
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
     
-    # Name files for splitting using condor:
     name_additions = ""
     if n_start != 0:
-        name_additions += "{}-".format(n_start)
+        name_additions += f"{n_start}-"
     if n_stop is not None:
-        name_additions += "{}".format(n_stop)
+        name_additions += f"{n_stop}"
     if name_additions != "":
         name_additions = name_additions + "_"
 
-    logging.info("Loading root file: {}".format(root_simulation.file_name))
-    logging.info("Dataset name: {}".format(dataset_name))
-    logging.info("Path: {}".format(path))
-    logging.info("Energy Cut: {}".format(energy_cut))
-    logging.info("Coordinate system of root file: {}".format(coordinate_system))
-    logging.info("Starting to load events")
+    parquet_path = os.path.join(path, f"{name_additions}data.parquet")
 
-    # Create lists to store data for each batch of the iteration
-    ary_A = []
-    ary_graph_indicator = []
-    ary_node_attributes = []
-    ary_graph_attributes = []
-    ary_graph_labels = []
-    ary_fibre_positions = []
-    ary_fibre_indicator = []
-    ary_pe = []
-    ary_source_position = []
+    logging.info(f"Loading root file: {root_simulation.file_name}")
+    logging.info(f"Targeting unified Parquet dataset output path: {parquet_path}")
 
+    # Clean start logic for HTCondor job split orchestration
+    if n_start == 0 and os.path.exists(parquet_path):
+        logging.info(f"Removing pre-existing dataset found at {parquet_path}")
+        os.remove(parquet_path)
 
-    for i, batch in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
+    # Global index tracker tracking sequential graph IDs across chunks
+    current_global_graph_id = n_start
+    writer = None
 
-        sipm_data = batch.sipm_hit
-        fibre_data = batch.fibre_hit
-        cluster_data = batch.cluster_hit
-        n_clusters = len(cluster_data["ClusterEnergy"])
-        n_nodes = ak.sum(ak.num(sipm_data["SiPMId"]))
-        n_edges = ak.sum(ak.num(sipm_data["SiPMId"]) ** 2)
-        
-        logging.info(f"Total number of graphs to be created: {n_clusters}")
-        logging.info(f"Total number of nodes to be created: {n_nodes}")
-        logging.info(f"Total number of edges to be created: {n_edges}")
-
-        # counting SiPMs per event
-        nodes_per_cluster = ak.num(sipm_data["SiPMId"], axis=1).to_numpy()
-
-        # --- build node attributes ---
-        # Map SiPMHit positions to attribute arrays according to coordinate system.
-        if coordinate_system.upper() == "CRACOW":
-            x = ak.flatten(sipm_data["SiPMPosition"]["z"])
-            y = -ak.flatten(sipm_data["SiPMPosition"]["y"])
-            z = ak.flatten(sipm_data["SiPMPosition"]["x"])
-        else:  # AACHEN
-            x = ak.flatten(sipm_data["SiPMPosition"]["x"])
-            y = ak.flatten(sipm_data["SiPMPosition"]["y"])
-            z = ak.flatten(sipm_data["SiPMPosition"]["z"])
+    try:
+        for i, batch in enumerate(root_simulation.iterate_events(n_stop=n_stop, n_start=n_start)):
+            sipm_data = batch.sipm_hit
+            fibre_data = batch.fibre_hit
+            cluster_data = batch.cluster_hit
             
-        timestamp = ak.flatten(sipm_data["SiPMTimeStamp"])
-        photon_count = ak.flatten(sipm_data["SiPMPhotonCount"])
+            n_clusters = len(cluster_data["ClusterEnergy"])
+            if n_clusters == 0:
+                continue
 
-        # Convert each flattened array to NumPy
-        x_np = ak.to_numpy(x)
-        y_np = ak.to_numpy(y)
-        z_np = ak.to_numpy(z)
-        timestamp_np = ak.to_numpy(timestamp)
-        photon_count_np = ak.to_numpy(photon_count)
+            is_cracow = coordinate_system.upper() == "CRACOW"
+            
+            # --- 1. Coordinate Transformations (Natively inside Awkward) ---
+            sipm_x = sipm_data["SiPMPosition"]["z"] if is_cracow else sipm_data["SiPMPosition"]["x"]
+            sipm_y = -sipm_data["SiPMPosition"]["y"] if is_cracow else sipm_data["SiPMPosition"]["y"]
+            sipm_z = sipm_data["SiPMPosition"]["x"] if is_cracow else sipm_data["SiPMPosition"]["z"]
 
-        # Stack the arrays column-wise
-        batch_node_attributes = np.column_stack((x_np, y_np, z_np, timestamp_np, photon_count_np))
-        logging.info("Created node attributes")
+            fibre_x = fibre_data["FibrePosition"]["z"] if is_cracow else fibre_data["FibrePosition"]["x"]
+            fibre_y = -fibre_data["FibrePosition"]["y"] if is_cracow else fibre_data["FibrePosition"]["y"]
+            fibre_z = fibre_data["FibrePosition"]["x"] if is_cracow else fibre_data["FibrePosition"]["z"]
 
-        # --- graph indicator: assign each node its event id ---
-        # First create a ragged array of cluster indices, then flatten.
-        cluster_ids = ak.from_numpy(np.arange(len(sipm_data["SiPMId"])))
-        batch_graph_indicator = ak.ravel(ak.broadcast_arrays(ak.local_index(sipm_data["SiPMId"]),
-                                                    cluster_ids)[1]).to_numpy()
-        
-        cluster_ids = ak.from_numpy(np.arange(len(sipm_data["SiPMId"])))
-        print("cluster_ids:", cluster_ids)
+            cl_x = cluster_data["ClusterPosition"]["z"] if is_cracow else cluster_data["ClusterPosition"]["x"]
+            cl_y = -cluster_data["ClusterPosition"]["y"] if is_cracow else cluster_data["ClusterPosition"]["y"]
+            cl_z = cluster_data["ClusterPosition"]["x"] if is_cracow else cluster_data["ClusterPosition"]["z"]
 
-        local_idx = ak.local_index(sipm_data["SiPMId"])
-        print("local_idx:", local_idx)
+            src_x = cluster_data["Cluster_MCPosition_source"]["z"] if is_cracow else cluster_data["Cluster_MCPosition_source"]["x"]
+            src_y = -cluster_data["Cluster_MCPosition_source"]["y"] if is_cracow else cluster_data["Cluster_MCPosition_source"]["y"]
+            src_z = cluster_data["Cluster_MCPosition_source"]["x"] if is_cracow else cluster_data["Cluster_MCPosition_source"]["z"]
 
-        broadcasted = ak.broadcast_arrays(local_idx, cluster_ids)
-        print("Broadcasted cluster IDs:", broadcasted[1])
+            # --- 2. Robust Vectorized Graph ID Mapping ---
+            counts_per_event = ak.num(sipm_data["SiPMId"], axis=1)
+            local_event_indices = ak.local_index(counts_per_event, axis=0) + current_global_graph_id
+            
+            # Safely broadcast IDs to nested levels to keep event boundaries intact
+            graph_id_per_node = ak.broadcast_arrays(local_event_indices, sipm_data["SiPMId"])[0]
+            graph_id_per_fibre = ak.broadcast_arrays(local_event_indices, fibre_data["FibreId"])[0]
 
-        batch_graph_indicator = ak.ravel(broadcasted[1]).to_numpy()
-        print("batch_graph_indicator:", batch_graph_indicator)
+            # --- 3. Vectorized Graph Adjacency Generation (Replaces make_all_edges) ---
+            node_indices = ak.local_index(sipm_data["SiPMId"], axis=1)
+            edge_pairs = ak.cartesian([node_indices, node_indices], axis=1)
+            edges_u, edges_v = ak.unzip(edge_pairs)
 
-        logging.info("Created graph indicator")
-        
-        batch_A = make_all_edges(np.ma.filled(nodes_per_cluster, fill_value=0))
-        logging.info("Created adjacency matrix")
+            # --- 4. Map Event Primary Energy to Cluster Level safely ---
+            raw_cluster_indices = cluster_data["ClusterEventIndex"]
+            max_valid_idx = len(batch.MCEnergyPrimary) - 1
+            safe_cluster_indices = ak.where(raw_cluster_indices > max_valid_idx, max_valid_idx, raw_cluster_indices)
+            primary_energy_vector = batch.MCEnergyPrimary[safe_cluster_indices]
 
-        # --- fibre positions ---
-        # Assume FibreHit contains FibreId and FibrePosition which are vectorized in each event.
-        if coordinate_system.upper() == "CRACOW":
-            x = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["z"]))
-            y = -ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["y"]))
-            z = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["x"]))
-        else:
-            x = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["x"]))
-            y = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["y"]))
-            z = ak.to_numpy(ak.flatten(fibre_data["FibrePosition"]["z"]))
+            # --- 5. Pack Into Record Arrays Individually ---
+            graph_meta_rec = ak.zip({
+                "graph_id": local_event_indices,
+                "primary_energy": primary_energy_vector,
+                "labels": ak.ones_like(cluster_data["ClusterEnergy"], dtype=bool)
+            })
 
-        batch_fibre_positions = np.column_stack((x, y, z))
-        logging.info("Created fibre positions")
-        # Build fibre indicator (graph id per fibre)
-        batch_fibre_indicator = ak.to_numpy(ak.ravel(ak.broadcast_arrays(ak.local_index(fibre_data["FibreId"]),
-                                                    cluster_ids)[1]))
-        logging.info("Created fibre indicator")
-        
-        # --- graph-level attributes and labels ---
+            nodes_rec = ak.zip({
+                "graph_id": graph_id_per_node,
+                "x": sipm_x,
+                "y": sipm_y,
+                "z": sipm_z,
+                "timestamp": sipm_data["SiPMTimeStamp"],
+                "photon_count": sipm_data["SiPMPhotonCount"]
+            })
 
-        logging.info("Calculated graph attributes and labels")
+            edges_rec = ak.zip({
+                "source": edges_u,
+                "target": edges_v
+            })
 
-        # Prepare target data
-        target_energy = np.ma.filled(ak.to_numpy(cluster_data["ClusterEnergy"]), 0)
-        target_fibre_id = np.ma.filled(ak.to_numpy(cluster_data["ClusterFibreId"]), 0)
-        if coordinate_system == "CRACOW":
-            x = ak.to_numpy(cluster_data["ClusterPosition"]["z"])
-            y = -ak.to_numpy(cluster_data["ClusterPosition"]["y"])
-            z = ak.to_numpy(cluster_data["ClusterPosition"]["x"])
-        else:
-            x = ak.to_numpy(cluster_data["ClusterPosition"]["x"])
-            y = ak.to_numpy(cluster_data["ClusterPosition"]["y"])
-            z = ak.to_numpy(cluster_data["ClusterPosition"]["z"])
-        target_position = np.column_stack((x, y, z))
-        batch_graph_attributes = np.column_stack((target_energy, target_position, target_fibre_id))
-        batch_graph_labels = np.ones(n_clusters, dtype=np.bool_)
+            fibres_rec = ak.zip({
+                "graph_id": graph_id_per_fibre,
+                "x": fibre_x,
+                "y": fibre_y,
+                "z": fibre_z
+            })
 
-        # get source positions
-        if coordinate_system.upper() == "CRACOW":
-            x = ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["z"])
-            y = -ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["y"])
-            z = ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["x"])
-        else:
-            x = ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["x"])
-            y = ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["y"])
-            z = ak.to_numpy(cluster_data["Cluster_MCPosition_source"]["z"])
-        batch_source_position = np.column_stack((x, y, z))
+            clusters_rec = ak.zip({
+                "energy": cluster_data["ClusterEnergy"],
+                "fibre_id": cluster_data["ClusterFibreId"],
+                "x": cl_x,
+                "y": cl_y,
+                "z": cl_z,
+                "source_x": src_x,
+                "source_y": src_y,
+                "source_z": src_z
+            })
 
-        logging.info("Created graph attributes")
+            # --- 6. Form Table and enforce memory layout realignment ---
+            batch_record = ak.Array({
+                "graph_meta": graph_meta_rec,
+                "nodes": nodes_rec,
+                "edges": edges_rec,
+                "fibres": fibres_rec,
+                "clusters": clusters_rec
+            })
+            
+            # Realigns indices and chunks natively into a clean contiguous layout to satisfy PyArrow
+            batch_record = ak.to_packed(batch_record)
 
-        # Primary energies per event
-        batch_pe = np.ma.filled((ak.to_numpy(batch.MCEnergyPrimary)),0) # fill missing values with 0
-        
-        # Graph labels as boolean (convert tag to int if desired)
-        batch_graph_labels = np.ones(n_clusters, dtype=np.bool_) 
+            # --- 7. Streaming multi-rowgroup Parquet engine ---
+            if writer is None:
+                import pyarrow.parquet as pq
+                arrow_table = ak.to_arrow_table(batch_record)
+                writer = pq.ParquetWriter(parquet_path, arrow_table.schema, compression="zstd")
+            
+            writer.write_table(ak.to_arrow_table(batch_record))
+            
+            # Advance sequential graph IDs
+            current_global_graph_id += len(counts_per_event)
+            logging.info(f"Batch {i} successfully appended to Parquet stream.")
 
-        # Before appending the indicators, check last index of the previous batch
-        if i > 0:
-            batch_graph_indicator += ary_graph_indicator[-1][-1] + 1
-            batch_fibre_indicator += ary_fibre_indicator[-1][-1] + 1
+    finally:
+        if writer is not None:
+            writer.close()
 
-        # Append data to lists
-        ary_A.append(batch_A)
-        ary_graph_indicator.append(batch_graph_indicator)
-        ary_node_attributes.append(batch_node_attributes)
-        ary_graph_attributes.append(batch_graph_attributes)
-        ary_graph_labels.append(batch_graph_labels)
-        ary_fibre_positions.append(batch_fibre_positions)
-        ary_fibre_indicator.append(batch_fibre_indicator)
-        ary_pe.append(batch_pe)
-        ary_source_position.append(batch_source_position)
+    logging.info(f"Pure Awkward dataset successfully written to {parquet_path}")
 
-    # Concatenate lists to arrays
-    ary_A = np.concatenate(ary_A, axis=0)
-    ary_graph_indicator = np.concatenate(ary_graph_indicator, axis=0)
-    ary_node_attributes = np.concatenate(ary_node_attributes, axis=0)
-    ary_graph_attributes = np.concatenate(ary_graph_attributes, axis=0)
-    ary_graph_labels = np.concatenate(ary_graph_labels, axis=0)
-    ary_fibre_indicator = np.concatenate(ary_fibre_indicator, axis=0)
-    ary_fibre_positions = np.concatenate(ary_fibre_positions, axis=0)
-    ary_pe = np.concatenate(ary_pe, axis=0)
-    ary_source_position = np.concatenate(ary_source_position, axis=0)
-
-
-    # Save datasets as .npy files 
-    np.save(path + "/" + name_additions + "A.npy", ary_A)
-    np.save(path + "/" + name_additions + "graph_indicator.npy", ary_graph_indicator)
-    np.save(path + "/" + name_additions + "node_attributes.npy", ary_node_attributes)
-    np.save(path + "/" + name_additions + "graph_attributes.npy", ary_graph_attributes)
-    np.save(path + "/" + name_additions + "graph_pe.npy", ary_pe)
-    np.save(
-        path + "/" + name_additions + "fibre_indicator.npy", ary_fibre_indicator
-    )
-    np.save(path + "/" + name_additions + "graph_labels.npy", ary_graph_labels)
-    np.save(path + "/" + name_additions + "fibre_positions.npy", ary_fibre_positions)
-    np.save(path + "/" + name_additions + "source_positions.npy", ary_source_position)
-    logging.info("Datasets saved successfully")
-    
 
 if __name__ == "__main__":
-    # configure argument parser
-    parser = argparse.ArgumentParser(description="Simulation to GraphSiPM downloader")
-    parser.add_argument("--rf", type=str, help="Target root file")
-    parser.add_argument("--name", type=str, help="Name of final datasets")
-    parser.add_argument("--path", type=str, help="Path to final datasets")
-    parser.add_argument("--cs", type=str, help="Coordinate system of root file")
-    parser.add_argument("--energy-cut", type=float, default=None, help="Energy cut to apply to clusters (in keV)")
-    parser.add_argument("--n_start", type=int, default=0, help="Starting index of events to process")
-    parser.add_argument("--n_stop", type=int, default=None, help="Stopping index of events to process")
+    parser = argparse.ArgumentParser(description="Simulation to GraphSiPM Downloader")
+    parser.add_argument("--rf", type=str, required=True, help="Target root file")
+    parser.add_argument("--name", type=str, required=True, help="Name of final datasets")
+    parser.add_argument("--path", type=str, default="", help="Path to final datasets")
+    parser.add_argument("--cs", type=str, default="CRACOW", help="Coordinate system")
+    parser.add_argument("--n_start", type=int, default=0, help="Starting event index")
+    parser.add_argument("--n_stop", type=int, default=None, help="Stopping event index")
     args = parser.parse_args()
 
     dSimulation_to_GraphSiPMCM(
         root_simulation=args.rf,
-            dataset_name=args.name,
-            path=args.path if args.path is not None else "",
-            coordinate_system=args.cs if args.cs is not None else "CRACOW",
-            energy_cut=args.energy_cut if args.energy_cut is not None else None,
-            n_start=args.n_start if args.n_start is not None else 0,
-            n_stop=args.n_stop if args.n_stop is not None else None,
+        dataset_name=args.name,
+        path=args.path,
+        coordinate_system=args.cs,
+        n_start=args.n_start,
+        n_stop=args.n_stop,
     )

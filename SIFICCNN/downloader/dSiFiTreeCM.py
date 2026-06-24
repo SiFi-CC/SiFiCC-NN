@@ -1,86 +1,134 @@
 import os
+import sys
 import numpy as np
 import awkward as ak
 import logging
+import argparse
 
 from SIFICCNN.data.sifiTrees import SiFiTree
 from SIFICCNN.utils import parent_directory
-from SIFICCNN.utils.numba import make_all_edges
 
 logging.basicConfig(level=logging.INFO)
 
-def dSiFiTreeCM(sifi_tree, 
-                dataset_name, 
-                path="", 
-                ):
+def dSiFiTreeCM(sifi_tree, dataset_name, path=""):
     """
-    Converts a SiFiTree ROOT file into a graph dataset using vectorized Awkward operations.
+    Converts a SiFiTree ROOT file into a single, unified Parquet dataset with a schema 
+    that matches our simulation pipeline exactly, ensuring compatibility with the GNN.
     """
+    if isinstance(sifi_tree, (str, os.PathLike)):
+        logging.info(f"Initializing SiFiTree wrapper for raw path: {sifi_tree}")
+        sifi_tree = SiFiTree(str(sifi_tree))
 
     if path == "":
         base_path = os.path.join(parent_directory(), "datasets", "BeamTime", dataset_name)
-        #base_path = os.path.join("/scratch3/gccb/data/InputforNN/converted/Beamtime", "datasets", dataset_name)
         os.makedirs(base_path, exist_ok=True)
         path = base_path
 
-
-
-    # Get the rearranged SiPM hits from SiFiTree.
-    logging.info("Calling SiFiTree.process() to get rearranged SiPM hits")
+    parquet_path = os.path.join(path, "data.parquet")
+    logging.info("Calling SiFiTree.process() to get rearranged SiPM hits...")
     clusters = sifi_tree.process()
 
-    # Compute the number of nodes per graph (vectorized).
-    nodes_per_graph = ak.num(clusters["SiPMId"], axis=1)
-    nodes_per_graph_np = ak.to_numpy(nodes_per_graph)
+    total_events = len(clusters)
+    logging.info(f"Processing {total_events} beamtime events into modern Parquet storage...")
+
+    # --- 1. Sequential Unique Graph IDs ---
+    graph_ids = ak.local_index(clusters["EventID"], axis=0)
+
+    # --- 2. Broadcast Graph IDs to Node Level for Tracking ---
+    graph_id_per_node = ak.broadcast_arrays(graph_ids, clusters["SiPMId"])[0]
+
+    # --- 3. Generate Vectorized Edge Pairs Natively ---
+    node_indices = ak.local_index(clusters["SiPMId"], axis=1)
+    edge_pairs = ak.cartesian([node_indices, node_indices], axis=1)
+    edges_u, edges_v = ak.unzip(edge_pairs)
+
+    # --- 4. Capture Original Minimum Time Trigger Metrics ---
+    min_sipm_time = ak.min(clusters["OriginalSiPMTimeStamp"], axis=1)
+
+    # --- 5. Zip Schema Blocks (1:1 Match with Simulation Layout) ---
+    graph_meta_rec = ak.zip({
+        "graph_id": graph_ids,
+        "primary_energy": ak.zeros_like(clusters["EventID"], dtype=np.float32),  # Dummy for beamtime
+        "labels": ak.ones_like(clusters["EventID"], dtype=bool)                 # Default to active beam
+    })
+
+    nodes_rec = ak.zip({
+        "graph_id": graph_id_per_node,
+        "x": clusters["SiPMPosition"]["x"],
+        "y": clusters["SiPMPosition"]["y"],
+        "z": clusters["SiPMPosition"]["z"],
+        "timestamp": clusters["SiPMTimeStamp"],
+        "photon_count": clusters["SiPMPhotonCount"]
+    })
+
+    edges_rec = ak.zip({
+        "source": edges_u,
+        "target": edges_v
+    })
+
+    # Dummy layouts matching simulation definitions to avoid column mismatch errors
+    fibres_rec = ak.zip({
+        "graph_id": graph_id_per_node,
+        "x": clusters["SiPMPosition"]["x"],
+        "y": clusters["SiPMPosition"]["y"],
+        "z": clusters["SiPMPosition"]["z"]
+    })
+
+    # Pack true experimental identifiers into clusters struct
+    clusters_rec = ak.zip({
+        "energy": ak.zeros_like(clusters["EventID"], dtype=np.float32),          # Dummy matrix padding
+        "fibre_id": clusters["SiPMId"],                                         # Map active IDs natively
+        "x": clusters["SiPMPosition"]["x"],
+        "y": clusters["SiPMPosition"]["y"],
+        "z": clusters["SiPMPosition"]["z"],
+        "source_x": ak.zeros_like(clusters["EventID"], dtype=np.float32),       # No MC source position
+        "source_y": ak.zeros_like(clusters["EventID"], dtype=np.float32),
+        "source_z": ak.zeros_like(clusters["EventID"], dtype=np.float32)
+    })
+
+    # --- 6. Form Unified Awkward Record Array Table ---
+    batch_record = ak.Array({
+        "graph_meta": graph_meta_rec,
+        "nodes": nodes_rec,
+        "edges": edges_rec,
+        "fibres": fibres_rec,
+        "clusters": clusters_rec,
+        "beamtime_meta": ak.zip({
+            "event_id": clusters["EventID"],
+            "hit_ids": clusters["SiPMHitId"],
+            "cluster_time": min_sipm_time
+        })
+    })
+
+    # Clean, contiguous memory layout realignment
+    batch_record = ak.to_packed(batch_record)
+
+    # --- 7. Stream Directly to Disk via PyArrow Engine ---
+    import pyarrow.parquet as pq
+    arrow_table = ak.to_arrow_table(batch_record)
     
-    # Build the graph indicator:
-    # For each graph, create an array of the graph id repeated for each node.
-    # Use np.repeat on the counts.
-    num_graphs = len(nodes_per_graph_np)
-    graph_ids = np.arange(num_graphs)
-    graph_indicator = np.repeat(graph_ids, nodes_per_graph_np)
+    logging.info(f"Writing dataset to target: {parquet_path}")
+    with pq.ParquetWriter(parquet_path, arrow_table.schema, compression="zstd") as writer:
+        writer.write_table(arrow_table)
 
-    # Build the event indicator:
-    # For each graph, create an array of the event id repeated for each node.
-    # Use np.repeat on the counts.
-    event_ids = ak.to_numpy(clusters["EventID"])
-    
-    
-    # Build node attributes.
-    # Flatten all graphs (i.e. flatten one level so that each node becomes a record).
-    # Extract fields (assumed to be present as per SiFiTree.process())
-    x = ak.to_numpy(ak.flatten(clusters["SiPMPosition"]["x"]))
-    y = ak.to_numpy(ak.flatten(clusters["SiPMPosition"]["y"]))
-    z = ak.to_numpy(ak.flatten(clusters["SiPMPosition"]["z"]))
-    ts = ak.to_numpy(ak.flatten(clusters["SiPMTimeStamp"]))
-    qdc = ak.to_numpy(ak.flatten(clusters["SiPMPhotonCount"]))
-    node_attributes = np.column_stack((x, y, z, ts, qdc))
-
-    # Convert masked arrays to normal arrays.
-    node_attributes = np.ma.filled(node_attributes, fill_value=-1)
-
-    # Get the minimal SiPM time from the original data.
-    min_sipm_time = ak.to_numpy(ak.min(clusters["OriginalSiPMTimeStamp"], axis=1))
-    min_sipm_time = np.ma.filled(min_sipm_time, fill_value=-1)
-
-        
-    # Compute the block-diagonal adjacency matrix using the helper.
-    adjacency_matrix = make_all_edges(nodes_per_graph_np)
-
-    # Get flattened HitIds to identify the clusters later.
-    hit_ids = ak.to_numpy(ak.flatten(clusters["SiPMHitId"]))
-
-    
-    logging.info("Created graph dataset: %d graphs, %d nodes", num_graphs, node_attributes.shape[0])
-    
-    # Save arrays.
-    np.save(os.path.join(path, "A.npy"), adjacency_matrix)
-    np.save(os.path.join(path, "graph_indicator.npy"), graph_indicator)
-    np.save(os.path.join(path, "node_attributes.npy"), node_attributes)
-    np.save(os.path.join(path, "sipm_hitids.npy"), hit_ids)
-    np.save(os.path.join(path, "cluster_time.npy"), min_sipm_time)
-    np.save(os.path.join(path, "event_ids.npy"), event_ids)
-    
-    logging.info("Saved dataset successfully at %s", path)
+    logging.info("Beamtime dataset successfully written to modern Parquet format!")
 
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="BeamTime ROOT SiFiTree to Unified Parquet Graph Converter")
+    parser.add_argument(
+        "--rf", type=str, required=True, help="Path to the target experimental beamtime ROOT file"
+    )
+    parser.add_argument(
+        "--name", type=str, required=True, help="Name of the final output dataset directory"
+    )
+    parser.add_argument(
+        "--path", type=str, default="", help="Custom output base path directory (optional)"
+    )
+    args = parser.parse_args()
+
+    dSiFiTreeCM(
+        sifi_tree=args.rf,
+        dataset_name=args.name,
+        path=args.path
+    )
