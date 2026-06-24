@@ -18,7 +18,8 @@ def get_parameters(mode):
 
     elif mode == "CM":
         # Parameters for the CM mode
-        datasets = {
+        datasets = {"efficiency_simulation":"OptimisedGeometry_CodedMaskHIT_511keVLineGa_4e8_gammas"}
+        """{
             "continuous": "SystemMatrix_CodedMaskHIT_simv5_linesource_0to29999",
             "spot1": "OptimisedGeometry_CodedMaskHIT_Spot1_1e10_protons_MK",
             "spot2": "OptimisedGeometry_CodedMaskHIT_Spot2_1e10_protons_MK",
@@ -27,7 +28,7 @@ def get_parameters(mode):
             "spot5": "OptimisedGeometry_CodedMaskHIT_Spot5_1e10_protons_MK",
             "spot6": "OptimisedGeometry_CodedMaskHIT_Spot6_1e10_protons_MK",
             "spot7": "OptimisedGeometry_CodedMaskHIT_Spot7_1e10_protons_MK",
-        }    
+        }"""    
         output_dimensions = {
             "classification": 1,
             "energy": 1,
@@ -36,7 +37,8 @@ def get_parameters(mode):
         }
         dataset_name = "CMSimGraphSiPM"
     elif mode == "CMbeamtime":
-        datasets = {
+        datasets =  {"run00596": "run00596_sifi_1M_TESTING"}
+        """{
             "run00566": "run00566_sifi",
             "run00567": "run00567_sifi",
             "run00568": "run00568_sifi",
@@ -50,7 +52,7 @@ def get_parameters(mode):
             "run00579": "run00579_sifi",
             "run00580": "run00580_sifi",
             "run00581": "run00581_sifi",
-        }
+        }"""
 
         """{"run00582": "run00582_sifi",
             "run00583": "run00583_sifi",
