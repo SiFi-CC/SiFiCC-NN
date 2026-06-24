@@ -12,21 +12,24 @@ import logging
 import matplotlib.pyplot as plt
 import awkward as ak
 
+from SIFICCNN.data.roots import RootSimulation
 from SIFICCNN.utils import parent_directory
 from SIFICCNN.utils.numba import make_all_edges
 
 logging.basicConfig(level=logging.INFO)
 
 def dSimulation_to_GraphSiPMCM(
-     root_simulation,
+        root_simulation,
         dataset_name,
         path="",
         coordinate_system="CRACOW",
         energy_cut=None,
-        neutrons=0,
         n_start=0,
         n_stop=None,
 ):
+
+    if isinstance(root_simulation, (str, os.PathLike)):
+        root_simulation = RootSimulation(str(root_simulation), mode="CM-4to1")
 
     if path == "":
         path = parent_directory() + "/datasets/"
@@ -230,22 +233,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulation to GraphSiPM downloader")
     parser.add_argument("--rf", type=str, help="Target root file")
     parser.add_argument("--name", type=str, help="Name of final datasets")
-    parser.add_argument("-path", type=str, help="Path to final datasets")
-    parser.add_argument("-n", type=int, help="Number of events used")
-    parser.add_argument("-cs", type=str, help="Coordinate system of root file")
-    parser.add_argument(
-        "--with_neutrons", action="store_true", help="Include events with neutrons"
-    )
-    parser.add_argument("--photon_set", action="store_true", help="Include photon set")
+    parser.add_argument("--path", type=str, help="Path to final datasets")
+    parser.add_argument("--cs", type=str, help="Coordinate system of root file")
+    parser.add_argument("--energy-cut", type=float, default=None, help="Energy cut to apply to clusters (in keV)")
+    parser.add_argument("--n_start", type=int, default=0, help="Starting index of events to process")
+    parser.add_argument("--n_stop", type=int, default=None, help="Stopping index of events to process")
     args = parser.parse_args()
 
     dSimulation_to_GraphSiPMCM(
         root_simulation=args.rf,
-        dataset_name=args.name,
-        path=args.path if args.path is not None else "",
-        n=args.n if args.n is not None else None,
-        coordinate_system=args.cs if args.cs is not None else "CRACOW",
-        energy_cut=args.ec if args.ec is not None else None,
-        with_neutrons=args.with_neutrons,
-        photon_set=args.photon_set,
+            dataset_name=args.name,
+            path=args.path if args.path is not None else "",
+            coordinate_system=args.cs if args.cs is not None else "CRACOW",
+            energy_cut=args.energy_cut if args.energy_cut is not None else None,
+            n_start=args.n_start if args.n_start is not None else 0,
+            n_stop=args.n_stop if args.n_stop is not None else None,
     )
