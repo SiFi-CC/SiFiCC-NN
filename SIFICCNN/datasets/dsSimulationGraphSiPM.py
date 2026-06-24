@@ -24,7 +24,6 @@ class DSGraphSiPM(Dataset):
         
         # Upper structural bounds matching parameter declarations
         self.max_nodes = 100
-        self.max_clusters = 4
         
         # Calculate local paths cleanly without touching Spektral's restricted properties
         from SIFICCNN.utils import parent_directory
@@ -57,13 +56,18 @@ class DSGraphSiPM(Dataset):
         # 2. 100% Vectorized Target Matrix Allocation
         if self.mode == "CMbeamtime":
             y_targets = [None] * total_events
-        elif is_energy_task:
+        elif hasattr(self, "regression") and self.regression == "Energy":
             y_targets = self.y_data.astype(np.float32).reshape(-1, 1)
         else:
+            # Classification or PositionXZ mapping: Build the clean 385-bin target matrix
             y_targets = np.zeros((total_events, 385), dtype=np.float32)
-            valid_mask = self.y_data != -1
+            
+            # Ensure y_data is 2D for consistent mask evaluation
+            y_source = self.y_data.reshape(total_events, -1)
+            valid_mask = (y_source != -1) & (y_source < 385)
+            
             rows = np.repeat(np.arange(total_events), np.sum(valid_mask, axis=1))
-            cols = self.y_data[valid_mask]
+            cols = y_source[valid_mask].astype(np.int32)
             y_targets[rows, cols] = 1.0
 
         # 3. Pre-compute and Cache all raw CSR structural array components
@@ -139,32 +143,8 @@ try:
     raw_t = np.concatenate([[hit["timestamp"] for hit in event] for event in df["nodes"] if event is not None and len(event) > 0])
     raw_p = np.concatenate([[hit["photon_count"] for hit in event] for event in df["nodes"] if event is not None and len(event) > 0])
 
+    # True to original behavior: PositionXZ is derived straight from target attributes, no nested cluster lists
     y_data = labels
-    if {is_regression} and {is_positives}:
-        if '{self.mode}' != "CMbeamtime" and '{self.regression}' == "PositionXZ" and "clusters" in df.columns:
-            y_data = np.full((len(labels), {self.max_clusters}), -1, dtype=np.int32)
-            for i, c in enumerate(df["clusters"]):
-                if c is not None:
-                    if isinstance(c, (list, np.ndarray)) and len(c) > 0:
-                        c_item = c[0] if isinstance(c[0], dict) else c
-                    else:
-                        c_item = c
-                        
-                    if isinstance(c_item, dict):
-                        c_lower = {{str(k).lower(): v for k, v in c_item.items()}}
-                        for key in ["clusterfibreid", "fibre_id"]:
-                            if key in c_lower and c_lower[key] is not None:
-                                f_ids = c_lower[key]
-                                
-                                if isinstance(f_ids, (int, np.integer)):
-                                    f_ids = [f_ids]
-                                elif not hasattr(f_ids, "__len__"):
-                                    f_ids = [f_ids]
-                                    
-                                n_c = min(len(f_ids), {self.max_clusters})
-                                if n_c > 0:
-                                    y_data[i, :n_c] = f_ids[:n_c]
-                                break
 
     payload = (labels, node_counts, raw_x, raw_y, raw_z, raw_t, raw_p, y_data)
     sys.stdout.buffer.write(pickle.dumps(payload))
